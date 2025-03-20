@@ -5,12 +5,12 @@ import { Button } from '@/components/ui/button';
 import { PieChart, ArrowRight } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import UploadCard from '@/components/UploadCard';
+import { useStatement } from '@/contexts/StatementContext';
 
 const Upload = () => {
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const { uploadedFile, statementData } = useStatement();
 
   const handleFileSelect = (file: File) => {
-    setUploadedFile(file);
     console.log('File selected:', file.name);
   };
 
@@ -30,10 +30,13 @@ const Upload = () => {
           <UploadCard onFileSelect={handleFileSelect} />
         </div>
         
-        {uploadedFile && (
+        {uploadedFile && statementData && (
           <div className="mt-10 text-center animate-fade-in">
             <p className="text-lg mb-4">
               Ready to see your financial insights?
+            </p>
+            <p className="text-muted-foreground mb-6">
+              We found {statementData.transactions.length} transactions in your statement.
             </p>
             <Link to="/analyze">
               <Button size="lg" className="rounded-full px-6 gap-2">

@@ -1,35 +1,40 @@
 
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import PageTransition from "./components/PageTransition";
-import Index from "./pages/Index";
-import Upload from "./pages/Upload";
-import Analyze from "./pages/Analyze";
-import NotFound from "./pages/NotFound";
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { Toaster } from '@/components/ui/toaster';
+import { AnimatePresence } from 'react-transition-group';
+import PageTransition from './components/PageTransition';
+import Index from './pages/Index';
+import Upload from './pages/Upload';
+import Analyze from './pages/Analyze';
+import NotFound from './pages/NotFound';
+import { StatementProvider } from './contexts/StatementContext';
+import './App.css';
 
-const queryClient = new QueryClient();
+// Wrap the Routes with AnimatePresence for page transitions
+const AnimatedRoutes = () => {
+  const location = useLocation();
+  
+  return (
+    <AnimatePresence mode="wait">
+      <Routes location={location} key={location.pathname}>
+        <Route path="/" element={<PageTransition><Index /></PageTransition>} />
+        <Route path="/upload" element={<PageTransition><Upload /></PageTransition>} />
+        <Route path="/analyze" element={<PageTransition><Analyze /></PageTransition>} />
+        <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
+      </Routes>
+    </AnimatePresence>
+  );
+};
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <PageTransition>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/upload" element={<Upload />} />
-            <Route path="/analyze" element={<Analyze />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </PageTransition>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+function App() {
+  return (
+    <StatementProvider>
+      <Router>
+        <AnimatedRoutes />
+        <Toaster />
+      </Router>
+    </StatementProvider>
+  );
+}
 
 export default App;

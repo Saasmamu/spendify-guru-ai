@@ -5,6 +5,8 @@ import { Upload, File, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
+import { useStatement } from '@/contexts/StatementContext';
+import { processBankStatement } from '@/services/pdfService';
 
 interface UploadCardProps {
   onFileSelect?: (file: File) => void;
@@ -12,9 +14,10 @@ interface UploadCardProps {
 
 const UploadCard = ({ onFileSelect }: UploadCardProps) => {
   const { toast } = useToast();
+  const { setUploadedFile, setStatementData, setIsProcessing, setError } = useStatement();
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [isProcessingLocal, setIsProcessingLocal] = useState(false);
   const [uploadComplete, setUploadComplete] = useState(false);
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -42,7 +45,7 @@ const UploadCard = ({ onFileSelect }: UploadCardProps) => {
     }
   };
 
-  const processFile = (file: File) => {
+  const processFile = async (file: File) => {
     // Check if file is PDF
     if (file.type !== 'application/pdf') {
       toast({
@@ -54,27 +57,48 @@ const UploadCard = ({ onFileSelect }: UploadCardProps) => {
     }
 
     setSelectedFile(file);
+    setIsProcessingLocal(true);
     setIsProcessing(true);
     
-    // Simulate upload process
-    setTimeout(() => {
-      setIsProcessing(false);
+    try {
+      // Process the PDF file
+      const result = await processBankStatement(file);
+      
       setUploadComplete(true);
+      setIsProcessingLocal(false);
+      setIsProcessing(false);
+      
+      // Update global state
+      setUploadedFile(file);
+      setStatementData(result);
       
       if (onFileSelect) {
         onFileSelect(file);
       }
       
       toast({
-        title: "Upload complete",
-        description: "Your statement has been uploaded successfully.",
+        title: "Processing complete",
+        description: `Extracted ${result.transactions.length} transactions from statement.`,
       });
-    }, 2000);
+    } catch (error) {
+      console.error("Error processing PDF:", error);
+      setIsProcessingLocal(false);
+      setIsProcessing(false);
+      setError(error instanceof Error ? error.message : 'Failed to process PDF');
+      
+      toast({
+        variant: "destructive",
+        title: "Processing failed",
+        description: "Could not extract data from the PDF. Please try another file.",
+      });
+    }
   };
 
   const resetUpload = () => {
     setSelectedFile(null);
     setUploadComplete(false);
+    setUploadedFile(null);
+    setStatementData(null);
   };
 
   return (
@@ -121,7 +145,7 @@ const UploadCard = ({ onFileSelect }: UploadCardProps) => {
           ) : (
             <div className="w-full">
               <div className="flex items-center mb-4">
-                {isProcessing ? (
+                {isProcessingLocal ? (
                   <div className="flex-1 flex items-center">
                     <div className="animate-spin mr-3">
                       <File className="w-5 h-5 text-primary" />
@@ -164,7 +188,7 @@ const UploadCard = ({ onFileSelect }: UploadCardProps) => {
                 <div className="animate-fade-in">
                   <p className="text-green-600 dark:text-green-400 text-sm mt-4 flex items-center">
                     <Check className="w-4 h-4 mr-1" /> 
-                    Statement uploaded successfully!
+                    Statement processed successfully!
                   </p>
                   <div className="mt-4">
                     <Button
