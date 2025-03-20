@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -5,7 +6,11 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import StatCard from '@/components/StatCard';
 import Navbar from '@/components/Navbar';
-import { PieChart, ArrowDown, ArrowUp, DollarSign, ShoppingBag, Home, Car, Coffee, Tag } from 'lucide-react';
+import { PieChart, ArrowDown, ArrowUp, DollarSign, ShoppingBag, Home, Car, Coffee, Tag, SparkleIcon } from 'lucide-react';
+import { useStatement } from '@/contexts/StatementContext';
+import ApiKeyInput from '@/components/ApiKeyInput';
+import { getGeminiApiKey, generateInsights } from '@/services/insightService';
+import { useToast } from '@/components/ui/use-toast';
 
 // Mock data
 const mockCategories = [
@@ -28,8 +33,12 @@ const mockTransactions = [
 ];
 
 const Analyze = () => {
+  const { toast } = useToast();
+  const { statementData } = useStatement();
   const [loaded, setLoaded] = useState(false);
   const [activeChart, setActiveChart] = useState('all');
+  const [insights, setInsights] = useState<string[]>([]);
+  const [isGeneratingInsights, setIsGeneratingInsights] = useState(false);
   
   useEffect(() => {
     // Simulate loading data
@@ -39,8 +48,90 @@ const Analyze = () => {
     
     return () => clearTimeout(timer);
   }, []);
+
+  // Use real data if available or fall back to mock data
+  const categories = statementData?.transactions 
+    ? processCategoriesFromTransactions(statementData.transactions)
+    : mockCategories;
   
-  const totalSpent = mockCategories.reduce((sum, category) => sum + category.amount, 0);
+  const transactions = statementData?.transactions || mockTransactions;
+  
+  const totalSpent = statementData?.totalExpense || 
+    mockCategories.reduce((sum, category) => sum + category.amount, 0);
+
+  const generateAIInsights = async () => {
+    if (!statementData) {
+      toast({
+        variant: "destructive",
+        title: "No data available",
+        description: "Please upload a bank statement to generate insights."
+      });
+      return;
+    }
+    
+    const apiKey = getGeminiApiKey();
+    if (!apiKey) {
+      toast({
+        variant: "destructive",
+        title: "API Key Required",
+        description: "Please enter your Gemini API key to generate insights."
+      });
+      return;
+    }
+    
+    setIsGeneratingInsights(true);
+    
+    try {
+      const generatedInsights = await generateInsights(statementData);
+      setInsights(generatedInsights);
+    } catch (error) {
+      console.error('Error generating insights:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to generate insights. Please try again."
+      });
+    } finally {
+      setIsGeneratingInsights(false);
+    }
+  };
+
+  // Helper function to process categories from transactions
+  const processCategoriesFromTransactions = (transactions: any[]) => {
+    const categoryMap = new Map();
+    const totalAmount = transactions.reduce((sum, t) => sum + t.amount, 0);
+    
+    transactions.forEach(t => {
+      const category = t.category || 'Miscellaneous';
+      const currentAmount = categoryMap.get(category)?.amount || 0;
+      
+      categoryMap.set(category, {
+        amount: currentAmount + t.amount,
+      });
+    });
+    
+    const categoryIcons: Record<string, any> = {
+      'Shopping': { icon: ShoppingBag, color: 'bg-blue-500' },
+      'Housing': { icon: Home, color: 'bg-green-500' },
+      'Transportation': { icon: Car, color: 'bg-amber-500' },
+      'Food & Dining': { icon: Coffee, color: 'bg-red-500' },
+      'Miscellaneous': { icon: Tag, color: 'bg-purple-500' }
+    };
+    
+    return Array.from(categoryMap.entries()).map(([name, data]) => {
+      const amount = data.amount;
+      const percentage = Math.round((amount / totalAmount) * 100);
+      const { icon, color } = categoryIcons[name] || categoryIcons['Miscellaneous'];
+      
+      return {
+        name,
+        amount,
+        percentage,
+        icon,
+        color
+      };
+    }).sort((a, b) => b.amount - a.amount);
+  };
   
   return (
     <div className="min-h-screen pb-20">
@@ -57,7 +148,7 @@ const Analyze = () => {
           <div className="mt-4 md:mt-0">
             <Button variant="outline" className="gap-2 text-sm">
               <DollarSign className="w-4 h-4" />
-              June 2023
+              {statementData ? 'Your Statement' : 'June 2023'}
             </Button>
           </div>
         </div>
@@ -95,14 +186,14 @@ const Analyze = () => {
               />
               <StatCard
                 title="Top Category"
-                value="Housing"
+                value={categories[0]?.name || "N/A"}
                 icon={<Home className="w-4 h-4 text-green-500" />}
                 trend="neutral"
-                trendValue="40%"
+                trendValue={categories[0] ? `${categories[0].percentage}%` : "0%"}
               />
               <StatCard
                 title="Transactions"
-                value={mockTransactions.length}
+                value={transactions.length}
                 icon={<Tag className="w-4 h-4 text-amber-500" />}
                 trend="down"
                 trendValue="-3%"
@@ -124,7 +215,7 @@ const Analyze = () => {
                         <h3 className="text-lg font-medium mb-4">Spending by Category</h3>
                         
                         <div className="space-y-4 mt-6">
-                          {mockCategories.map((category, index) => (
+                          {categories.map((category, index) => (
                             <div key={index} className="animate-fade-in" style={{ animationDelay: `${index * 100}ms` }}>
                               <div className="flex items-center justify-between mb-1">
                                 <div className="flex items-center">
@@ -133,7 +224,7 @@ const Analyze = () => {
                                   </div>
                                   <span className="text-sm font-medium">{category.name}</span>
                                 </div>
-                                <span className="text-sm font-medium">${category.amount}</span>
+                                <span className="text-sm font-medium">${category.amount.toFixed(2)}</span>
                               </div>
                               <div className="w-full h-2 bg-muted/50 rounded-full overflow-hidden">
                                 <div 
@@ -158,7 +249,7 @@ const Analyze = () => {
                           <div className="absolute inset-16 rounded-full border-8 border-red-500/70"></div>
                           <div className="absolute inset-20 rounded-full border-8 border-purple-500/70 animate-pulse-subtle"></div>
                           <div className="absolute inset-0 flex items-center justify-center flex-col text-center">
-                            <span className="text-3xl font-bold">${totalSpent}</span>
+                            <span className="text-3xl font-bold">${totalSpent.toFixed(2)}</span>
                             <span className="text-sm text-muted-foreground">Total Spent</span>
                           </div>
                         </div>
@@ -184,9 +275,9 @@ const Analyze = () => {
                           </tr>
                         </thead>
                         <tbody>
-                          {mockTransactions.map((transaction, index) => (
+                          {transactions.map((transaction, index) => (
                             <tr 
-                              key={transaction.id}
+                              key={transaction.id || index}
                               className={cn(
                                 "border-b border-border/50 hover:bg-muted/20 transition-colors",
                                 "animate-fade-in"
@@ -194,12 +285,12 @@ const Analyze = () => {
                               style={{ animationDelay: `${index * 50}ms` }}
                             >
                               <td className="py-3 px-4 text-sm">
-                                {new Date(transaction.date).toLocaleDateString()}
+                                {transaction.date}
                               </td>
                               <td className="py-3 px-4 text-sm font-medium">{transaction.description}</td>
                               <td className="py-3 px-4 text-sm">
                                 <span className="px-2 py-1 rounded-full text-xs bg-muted/50">
-                                  {transaction.category}
+                                  {transaction.category || "Uncategorized"}
                                 </span>
                               </td>
                               <td className="py-3 px-4 text-sm text-right font-medium">
@@ -217,42 +308,72 @@ const Analyze = () => {
               <TabsContent value="insights">
                 <Card>
                   <CardContent className="p-6">
-                    <h3 className="text-lg font-medium mb-6">AI-Powered Insights</h3>
-                    
-                    <div className="space-y-6">
-                      <div className="p-4 rounded-md bg-primary/5 border border-primary/20 animate-slide-up">
-                        <h4 className="font-medium flex items-center gap-2 mb-2">
-                          <ArrowDown className="w-4 h-4 text-green-500" />
-                          Spending Opportunities
-                        </h4>
-                        <p className="text-muted-foreground">
-                          Your spending on food delivery services has increased by 30% this month. 
-                          Consider cooking at home more frequently to save approximately $120 per month.
-                        </p>
-                      </div>
-                      
-                      <div className="p-4 rounded-md bg-amber-500/5 border border-amber-500/20 animate-slide-up" style={{ animationDelay: '100ms' }}>
-                        <h4 className="font-medium flex items-center gap-2 mb-2">
-                          <PieChart className="w-4 h-4 text-amber-500" />
-                          Category Analysis
-                        </h4>
-                        <p className="text-muted-foreground">
-                          Housing costs consume 40% of your monthly expenses, which is slightly higher than the recommended 30%. 
-                          Consider evaluating your living situation for potential savings.
-                        </p>
-                      </div>
-                      
-                      <div className="p-4 rounded-md bg-green-500/5 border border-green-500/20 animate-slide-up" style={{ animationDelay: '200ms' }}>
-                        <h4 className="font-medium flex items-center gap-2 mb-2">
-                          <ArrowUp className="w-4 h-4 text-green-500" />
-                          Savings Recommendation
-                        </h4>
-                        <p className="text-muted-foreground">
-                          Based on your income and expenses, you could potentially save $350 more per month by 
-                          reducing discretionary spending on shopping and entertainment.
-                        </p>
+                    <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
+                      <h3 className="text-lg font-medium">AI-Powered Insights</h3>
+                      <div className="mt-2 md:mt-0">
+                        <Button 
+                          onClick={generateAIInsights} 
+                          disabled={isGeneratingInsights}
+                          className="gap-2"
+                        >
+                          <SparkleIcon className="w-4 h-4" />
+                          {isGeneratingInsights ? 'Generating...' : 'Generate Insights'}
+                        </Button>
                       </div>
                     </div>
+                    
+                    {getGeminiApiKey() ? (
+                      insights.length > 0 ? (
+                        <div className="space-y-6">
+                          <div className="p-4 rounded-md bg-primary/5 border border-primary/20 animate-slide-up">
+                            <h4 className="font-medium flex items-center gap-2 mb-2">
+                              <ArrowDown className="w-4 h-4 text-green-500" />
+                              {insights[0] ? 'Spending Opportunity' : 'No Insights Available'}
+                            </h4>
+                            <p className="text-muted-foreground">
+                              {insights[0] || 'Generate insights to see recommendations based on your spending patterns.'}
+                            </p>
+                          </div>
+                          
+                          {insights[1] && (
+                            <div className="p-4 rounded-md bg-amber-500/5 border border-amber-500/20 animate-slide-up" style={{ animationDelay: '100ms' }}>
+                              <h4 className="font-medium flex items-center gap-2 mb-2">
+                                <PieChart className="w-4 h-4 text-amber-500" />
+                                Category Analysis
+                              </h4>
+                              <p className="text-muted-foreground">{insights[1]}</p>
+                            </div>
+                          )}
+                          
+                          {insights[2] && (
+                            <div className="p-4 rounded-md bg-green-500/5 border border-green-500/20 animate-slide-up" style={{ animationDelay: '200ms' }}>
+                              <h4 className="font-medium flex items-center gap-2 mb-2">
+                                <ArrowUp className="w-4 h-4 text-green-500" />
+                                Savings Recommendation
+                              </h4>
+                              <p className="text-muted-foreground">{insights[2]}</p>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center py-8 text-center">
+                          <div className="bg-muted/30 p-4 rounded-full mb-4">
+                            <SparkleIcon className="w-8 h-8 text-primary/50" />
+                          </div>
+                          <h4 className="text-lg font-medium mb-2">No insights generated yet</h4>
+                          <p className="text-muted-foreground max-w-md mb-6">
+                            Click the "Generate Insights" button to get AI-powered recommendations based on your financial data.
+                          </p>
+                        </div>
+                      )
+                    ) : (
+                      <div className="space-y-6">
+                        <p className="text-muted-foreground mb-6">
+                          To generate AI-powered insights, you'll need to provide a Gemini API key.
+                        </p>
+                        <ApiKeyInput onKeySubmit={generateAIInsights} />
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
