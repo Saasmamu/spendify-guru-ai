@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { receipt, upload, pieChart } from 'lucide-react';
+import { Receipt, Upload, PieChart } from 'lucide-react';
 
 const Navbar = () => {
   const location = useLocation();
@@ -47,14 +47,14 @@ const Navbar = () => {
     >
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2">
-          <receipt className="w-6 h-6 text-primary" />
+          <Receipt className="w-6 h-6 text-primary" />
           <span className="text-xl font-semibold text-foreground">AI Expense Buddy</span>
         </Link>
         
         <nav className="hidden md:flex items-center space-x-2">
-          <NavLink to="/" label="Home" icon={receipt} />
-          <NavLink to="/upload" label="Upload" icon={upload} />
-          <NavLink to="/analyze" label="Analyze" icon={pieChart} />
+          <NavLink to="/" label="Home" icon={Receipt} />
+          <NavLink to="/upload" label="Upload" icon={Upload} />
+          <NavLink to="/analyze" label="Analyze" icon={PieChart} />
         </nav>
         
         <div className="flex md:hidden">

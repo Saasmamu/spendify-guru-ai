@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -6,15 +5,15 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import StatCard from '@/components/StatCard';
 import Navbar from '@/components/Navbar';
-import { pieChart, arrowDown, arrowUp, dollarSign, shoppingBag, home, car, coffee, tag } from 'lucide-react';
+import { PieChart, ArrowDown, ArrowUp, DollarSign, ShoppingBag, Home, Car, Coffee, Tag } from 'lucide-react';
 
 // Mock data
 const mockCategories = [
-  { name: 'Shopping', amount: 1240, percentage: 28, icon: shoppingBag, color: 'bg-blue-500' },
-  { name: 'Housing', amount: 1800, percentage: 40, icon: home, color: 'bg-green-500' },
-  { name: 'Transportation', amount: 450, percentage: 10, icon: car, color: 'bg-amber-500' },
-  { name: 'Food & Dining', amount: 680, percentage: 15, icon: coffee, color: 'bg-red-500' },
-  { name: 'Miscellaneous', amount: 320, percentage: 7, icon: tag, color: 'bg-purple-500' }
+  { name: 'Shopping', amount: 1240, percentage: 28, icon: ShoppingBag, color: 'bg-blue-500' },
+  { name: 'Housing', amount: 1800, percentage: 40, icon: Home, color: 'bg-green-500' },
+  { name: 'Transportation', amount: 450, percentage: 10, icon: Car, color: 'bg-amber-500' },
+  { name: 'Food & Dining', amount: 680, percentage: 15, icon: Coffee, color: 'bg-red-500' },
+  { name: 'Miscellaneous', amount: 320, percentage: 7, icon: Tag, color: 'bg-purple-500' }
 ];
 
 const mockTransactions = [
@@ -57,7 +56,7 @@ const Analyze = () => {
           </div>
           <div className="mt-4 md:mt-0">
             <Button variant="outline" className="gap-2 text-sm">
-              <dollarSign className="w-4 h-4" />
+              <DollarSign className="w-4 h-4" />
               June 2023
             </Button>
           </div>
@@ -90,21 +89,21 @@ const Analyze = () => {
               <StatCard
                 title="Total Expenses"
                 value={`$${totalSpent.toLocaleString()}`}
-                icon={<dollarSign className="w-4 h-4 text-primary" />}
+                icon={<DollarSign className="w-4 h-4 text-primary" />}
                 trend="up"
                 trendValue="+12%"
               />
               <StatCard
                 title="Top Category"
                 value="Housing"
-                icon={<home className="w-4 h-4 text-green-500" />}
+                icon={<Home className="w-4 h-4 text-green-500" />}
                 trend="neutral"
                 trendValue="40%"
               />
               <StatCard
                 title="Transactions"
                 value={mockTransactions.length}
-                icon={<tag className="w-4 h-4 text-amber-500" />}
+                icon={<Tag className="w-4 h-4 text-amber-500" />}
                 trend="down"
                 trendValue="-3%"
               />
@@ -152,7 +151,6 @@ const Analyze = () => {
                       
                       <div className="flex items-center justify-center">
                         <div className="relative w-64 h-64">
-                          {/* This would be a chart component in a real app */}
                           <div className="absolute inset-0 rounded-full border-8 border-muted/30 animate-float"></div>
                           <div className="absolute inset-4 rounded-full border-8 border-blue-500/70 animate-pulse-subtle"></div>
                           <div className="absolute inset-8 rounded-full border-8 border-green-500/70"></div>
@@ -224,7 +222,7 @@ const Analyze = () => {
                     <div className="space-y-6">
                       <div className="p-4 rounded-md bg-primary/5 border border-primary/20 animate-slide-up">
                         <h4 className="font-medium flex items-center gap-2 mb-2">
-                          <arrowDown className="w-4 h-4 text-green-500" />
+                          <ArrowDown className="w-4 h-4 text-green-500" />
                           Spending Opportunities
                         </h4>
                         <p className="text-muted-foreground">
@@ -235,7 +233,7 @@ const Analyze = () => {
                       
                       <div className="p-4 rounded-md bg-amber-500/5 border border-amber-500/20 animate-slide-up" style={{ animationDelay: '100ms' }}>
                         <h4 className="font-medium flex items-center gap-2 mb-2">
-                          <pieChart className="w-4 h-4 text-amber-500" />
+                          <PieChart className="w-4 h-4 text-amber-500" />
                           Category Analysis
                         </h4>
                         <p className="text-muted-foreground">
@@ -246,7 +244,7 @@ const Analyze = () => {
                       
                       <div className="p-4 rounded-md bg-green-500/5 border border-green-500/20 animate-slide-up" style={{ animationDelay: '200ms' }}>
                         <h4 className="font-medium flex items-center gap-2 mb-2">
-                          <arrowUp className="w-4 h-4 text-green-500" />
+                          <ArrowUp className="w-4 h-4 text-green-500" />
                           Savings Recommendation
                         </h4>
                         <p className="text-muted-foreground">

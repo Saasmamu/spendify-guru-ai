@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { upload, file, check, x } from 'lucide-react';
+import { Upload, File, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
@@ -96,7 +96,7 @@ const UploadCard = ({ onFileSelect }: UploadCardProps) => {
           {!selectedFile ? (
             <>
               <div className="mb-4 p-4 rounded-full bg-muted/50 animate-float">
-                <upload className="w-8 h-8 text-primary" />
+                <Upload className="w-8 h-8 text-primary" />
               </div>
               <h3 className="text-xl font-medium mb-2">Upload Bank Statement</h3>
               <p className="text-muted-foreground mb-6 max-w-md">
@@ -107,7 +107,7 @@ const UploadCard = ({ onFileSelect }: UploadCardProps) => {
                 size="lg"
                 className="gap-2 animate-scale-in"
               >
-                <file className="w-4 h-4" />
+                <File className="w-4 h-4" />
                 Browse Files
               </Button>
               <input
@@ -124,7 +124,7 @@ const UploadCard = ({ onFileSelect }: UploadCardProps) => {
                 {isProcessing ? (
                   <div className="flex-1 flex items-center">
                     <div className="animate-spin mr-3">
-                      <file className="w-5 h-5 text-primary" />
+                      <File className="w-5 h-5 text-primary" />
                     </div>
                     <div className="flex-1">
                       <p className="font-medium">Processing...</p>
@@ -137,9 +137,9 @@ const UploadCard = ({ onFileSelect }: UploadCardProps) => {
                   <div className="flex-1 flex items-center">
                     <div className="mr-3 p-1 rounded-full bg-green-100 dark:bg-green-900/20">
                       {uploadComplete ? (
-                        <check className="w-4 h-4 text-green-600 dark:text-green-400" />
+                        <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
                       ) : (
-                        <file className="w-4 h-4 text-primary" />
+                        <File className="w-4 h-4 text-primary" />
                       )}
                     </div>
                     <div className="flex-1">
@@ -154,7 +154,7 @@ const UploadCard = ({ onFileSelect }: UploadCardProps) => {
                       onClick={resetUpload}
                       className="ml-2"
                     >
-                      <x className="w-4 h-4" />
+                      <X className="w-4 h-4" />
                     </Button>
                   </div>
                 )}
@@ -163,7 +163,7 @@ const UploadCard = ({ onFileSelect }: UploadCardProps) => {
               {uploadComplete && (
                 <div className="animate-fade-in">
                   <p className="text-green-600 dark:text-green-400 text-sm mt-4 flex items-center">
-                    <check className="w-4 h-4 mr-1" /> 
+                    <Check className="w-4 h-4 mr-1" /> 
                     Statement uploaded successfully!
                   </p>
                   <div className="mt-4">
@@ -171,7 +171,7 @@ const UploadCard = ({ onFileSelect }: UploadCardProps) => {
                       className="w-full gap-2"
                       onClick={resetUpload}
                     >
-                      <upload className="w-4 h-4" />
+                      <Upload className="w-4 h-4" />
                       Upload Another
                     </Button>
                   </div>

@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { receipt, upload, pieChart, arrowRight } from 'lucide-react';
+import { Receipt, Upload, PieChart, ArrowRight } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 
 const Index = () => {
@@ -56,7 +56,7 @@ const Index = () => {
           className="max-w-5xl mx-auto text-center relative z-10 pt-16"
         >
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-8 animate-scale-in">
-            <receipt className="w-4 h-4" />
+            <Receipt className="w-4 h-4" />
             <span>Simplify Your Financial Management</span>
           </div>
           
@@ -75,14 +75,14 @@ const Index = () => {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-slide-up" style={{ animationDelay: '200ms' }}>
             <Link to="/upload">
               <Button size="lg" className="rounded-full px-6 gap-2 h-12">
-                <upload className="w-4 h-4" />
+                <Upload className="w-4 h-4" />
                 Upload Statement
-                <arrowRight className="w-4 h-4 ml-1" />
+                <ArrowRight className="w-4 h-4 ml-1" />
               </Button>
             </Link>
             <Link to="/analyze">
               <Button size="lg" variant="outline" className="rounded-full px-6 gap-2 h-12">
-                <pieChart className="w-4 h-4" />
+                <PieChart className="w-4 h-4" />
                 View Analysis
               </Button>
             </Link>
@@ -105,19 +105,19 @@ const Index = () => {
           
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             <FeatureCard 
-              icon={upload} 
+              icon={Upload} 
               title="Easy PDF Upload" 
               description="Simply upload your bank statements in PDF format and let our AI do the rest."
               delay={0}
             />
             <FeatureCard 
-              icon={pieChart} 
+              icon={PieChart} 
               title="Smart Analysis" 
               description="Get detailed insights into your spending patterns categorized automatically."
               delay={100}
             />
             <FeatureCard 
-              icon={receipt} 
+              icon={Receipt} 
               title="Spending Optimization" 
               description="Receive personalized recommendations to help you save money and spend smarter."
               delay={200}

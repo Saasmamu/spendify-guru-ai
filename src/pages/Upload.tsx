@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { pieChart, arrowRight } from 'lucide-react';
+import { PieChart, ArrowRight } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import UploadCard from '@/components/UploadCard';
 
@@ -37,9 +37,9 @@ const Upload = () => {
             </p>
             <Link to="/analyze">
               <Button size="lg" className="rounded-full px-6 gap-2">
-                <pieChart className="w-4 h-4" />
+                <PieChart className="w-4 h-4" />
                 Analyze My Spending
-                <arrowRight className="w-4 h-4 ml-1" />
+                <ArrowRight className="w-4 h-4 ml-1" />
               </Button>
             </Link>
           </div>
