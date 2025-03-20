@@ -3,8 +3,8 @@ import * as pdfjs from 'pdfjs-dist';
 import { getDocument } from 'pdfjs-dist';
 
 // Initialize PDF.js worker
-const pdfjsWorker = await import('pdfjs-dist/build/pdf.worker.entry');
-pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+// Using a different approach to load the worker that's compatible with Vite
+pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 export interface BankTransaction {
   date: string;
