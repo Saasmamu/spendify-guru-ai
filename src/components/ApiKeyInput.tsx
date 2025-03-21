@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
-import { getGeminiApiKey, setGeminiApiKey } from '@/services/insightService';
+import { getGeminiApiKey, setGeminiApiKey, hasGeminiApiKey } from '@/services/insightService';
 import { Key } from 'lucide-react';
 
 interface ApiKeyInputProps {
@@ -17,10 +17,12 @@ const ApiKeyInput = ({ onKeySubmit }: ApiKeyInputProps) => {
   const [hasStoredKey, setHasStoredKey] = useState(false);
 
   useEffect(() => {
-    const storedKey = getGeminiApiKey();
-    setHasStoredKey(!!storedKey);
-    if (storedKey) {
-      setApiKey(storedKey);
+    // Check if we already have a stored key
+    const hasKey = hasGeminiApiKey();
+    setHasStoredKey(hasKey);
+    
+    if (hasKey) {
+      setApiKey(getGeminiApiKey());
     }
   }, []);
 

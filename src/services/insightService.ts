@@ -19,7 +19,17 @@ export const setGeminiApiKey = (key: string) => {
  */
 export const getGeminiApiKey = (): string => {
   const storedKey = localStorage.getItem('gemini_api_key');
-  return storedKey || '';
+  if (storedKey) {
+    apiKey = storedKey;
+  }
+  return apiKey;
+};
+
+/**
+ * Check if Gemini API key is already set
+ */
+export const hasGeminiApiKey = (): boolean => {
+  return !!getGeminiApiKey();
 };
 
 /**
@@ -29,11 +39,12 @@ export const generateInsights = async (
   statement: ProcessedStatement
 ): Promise<string[]> => {
   try {
-    if (!apiKey) {
+    const key = getGeminiApiKey();
+    if (!key) {
       throw new Error('Gemini API key not set');
     }
 
-    const genAI = new GoogleGenerativeAI(apiKey);
+    const genAI = new GoogleGenerativeAI(key);
     const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
 
     // Prepare the prompt with transaction data

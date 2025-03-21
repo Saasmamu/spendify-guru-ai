@@ -3,7 +3,7 @@ import * as pdfjs from 'pdfjs-dist';
 import { getDocument } from 'pdfjs-dist';
 
 // Initialize PDF.js worker
-// Using a different approach to load the worker that's compatible with Vite
+// Using a CDN-based approach to load the worker that's compatible with Vite
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 export interface BankTransaction {
@@ -61,19 +61,22 @@ export const processTransactions = (textContent: string[]): ProcessedStatement =
   let totalIncome = 0;
   let totalExpense = 0;
   
-  // Simplified regex patterns for date, description and amounts
-  // These would need to be customized for specific bank formats
+  // Improved regex patterns for date, description and amounts
   const datePattern = /(\d{1,2}\/\d{1,2}\/\d{2,4}|\d{1,2}-\d{1,2}-\d{2,4})/;
   const amountPattern = /\$?(\d{1,3}(,\d{3})*(\.\d{2})?)/;
   
   // Process each page of text
   textContent.forEach(pageText => {
-    // Split text into lines
-    const lines = pageText.split(/\r?\n/).filter(line => line.trim().length > 0);
+    // Split text into lines and clean up
+    const lines = pageText
+      .split(/\r?\n/)
+      .filter(line => line.trim().length > 0)
+      .map(line => line.trim());
     
     lines.forEach(line => {
       // Skip header or summary lines
-      if (line.includes('BALANCE') || line.includes('PAGE') || line.includes('STATEMENT')) {
+      if (line.includes('BALANCE') || line.includes('PAGE') || 
+          line.includes('STATEMENT') || line.length < 10) {
         return;
       }
       
@@ -91,15 +94,21 @@ export const processTransactions = (textContent: string[]): ProcessedStatement =
       
       if (dateIndex >= 0 && amountIndex > dateIndex) {
         const date = dateMatch[0];
-        const description = line.substring(dateIndex + dateMatch[0].length, amountIndex).trim();
+        const description = line.substring(dateIndex + dateMatch[0].length, amountIndex).trim()
+          .replace(/\s+/g, ' '); // Clean up extra spaces
         
         // Remove commas from amount and convert to number
         const amountStr = amountMatch[0].replace('$', '').replace(/,/g, '');
         const amount = parseFloat(amountStr);
         
+        // Skip invalid amounts
+        if (isNaN(amount) || amount <= 0) return;
+        
         // Determine if it's a credit or debit
         // This logic would need to be customized for specific bank formats
-        const isCredit = line.includes('CREDIT') || line.includes('DEPOSIT');
+        const isCredit = line.toLowerCase().includes('credit') || 
+                          line.toLowerCase().includes('deposit') || 
+                          line.toLowerCase().includes('payment received');
         const type = isCredit ? 'credit' : 'debit';
         
         // Add to appropriate total
@@ -122,6 +131,59 @@ export const processTransactions = (textContent: string[]): ProcessedStatement =
       }
     });
   });
+
+  // If no transactions were found, try an alternative approach
+  if (transactions.length === 0) {
+    console.log("No transactions found with primary method, trying alternative approach");
+    
+    // Simple fallback to extract any potential transactions
+    textContent.forEach(pageText => {
+      const matches = pageText.match(/(\d{1,2}\/\d{1,2}\/\d{2,4}).*?\$(\d+\.\d{2})/g);
+      if (matches) {
+        matches.forEach(match => {
+          const dateMatch = match.match(datePattern);
+          const amountMatch = match.match(/\$(\d+\.\d{2})/);
+          
+          if (dateMatch && amountMatch) {
+            const date = dateMatch[0];
+            const amountStr = amountMatch[1];
+            const amount = parseFloat(amountStr);
+            
+            if (!isNaN(amount) && amount > 0) {
+              // Extract description (everything between date and amount)
+              const dateEndIndex = match.indexOf(date) + date.length;
+              const amountStartIndex = match.lastIndexOf('$');
+              let description = match.substring(dateEndIndex, amountStartIndex).trim();
+              
+              // Clean up description
+              description = description.replace(/\s+/g, ' ').trim();
+              
+              // Default to debit
+              const type = 'debit';
+              totalExpense += amount;
+              
+              const transaction: BankTransaction = {
+                date,
+                description,
+                amount,
+                type,
+                category: categorizeTransaction(description)
+              };
+              
+              transactions.push(transaction);
+            }
+          }
+        });
+      }
+    });
+  }
+
+  // Sort transactions by date (newest first)
+  transactions.sort((a, b) => {
+    const dateA = new Date(a.date);
+    const dateB = new Date(b.date);
+    return dateB.getTime() - dateA.getTime();
+  });
   
   return {
     transactions,
@@ -138,15 +200,16 @@ export const categorizeTransaction = (description: string): string => {
   const lowerDesc = description.toLowerCase();
   
   const categories = [
-    { name: 'Housing', keywords: ['rent', 'mortgage', 'hoa', 'property'] },
-    { name: 'Transportation', keywords: ['gas', 'uber', 'lyft', 'train', 'subway', 'bus', 'car', 'auto', 'vehicle'] },
-    { name: 'Food & Dining', keywords: ['restaurant', 'café', 'cafe', 'coffee', 'doordash', 'grubhub', 'uber eat', 'food', 'grocery', 'meal'] },
-    { name: 'Shopping', keywords: ['amazon', 'walmart', 'target', 'costco', 'shop', 'store', 'buy', 'purchase'] },
-    { name: 'Utilities', keywords: ['electric', 'water', 'gas', 'internet', 'phone', 'cell', 'utility', 'utilities'] },
-    { name: 'Entertainment', keywords: ['movie', 'netflix', 'hulu', 'spotify', 'disney', 'game', 'entertain'] },
-    { name: 'Health', keywords: ['doctor', 'pharmacy', 'medical', 'health', 'insurance', 'dental', 'vision'] },
-    { name: 'Education', keywords: ['tuition', 'book', 'course', 'class', 'school', 'university', 'college'] },
-    { name: 'Personal', keywords: ['haircut', 'salon', 'spa', 'gym', 'fitness'] }
+    { name: 'Housing', keywords: ['rent', 'mortgage', 'hoa', 'property', 'housing', 'apartment', 'condo'] },
+    { name: 'Transportation', keywords: ['gas', 'uber', 'lyft', 'train', 'subway', 'bus', 'car', 'auto', 'vehicle', 'parking', 'toll'] },
+    { name: 'Food & Dining', keywords: ['restaurant', 'café', 'cafe', 'coffee', 'doordash', 'grubhub', 'uber eat', 'food', 'grocery', 'meal', 'supermarket', 'dine'] },
+    { name: 'Shopping', keywords: ['amazon', 'walmart', 'target', 'costco', 'shop', 'store', 'buy', 'purchase', 'retail', 'market'] },
+    { name: 'Utilities', keywords: ['electric', 'water', 'gas', 'internet', 'phone', 'cell', 'utility', 'utilities', 'bill', 'cable', 'tv', 'service'] },
+    { name: 'Entertainment', keywords: ['movie', 'netflix', 'hulu', 'spotify', 'disney', 'game', 'entertain', 'theater', 'concert', 'event', 'ticket'] },
+    { name: 'Health', keywords: ['doctor', 'pharmacy', 'medical', 'health', 'insurance', 'dental', 'vision', 'hospital', 'clinic', 'prescription'] },
+    { name: 'Education', keywords: ['tuition', 'book', 'course', 'class', 'school', 'university', 'college', 'education', 'student', 'loan'] },
+    { name: 'Personal', keywords: ['haircut', 'salon', 'spa', 'gym', 'fitness', 'clothing', 'beauty', 'cosmetic'] },
+    { name: 'Income', keywords: ['salary', 'payroll', 'deposit', 'direct deposit', 'income', 'revenue', 'payment received', 'wage'] }
   ];
 
   for (const category of categories) {
@@ -165,8 +228,14 @@ export const categorizeTransaction = (description: string): string => {
  */
 export const processBankStatement = async (file: File): Promise<ProcessedStatement> => {
   try {
+    console.log('Processing bank statement:', file.name);
     const textContent = await extractTextFromPdf(file);
-    return processTransactions(textContent);
+    console.log('Extracted text content:', textContent.length, 'pages');
+    
+    const processedData = processTransactions(textContent);
+    console.log('Processed transactions:', processedData.transactions.length);
+    
+    return processedData;
   } catch (error) {
     console.error('Error processing bank statement:', error);
     throw new Error('Failed to process bank statement');

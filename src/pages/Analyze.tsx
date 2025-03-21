@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -9,10 +8,46 @@ import Navbar from '@/components/Navbar';
 import { PieChart, ArrowDown, ArrowUp, DollarSign, ShoppingBag, Home, Car, Coffee, Tag, SparkleIcon } from 'lucide-react';
 import { useStatement } from '@/contexts/StatementContext';
 import ApiKeyInput from '@/components/ApiKeyInput';
-import { getGeminiApiKey, generateInsights } from '@/services/insightService';
+import { getGeminiApiKey, generateInsights, hasGeminiApiKey } from '@/services/insightService';
 import { useToast } from '@/components/ui/use-toast';
+import { BankTransaction } from '@/services/pdfService';
 
-// Mock data
+const processCategoriesFromTransactions = (transactions: BankTransaction[]) => {
+  const categoryMap = new Map();
+  const totalAmount = transactions.reduce((sum, t) => sum + t.amount, 0);
+  
+  transactions.forEach(t => {
+    const category = t.category || 'Miscellaneous';
+    const currentAmount = categoryMap.get(category)?.amount || 0;
+    
+    categoryMap.set(category, {
+      amount: currentAmount + t.amount,
+    });
+  });
+  
+  const categoryIcons: Record<string, any> = {
+    'Shopping': { icon: ShoppingBag, color: 'bg-blue-500' },
+    'Housing': { icon: Home, color: 'bg-green-500' },
+    'Transportation': { icon: Car, color: 'bg-amber-500' },
+    'Food & Dining': { icon: Coffee, color: 'bg-red-500' },
+    'Miscellaneous': { icon: Tag, color: 'bg-purple-500' }
+  };
+  
+  return Array.from(categoryMap.entries()).map(([name, data]) => {
+    const amount = data.amount;
+    const percentage = Math.round((amount / totalAmount) * 100);
+    const { icon, color } = categoryIcons[name] || categoryIcons['Miscellaneous'];
+    
+    return {
+      name,
+      amount,
+      percentage,
+      icon,
+      color
+    };
+  }).sort((a, b) => b.amount - a.amount);
+};
+
 const mockCategories = [
   { name: 'Shopping', amount: 1240, percentage: 28, icon: ShoppingBag, color: 'bg-blue-500' },
   { name: 'Housing', amount: 1800, percentage: 40, icon: Home, color: 'bg-green-500' },
@@ -41,7 +76,6 @@ const Analyze = () => {
   const [isGeneratingInsights, setIsGeneratingInsights] = useState(false);
   
   useEffect(() => {
-    // Simulate loading data
     const timer = setTimeout(() => {
       setLoaded(true);
     }, 800);
@@ -49,7 +83,6 @@ const Analyze = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  // Use real data if available or fall back to mock data
   const categories = statementData?.transactions 
     ? processCategoriesFromTransactions(statementData.transactions)
     : mockCategories;
@@ -69,8 +102,7 @@ const Analyze = () => {
       return;
     }
     
-    const apiKey = getGeminiApiKey();
-    if (!apiKey) {
+    if (!hasGeminiApiKey()) {
       toast({
         variant: "destructive",
         title: "API Key Required",
@@ -96,43 +128,6 @@ const Analyze = () => {
     }
   };
 
-  // Helper function to process categories from transactions
-  const processCategoriesFromTransactions = (transactions: any[]) => {
-    const categoryMap = new Map();
-    const totalAmount = transactions.reduce((sum, t) => sum + t.amount, 0);
-    
-    transactions.forEach(t => {
-      const category = t.category || 'Miscellaneous';
-      const currentAmount = categoryMap.get(category)?.amount || 0;
-      
-      categoryMap.set(category, {
-        amount: currentAmount + t.amount,
-      });
-    });
-    
-    const categoryIcons: Record<string, any> = {
-      'Shopping': { icon: ShoppingBag, color: 'bg-blue-500' },
-      'Housing': { icon: Home, color: 'bg-green-500' },
-      'Transportation': { icon: Car, color: 'bg-amber-500' },
-      'Food & Dining': { icon: Coffee, color: 'bg-red-500' },
-      'Miscellaneous': { icon: Tag, color: 'bg-purple-500' }
-    };
-    
-    return Array.from(categoryMap.entries()).map(([name, data]) => {
-      const amount = data.amount;
-      const percentage = Math.round((amount / totalAmount) * 100);
-      const { icon, color } = categoryIcons[name] || categoryIcons['Miscellaneous'];
-      
-      return {
-        name,
-        amount,
-        percentage,
-        icon,
-        color
-      };
-    }).sort((a, b) => b.amount - a.amount);
-  };
-  
   return (
     <div className="min-h-screen pb-20">
       <Navbar />
@@ -322,7 +317,7 @@ const Analyze = () => {
                       </div>
                     </div>
                     
-                    {getGeminiApiKey() ? (
+                    {hasGeminiApiKey() ? (
                       insights.length > 0 ? (
                         <div className="space-y-6">
                           <div className="p-4 rounded-md bg-primary/5 border border-primary/20 animate-slide-up">
@@ -386,3 +381,4 @@ const Analyze = () => {
 };
 
 export default Analyze;
+
