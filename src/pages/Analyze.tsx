@@ -65,7 +65,7 @@ const mockTransactions = [
   { id: 5, date: '2023-06-08', description: 'Starbucks', amount: 5.65, category: 'Food & Dining' },
   { id: 6, date: '2023-06-06', description: 'Target', amount: 95.47, category: 'Shopping' },
   { id: 7, date: '2023-06-05', description: 'Gas Station', amount: 45.23, category: 'Transportation' },
-  { id: 8, date: '2023-06-03', description: 'Grocery Store', amount: 112.34, category: 'Food & Dining' },
+  { id: 8, date: '2023-06-03', description: 'Grocery Store', amount: 112.34, category: 'Food & Dining' }
 ];
 
 const Analyze = () => {
