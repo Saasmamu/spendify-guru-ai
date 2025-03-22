@@ -83,6 +83,12 @@ const Analyze = () => {
     return () => clearTimeout(timer);
   }, []);
 
+  useEffect(() => {
+    if (statementData && statementData.transactions.length > 0 && hasGeminiApiKey()) {
+      generateAIInsights();
+    }
+  }, [statementData]);
+
   const categories = statementData?.transactions 
     ? processCategoriesFromTransactions(statementData.transactions)
     : mockCategories;
@@ -137,13 +143,15 @@ const Analyze = () => {
           <div>
             <h1 className="text-3xl md:text-4xl font-bold mb-2">Spending Analysis</h1>
             <p className="text-muted-foreground">
-              Review your expenses and understand where your money is going
+              {statementData 
+                ? `Analysis of your uploaded statement with ${statementData.transactions.length} transactions`
+                : 'Review your expenses and understand where your money is going'}
             </p>
           </div>
           <div className="mt-4 md:mt-0">
             <Button variant="outline" className="gap-2 text-sm">
               <DollarSign className="w-4 h-4" />
-              {statementData ? 'Your Statement' : 'June 2023'}
+              {statementData ? 'Your Statement' : 'Sample Data'}
             </Button>
           </div>
         </div>
@@ -177,12 +185,12 @@ const Analyze = () => {
                 value={`$${totalSpent.toLocaleString()}`}
                 icon={<DollarSign className="w-4 h-4 text-primary" />}
                 trend="up"
-                trendValue="+12%"
+                trendValue={statementData ? `${statementData.transactions.length} items` : "+12%"}
               />
               <StatCard
                 title="Top Category"
                 value={categories[0]?.name || "N/A"}
-                icon={<Home className="w-4 h-4 text-green-500" />}
+                icon={<categories[0]?.icon className="w-4 h-4 text-green-500" />}
                 trend="neutral"
                 trendValue={categories[0] ? `${categories[0].percentage}%` : "0%"}
               />
@@ -191,7 +199,7 @@ const Analyze = () => {
                 value={transactions.length}
                 icon={<Tag className="w-4 h-4 text-amber-500" />}
                 trend="down"
-                trendValue="-3%"
+                trendValue={statementData ? `From ${statementData.startDate || 'unknown'}` : "-3%"}
               />
             </div>
             

@@ -42,7 +42,7 @@ const ApiKeyInput = ({ onKeySubmit }: ApiKeyInputProps) => {
     
     toast({
       title: "API Key Saved",
-      description: "Your Gemini API key has been saved for this session."
+      description: "Your Gemini API key has been saved."
     });
 
     if (onKeySubmit) {
@@ -84,7 +84,7 @@ const ApiKeyInput = ({ onKeySubmit }: ApiKeyInputProps) => {
             />
             {hasStoredKey && (
               <p className="text-xs text-green-600 dark:text-green-400">
-                ✓ API key is saved locally
+                ✓ API key is saved
               </p>
             )}
           </div>

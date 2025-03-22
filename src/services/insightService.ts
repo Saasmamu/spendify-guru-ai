@@ -2,31 +2,41 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { ProcessedStatement } from './pdfService';
 
-// Initialize the Gemini API
-// Note: Users will need to provide their API key through UI
-let apiKey = '';
+// Hardcoded API key for the entire app
+// IMPORTANT: In a production environment, this should be stored in a secure environment variable
+const GEMINI_API_KEY = 'YOUR_GEMINI_API_KEY';
+
+// Initialize the Gemini API with the API key
+let genAI: GoogleGenerativeAI | null = null;
 
 /**
- * Set the Gemini API key
+ * Initialize the Gemini API client
+ */
+const initializeGeminiAPI = () => {
+  if (!genAI && GEMINI_API_KEY) {
+    genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+    return true;
+  }
+  return !!genAI;
+};
+
+/**
+ * Set a custom Gemini API key
  */
 export const setGeminiApiKey = (key: string) => {
-  apiKey = key;
   localStorage.setItem('gemini_api_key', key);
+  genAI = new GoogleGenerativeAI(key);
 };
 
 /**
  * Get the stored Gemini API key
  */
 export const getGeminiApiKey = (): string => {
-  const storedKey = localStorage.getItem('gemini_api_key');
-  if (storedKey) {
-    apiKey = storedKey;
-  }
-  return apiKey;
+  return localStorage.getItem('gemini_api_key') || GEMINI_API_KEY;
 };
 
 /**
- * Check if Gemini API key is already set
+ * Check if Gemini API key is available
  */
 export const hasGeminiApiKey = (): boolean => {
   return !!getGeminiApiKey();
@@ -39,13 +49,18 @@ export const generateInsights = async (
   statement: ProcessedStatement
 ): Promise<string[]> => {
   try {
-    const key = getGeminiApiKey();
-    if (!key) {
-      throw new Error('Gemini API key not set');
+    // Initialize the API
+    if (!initializeGeminiAPI()) {
+      // Try to use a stored key if available
+      const storedKey = localStorage.getItem('gemini_api_key');
+      if (storedKey) {
+        genAI = new GoogleGenerativeAI(storedKey);
+      } else {
+        throw new Error('Gemini API key not available');
+      }
     }
 
-    const genAI = new GoogleGenerativeAI(key);
-    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+    const model = genAI!.getGenerativeModel({ model: 'gemini-pro' });
 
     // Prepare the prompt with transaction data
     const prompt = `
