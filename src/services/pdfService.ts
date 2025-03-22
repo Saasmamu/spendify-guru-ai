@@ -1,9 +1,8 @@
 import * as pdfjs from 'pdfjs-dist';
-import { getDocument } from 'pdfjs-dist';
+import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.entry';
 
 // Initialize PDF.js worker
-// Using a CDN-based approach to load the worker that's compatible with Vite
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
 export interface BankTransaction {
   date: string;
@@ -31,7 +30,7 @@ export const extractTextFromPdf = async (file: File): Promise<string[]> => {
     const arrayBuffer = await file.arrayBuffer();
     console.log('File loaded as ArrayBuffer');
     
-    const pdf = await getDocument({ data: arrayBuffer }).promise;
+    const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
     console.log('PDF document loaded with', pdf.numPages, 'pages');
     
     const numPages = pdf.numPages;
@@ -313,3 +312,4 @@ export const processBankStatement = async (file: File): Promise<ProcessedStateme
     throw new Error(`Failed to process bank statement: ${error instanceof Error ? error.message : String(error)}`);
   }
 };
+

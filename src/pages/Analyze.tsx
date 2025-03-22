@@ -11,6 +11,7 @@ import ApiKeyInput from '@/components/ApiKeyInput';
 import { getGeminiApiKey, generateInsights, hasGeminiApiKey } from '@/services/insightService';
 import { useToast } from '@/components/ui/use-toast';
 import { BankTransaction } from '@/services/pdfService';
+import { useNavigate } from 'react-router-dom';
 
 const processCategoriesFromTransactions = (transactions: BankTransaction[]) => {
   const categoryMap = new Map();
@@ -69,12 +70,24 @@ const mockTransactions = [
 
 const Analyze = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const { statementData } = useStatement();
   const [loaded, setLoaded] = useState(false);
   const [activeChart, setActiveChart] = useState('all');
   const [insights, setInsights] = useState<string[]>([]);
   const [isGeneratingInsights, setIsGeneratingInsights] = useState(false);
+  const [useRealData, setUseRealData] = useState(false);
   
+  useEffect(() => {
+    if (statementData && statementData.transactions && statementData.transactions.length > 0) {
+      console.log("Using real statement data with", statementData.transactions.length, "transactions");
+      setUseRealData(true);
+    } else {
+      console.log("No statement data available, using mock data");
+      setUseRealData(false);
+    }
+  }, [statementData]);
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setLoaded(true);
@@ -89,18 +102,17 @@ const Analyze = () => {
     }
   }, [statementData]);
 
-  useEffect(() => {
-    console.log("Current statement data:", statementData);
-  }, [statementData]);
-
-  const categories = statementData?.transactions 
+  const categories = useRealData && statementData?.transactions 
     ? processCategoriesFromTransactions(statementData.transactions)
     : mockCategories;
   
-  const transactions = statementData?.transactions || mockTransactions;
+  const transactions = useRealData && statementData?.transactions 
+    ? statementData.transactions 
+    : mockTransactions;
   
-  const totalSpent = statementData?.totalExpense || 
-    mockCategories.reduce((sum, category) => sum + category.amount, 0);
+  const totalSpent = useRealData && statementData?.totalExpense 
+    ? statementData.totalExpense
+    : mockCategories.reduce((sum, category) => sum + category.amount, 0);
 
   const generateAIInsights = async () => {
     if (!statementData) {
@@ -138,6 +150,14 @@ const Analyze = () => {
     }
   };
 
+  const handleNoDataRedirect = () => {
+    toast({
+      title: "No Statement Data",
+      description: "Please upload a bank statement first.",
+    });
+    navigate('/upload');
+  };
+
   return (
     <div className="min-h-screen pb-20">
       <Navbar />
@@ -147,16 +167,28 @@ const Analyze = () => {
           <div>
             <h1 className="text-3xl md:text-4xl font-bold mb-2">Spending Analysis</h1>
             <p className="text-muted-foreground">
-              {statementData 
-                ? `Analysis of your uploaded statement with ${statementData.transactions.length} transactions`
-                : 'Review your expenses and understand where your money is going'}
+              {useRealData 
+                ? `Analysis of your uploaded statement with ${statementData?.transactions.length} transactions`
+                : 'Example data shown. Please upload a statement for real insights.'}
             </p>
           </div>
           <div className="mt-4 md:mt-0">
-            <Button variant="outline" className="gap-2 text-sm">
-              <DollarSign className="w-4 h-4" />
-              {statementData ? 'Your Statement' : 'Sample Data'}
-            </Button>
+            {!useRealData && (
+              <Button 
+                variant="default" 
+                className="gap-2 text-sm"
+                onClick={handleNoDataRedirect}
+              >
+                <DollarSign className="w-4 h-4" />
+                Upload Statement
+              </Button>
+            )}
+            {useRealData && (
+              <Button variant="outline" className="gap-2 text-sm">
+                <DollarSign className="w-4 h-4" />
+                Your Statement
+              </Button>
+            )}
           </div>
         </div>
         

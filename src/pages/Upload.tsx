@@ -1,14 +1,17 @@
 
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { PieChart, ArrowRight } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import UploadCard from '@/components/UploadCard';
 import { useStatement } from '@/contexts/StatementContext';
+import { useToast } from '@/components/ui/use-toast';
 
 const Upload = () => {
-  const { uploadedFile, statementData } = useStatement();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const { uploadedFile, statementData, error } = useStatement();
   const [hasData, setHasData] = useState(false);
 
   // Debug logging for statement data
@@ -24,8 +27,22 @@ const Upload = () => {
     }
   }, [statementData, uploadedFile]);
 
-  const handleFileSelect = (file: File) => {
-    console.log('File selected in Upload page:', file.name);
+  // Show error toast if processing fails
+  useEffect(() => {
+    if (error) {
+      toast({
+        variant: "destructive",
+        title: "Processing Error",
+        description: error,
+      });
+    }
+  }, [error, toast]);
+
+  // Redirect to analyze page automatically if data is available
+  const handleAnalyzeClick = () => {
+    if (hasData) {
+      navigate('/analyze');
+    }
   };
 
   return (
@@ -41,7 +58,7 @@ const Upload = () => {
         </div>
         
         <div className="max-w-2xl mx-auto animate-scale-in">
-          <UploadCard onFileSelect={handleFileSelect} />
+          <UploadCard />
         </div>
         
         {hasData && (
@@ -53,7 +70,7 @@ const Upload = () => {
               We found {statementData?.transactions.length} transactions in your statement.
             </p>
             <Link to="/analyze">
-              <Button size="lg" className="rounded-full px-6 gap-2">
+              <Button size="lg" className="rounded-full px-6 gap-2" onClick={handleAnalyzeClick}>
                 <PieChart className="w-4 h-4" />
                 Analyze My Spending
                 <ArrowRight className="w-4 h-4 ml-1" />

@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Upload, File, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,22 +8,18 @@ import { useToast } from '@/components/ui/use-toast';
 import { useStatement } from '@/contexts/StatementContext';
 import { processBankStatement } from '@/services/pdfService';
 
-interface UploadCardProps {
-  onFileSelect?: (file: File) => void;
-}
-
-const UploadCard = ({ onFileSelect }: UploadCardProps) => {
+const UploadCard = () => {
   const { toast } = useToast();
-  const { setUploadedFile, setStatementData, setIsProcessing, setError, statementData } = useStatement();
+  const { 
+    setUploadedFile, 
+    setStatementData, 
+    setIsProcessing, 
+    setError, 
+    uploadedFile, 
+    isProcessing 
+  } = useStatement();
   const [isDragging, setIsDragging] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isProcessingLocal, setIsProcessingLocal] = useState(false);
   const [uploadComplete, setUploadComplete] = useState(false);
-
-  // Debug logging for statement data
-  useEffect(() => {
-    console.log("Statement data in UploadCard:", statementData);
-  }, [statementData]);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -63,9 +59,8 @@ const UploadCard = ({ onFileSelect }: UploadCardProps) => {
       return;
     }
 
-    setSelectedFile(file);
-    setIsProcessingLocal(true);
     setIsProcessing(true);
+    setError(null);
     
     try {
       console.log("Starting PDF processing...");
@@ -74,7 +69,6 @@ const UploadCard = ({ onFileSelect }: UploadCardProps) => {
       console.log("PDF processing complete, result:", result);
       
       setUploadComplete(true);
-      setIsProcessingLocal(false);
       setIsProcessing(false);
       
       // Update global state
@@ -82,17 +76,12 @@ const UploadCard = ({ onFileSelect }: UploadCardProps) => {
       setStatementData(result);
       console.log("Statement data set in context:", result);
       
-      if (onFileSelect) {
-        onFileSelect(file);
-      }
-      
       toast({
         title: "Processing complete",
         description: `Extracted ${result.transactions.length} transactions from statement.`,
       });
     } catch (error) {
       console.error("Error processing PDF:", error);
-      setIsProcessingLocal(false);
       setIsProcessing(false);
       setError(error instanceof Error ? error.message : 'Failed to process PDF');
       
@@ -105,10 +94,9 @@ const UploadCard = ({ onFileSelect }: UploadCardProps) => {
   };
 
   const resetUpload = () => {
-    setSelectedFile(null);
-    setUploadComplete(false);
     setUploadedFile(null);
     setStatementData(null);
+    setUploadComplete(false);
   };
 
   return (
@@ -127,7 +115,7 @@ const UploadCard = ({ onFileSelect }: UploadCardProps) => {
             isDragging ? "bg-primary/5" : ""
           )}
         >
-          {!selectedFile ? (
+          {!uploadedFile ? (
             <>
               <div className="mb-4 p-4 rounded-full bg-muted/50 animate-float">
                 <Upload className="w-8 h-8 text-primary" />
@@ -155,7 +143,7 @@ const UploadCard = ({ onFileSelect }: UploadCardProps) => {
           ) : (
             <div className="w-full">
               <div className="flex items-center mb-4">
-                {isProcessingLocal ? (
+                {isProcessing ? (
                   <div className="flex-1 flex items-center">
                     <div className="animate-spin mr-3">
                       <File className="w-5 h-5 text-primary" />
@@ -177,9 +165,9 @@ const UploadCard = ({ onFileSelect }: UploadCardProps) => {
                       )}
                     </div>
                     <div className="flex-1">
-                      <p className="font-medium truncate">{selectedFile.name}</p>
+                      <p className="font-medium truncate">{uploadedFile.name}</p>
                       <p className="text-sm text-muted-foreground">
-                        {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
+                        {(uploadedFile.size / (1024 * 1024)).toFixed(2)} MB
                       </p>
                     </div>
                     <Button 
