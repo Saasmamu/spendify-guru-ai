@@ -1,8 +1,9 @@
 
 import * as pdfjs from 'pdfjs-dist';
 
-// Initialize PDF.js worker
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+// Initialize PDF.js worker - using a more reliable method
+const pdfjsWorkerSrc = new URL('pdfjs-dist/build/pdf.worker.min.js', import.meta.url).href;
+pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorkerSrc;
 
 export interface BankTransaction {
   date: string;

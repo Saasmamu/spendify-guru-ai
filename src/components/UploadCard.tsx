@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { Upload, File, Check, X } from 'lucide-react';
+import { Upload, File, Check, X, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
@@ -20,6 +20,7 @@ const UploadCard = () => {
   } = useStatement();
   const [isDragging, setIsDragging] = useState(false);
   const [uploadComplete, setUploadComplete] = useState(false);
+  const [processingError, setProcessingError] = useState<string | null>(null);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -48,6 +49,7 @@ const UploadCard = () => {
 
   const processFile = async (file: File) => {
     console.log("Processing file in UploadCard:", file.name);
+    setProcessingError(null);
     
     // Check if file is PDF
     if (file.type !== 'application/pdf') {
@@ -68,6 +70,17 @@ const UploadCard = () => {
       const result = await processBankStatement(file);
       console.log("PDF processing complete, result:", result);
       
+      if (result.transactions.length === 0) {
+        setProcessingError("No transactions found in the PDF. Please try a different statement or format.");
+        toast({
+          variant: "destructive",
+          title: "No transactions found",
+          description: "We couldn't find any transactions in this PDF. Please try a different statement.",
+        });
+        setIsProcessing(false);
+        return;
+      }
+      
       setUploadComplete(true);
       setIsProcessing(false);
       
@@ -83,7 +96,9 @@ const UploadCard = () => {
     } catch (error) {
       console.error("Error processing PDF:", error);
       setIsProcessing(false);
-      setError(error instanceof Error ? error.message : 'Failed to process PDF');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to process PDF';
+      setError(errorMessage);
+      setProcessingError(errorMessage);
       
       toast({
         variant: "destructive",
@@ -97,13 +112,15 @@ const UploadCard = () => {
     setUploadedFile(null);
     setStatementData(null);
     setUploadComplete(false);
+    setProcessingError(null);
   };
 
   return (
     <Card className={cn(
       "transition-all duration-300 border-2",
       isDragging ? "border-primary/50 bg-primary/5" : "border-border bg-card",
-      uploadComplete ? "border-green-500/20 bg-green-50/50 dark:bg-green-950/10" : ""
+      uploadComplete ? "border-green-500/20 bg-green-50/50 dark:bg-green-950/10" : "",
+      processingError ? "border-red-500/20 bg-red-50/50 dark:bg-red-950/10" : ""
     )}>
       <CardContent className="p-6">
         <div
@@ -160,6 +177,8 @@ const UploadCard = () => {
                     <div className="mr-3 p-1 rounded-full bg-green-100 dark:bg-green-900/20">
                       {uploadComplete ? (
                         <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
+                      ) : processingError ? (
+                        <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400" />
                       ) : (
                         <File className="w-4 h-4 text-primary" />
                       )}
@@ -181,6 +200,27 @@ const UploadCard = () => {
                   </div>
                 )}
               </div>
+              
+              {processingError && (
+                <div className="animate-fade-in mt-4 p-4 bg-red-50 dark:bg-red-950/20 rounded-md border border-red-200 dark:border-red-800">
+                  <p className="text-red-600 dark:text-red-400 text-sm flex items-center">
+                    <AlertTriangle className="w-4 h-4 mr-1" /> 
+                    Error processing file
+                  </p>
+                  <p className="text-sm text-red-500 dark:text-red-400 mt-2">
+                    {processingError}
+                  </p>
+                  <div className="mt-4">
+                    <Button
+                      className="w-full gap-2"
+                      onClick={resetUpload}
+                    >
+                      <Upload className="w-4 h-4" />
+                      Try Another File
+                    </Button>
+                  </div>
+                </div>
+              )}
               
               {uploadComplete && (
                 <div className="animate-fade-in">
