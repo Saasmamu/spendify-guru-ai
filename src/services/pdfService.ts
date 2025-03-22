@@ -1,9 +1,9 @@
 
 import * as pdfjs from 'pdfjs-dist';
 
-// Initialize PDF.js worker - using a more reliable method
-const pdfjsWorkerSrc = new URL('pdfjs-dist/build/pdf.worker.min.js', import.meta.url).href;
-pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorkerSrc;
+// Initialize PDF.js worker - instead of trying to use URL import, configure it to use
+// the built-in fake worker that comes with pdf.js when the real worker can't be loaded
+pdfjs.GlobalWorkerOptions.workerSrc = '';  // This will use the built-in fake worker
 
 export interface BankTransaction {
   date: string;
@@ -31,7 +31,12 @@ export const extractTextFromPdf = async (file: File): Promise<string[]> => {
     const arrayBuffer = await file.arrayBuffer();
     console.log('File loaded as ArrayBuffer');
     
-    const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+    // Set disableWorker to true to avoid worker-related issues
+    const pdf = await pdfjs.getDocument({ 
+      data: arrayBuffer,
+      disableWorker: true
+    }).promise;
+    
     console.log('PDF document loaded with', pdf.numPages, 'pages');
     
     const numPages = pdf.numPages;
