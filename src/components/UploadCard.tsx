@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { Upload, File, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -14,11 +14,16 @@ interface UploadCardProps {
 
 const UploadCard = ({ onFileSelect }: UploadCardProps) => {
   const { toast } = useToast();
-  const { setUploadedFile, setStatementData, setIsProcessing, setError } = useStatement();
+  const { setUploadedFile, setStatementData, setIsProcessing, setError, statementData } = useStatement();
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isProcessingLocal, setIsProcessingLocal] = useState(false);
   const [uploadComplete, setUploadComplete] = useState(false);
+
+  // Debug logging for statement data
+  useEffect(() => {
+    console.log("Statement data in UploadCard:", statementData);
+  }, [statementData]);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -46,6 +51,8 @@ const UploadCard = ({ onFileSelect }: UploadCardProps) => {
   };
 
   const processFile = async (file: File) => {
+    console.log("Processing file in UploadCard:", file.name);
+    
     // Check if file is PDF
     if (file.type !== 'application/pdf') {
       toast({
@@ -61,8 +68,10 @@ const UploadCard = ({ onFileSelect }: UploadCardProps) => {
     setIsProcessing(true);
     
     try {
+      console.log("Starting PDF processing...");
       // Process the PDF file
       const result = await processBankStatement(file);
+      console.log("PDF processing complete, result:", result);
       
       setUploadComplete(true);
       setIsProcessingLocal(false);
@@ -71,6 +80,7 @@ const UploadCard = ({ onFileSelect }: UploadCardProps) => {
       // Update global state
       setUploadedFile(file);
       setStatementData(result);
+      console.log("Statement data set in context:", result);
       
       if (onFileSelect) {
         onFileSelect(file);

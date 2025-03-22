@@ -1,5 +1,5 @@
 
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { BankTransaction, ProcessedStatement } from '../services/pdfService';
 
 interface StatementContextType {
@@ -22,7 +22,22 @@ export const StatementProvider = ({ children }: { children: ReactNode }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Debug logging for context changes
+  useEffect(() => {
+    console.log("StatementContext - uploadedFile changed:", uploadedFile?.name);
+  }, [uploadedFile]);
+
+  useEffect(() => {
+    console.log("StatementContext - statementData changed:", 
+      statementData ? `${statementData.transactions.length} transactions` : "null");
+  }, [statementData]);
+
+  useEffect(() => {
+    console.log("StatementContext - isProcessing changed:", isProcessing);
+  }, [isProcessing]);
+
   const clearData = () => {
+    console.log("StatementContext - clearing all data");
     setStatementData(null);
     setUploadedFile(null);
     setError(null);

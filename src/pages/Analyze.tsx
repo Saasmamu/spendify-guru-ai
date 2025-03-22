@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -34,7 +33,7 @@ const processCategoriesFromTransactions = (transactions: BankTransaction[]) => {
     'Miscellaneous': { icon: Tag, color: 'bg-purple-500' }
   };
   
-  return Array.from(categoryMap.entries()).map(([name, data]) => {
+  return Array.from(categoryMap.entries()).map(([name, data]: [string, any]) => {
     const amount = data.amount;
     const percentage = Math.round((amount / totalAmount) * 100);
     const { icon, color } = categoryIcons[name] || categoryIcons['Miscellaneous'];
@@ -88,6 +87,10 @@ const Analyze = () => {
     if (statementData && statementData.transactions.length > 0 && hasGeminiApiKey()) {
       generateAIInsights();
     }
+  }, [statementData]);
+
+  useEffect(() => {
+    console.log("Current statement data:", statementData);
   }, [statementData]);
 
   const categories = statementData?.transactions 
@@ -191,7 +194,7 @@ const Analyze = () => {
               <StatCard
                 title="Top Category"
                 value={categories[0]?.name || "N/A"}
-                icon={<categories[0]?.icon className="w-4 h-4 text-green-500" />}
+                icon={categories[0]?.icon ? <categories[0].icon className="w-4 h-4 text-green-500" /> : <Tag className="w-4 h-4 text-green-500" />}
                 trend="neutral"
                 trendValue={categories[0] ? `${categories[0].percentage}%` : "0%"}
               />
@@ -390,3 +393,4 @@ const Analyze = () => {
 };
 
 export default Analyze;
+

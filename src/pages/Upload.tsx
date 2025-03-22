@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { PieChart, ArrowRight } from 'lucide-react';
@@ -9,9 +9,23 @@ import { useStatement } from '@/contexts/StatementContext';
 
 const Upload = () => {
   const { uploadedFile, statementData } = useStatement();
+  const [hasData, setHasData] = useState(false);
+
+  // Debug logging for statement data
+  useEffect(() => {
+    console.log("Upload page - Current statement data:", statementData);
+    console.log("Upload page - Current file:", uploadedFile?.name);
+
+    if (statementData && uploadedFile) {
+      console.log("Data and file available for analysis");
+      setHasData(true);
+    } else {
+      setHasData(false);
+    }
+  }, [statementData, uploadedFile]);
 
   const handleFileSelect = (file: File) => {
-    console.log('File selected:', file.name);
+    console.log('File selected in Upload page:', file.name);
   };
 
   return (
@@ -30,13 +44,13 @@ const Upload = () => {
           <UploadCard onFileSelect={handleFileSelect} />
         </div>
         
-        {uploadedFile && statementData && (
+        {hasData && (
           <div className="mt-10 text-center animate-fade-in">
             <p className="text-lg mb-4">
               Ready to see your financial insights?
             </p>
             <p className="text-muted-foreground mb-6">
-              We found {statementData.transactions.length} transactions in your statement.
+              We found {statementData?.transactions.length} transactions in your statement.
             </p>
             <Link to="/analyze">
               <Button size="lg" className="rounded-full px-6 gap-2">

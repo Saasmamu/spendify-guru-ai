@@ -1,4 +1,3 @@
-
 import * as pdfjs from 'pdfjs-dist';
 import { getDocument } from 'pdfjs-dist';
 
@@ -27,28 +26,36 @@ export interface ProcessedStatement {
  * Extracts text content from a PDF file
  */
 export const extractTextFromPdf = async (file: File): Promise<string[]> => {
+  console.log('Starting PDF extraction for file:', file.name, 'Size:', file.size);
   try {
     const arrayBuffer = await file.arrayBuffer();
+    console.log('File loaded as ArrayBuffer');
+    
     const pdf = await getDocument({ data: arrayBuffer }).promise;
+    console.log('PDF document loaded with', pdf.numPages, 'pages');
     
     const numPages = pdf.numPages;
     const textContent: string[] = [];
     
     for (let i = 1; i <= numPages; i++) {
+      console.log(`Processing page ${i} of ${numPages}`);
       const page = await pdf.getPage(i);
       const content = await page.getTextContent();
       const text = content.items
         .map((item: any) => item.str)
         .join(' ');
       
+      console.log(`Extracted ${text.length} characters from page ${i}`);
       textContent.push(text);
     }
     
-    console.log('Extracted text content:', textContent);
+    console.log('PDF extraction complete. Total content length:', 
+      textContent.reduce((sum, text) => sum + text.length, 0));
+    
     return textContent;
   } catch (error) {
     console.error('Error extracting PDF text:', error);
-    throw new Error('Failed to extract text from PDF');
+    throw new Error(`Failed to extract text from PDF: ${error instanceof Error ? error.message : String(error)}`);
   }
 };
 
@@ -57,6 +64,8 @@ export const extractTextFromPdf = async (file: File): Promise<string[]> => {
  * Enhanced implementation with better pattern matching
  */
 export const processTransactions = (textContent: string[]): ProcessedStatement => {
+  console.log('Starting transaction processing from extracted text');
+  
   // Sample implementation - this would need to be customized based on specific bank statement formats
   const transactions: BankTransaction[] = [];
   let totalIncome = 0;
@@ -67,16 +76,19 @@ export const processTransactions = (textContent: string[]): ProcessedStatement =
   const amountPattern = /(\$|\€|\£|₦)?(\d{1,3}(,\d{3})*(\.\d{2})?)/;
   
   // Process each page of text
-  textContent.forEach(pageText => {
+  textContent.forEach((pageText, pageIndex) => {
+    console.log(`Processing text from page ${pageIndex + 1}, length: ${pageText.length} characters`);
+    
     // Split text into lines and clean up
     const lines = pageText
       .split(/\r?\n/)
       .filter(line => line.trim().length > 0)
       .map(line => line.trim());
     
-    console.log('Processing lines:', lines.length);
+    console.log(`Page ${pageIndex + 1} split into ${lines.length} lines`);
+    let matchesFound = 0;
     
-    lines.forEach(line => {
+    lines.forEach((line, lineIndex) => {
       // Skip header or summary lines
       if (line.includes('BALANCE') || line.includes('PAGE') || 
           line.includes('STATEMENT') || line.length < 10) {
@@ -107,6 +119,8 @@ export const processTransactions = (textContent: string[]): ProcessedStatement =
         // Skip invalid amounts
         if (isNaN(amount) || amount <= 0) return;
         
+        matchesFound++;
+        
         // Determine if it's a credit or debit
         // This logic would need to be customized for specific bank formats
         const isCredit = line.toLowerCase().includes('credit') || 
@@ -130,9 +144,12 @@ export const processTransactions = (textContent: string[]): ProcessedStatement =
           category: categorizeTransaction(description)
         };
         
+        console.log(`Found transaction: ${date} | ${description} | $${amount} | ${type}`);
         transactions.push(transaction);
       }
     });
+    
+    console.log(`Found ${matchesFound} transaction matches on page ${pageIndex + 1}`);
   });
 
   // If no transactions were found, try an alternative approach
@@ -140,10 +157,13 @@ export const processTransactions = (textContent: string[]): ProcessedStatement =
     console.log("No transactions found with primary method, trying alternative approach");
     
     // More aggressive pattern matching
-    textContent.forEach(pageText => {
+    textContent.forEach((pageText, pageIndex) => {
+      console.log(`Trying alternative pattern matching on page ${pageIndex + 1}`);
+      
       // Look for table-like structures with dates and amounts
       const tablePattern = /(\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4})\s+(.*?)\s+(\d+\.\d{2})/g;
       let match;
+      let altMatchesFound = 0;
       
       while ((match = tablePattern.exec(pageText)) !== null) {
         const date = match[1];
@@ -151,6 +171,7 @@ export const processTransactions = (textContent: string[]): ProcessedStatement =
         const amount = parseFloat(match[3]);
         
         if (!isNaN(amount) && amount > 0) {
+          altMatchesFound++;
           const transaction: BankTransaction = {
             date,
             description,
@@ -161,6 +182,7 @@ export const processTransactions = (textContent: string[]): ProcessedStatement =
           
           transactions.push(transaction);
           totalExpense += amount;
+          console.log(`Alternative pattern found transaction: ${date} | ${description} | $${amount}`);
         }
       }
       
@@ -172,6 +194,7 @@ export const processTransactions = (textContent: string[]): ProcessedStatement =
         const amount = parseFloat(match[3]);
         
         if (!isNaN(amount) && amount > 0) {
+          altMatchesFound++;
           // Extract description (everything between date and amount)
           const dateEndIndex = fullMatch.indexOf(date) + date.length;
           const amountStartIndex = fullMatch.lastIndexOf(match[3]);
@@ -188,14 +211,18 @@ export const processTransactions = (textContent: string[]): ProcessedStatement =
             category: categorizeTransaction(description)
           };
           
+          console.log(`Second alternative pattern found transaction: ${date} | ${description} | $${amount}`);
           transactions.push(transaction);
           totalExpense += amount;
         }
       }
+      
+      console.log(`Found ${altMatchesFound} transaction matches with alternative patterns on page ${pageIndex + 1}`);
     });
   }
 
-  console.log(`Extracted ${transactions.length} transactions`);
+  console.log(`Total transactions extracted: ${transactions.length}`);
+  console.log(`Total income: $${totalIncome.toFixed(2)}, Total expense: $${totalExpense.toFixed(2)}`);
   
   // Sort transactions by date (newest first)
   transactions.sort((a, b) => {
@@ -204,11 +231,22 @@ export const processTransactions = (textContent: string[]): ProcessedStatement =
     return dateB.getTime() - dateA.getTime();
   });
   
+  // Determine statement period
+  let startDate, endDate;
+  if (transactions.length > 0) {
+    const dates = transactions.map(t => new Date(t.date).getTime());
+    startDate = new Date(Math.min(...dates)).toLocaleDateString();
+    endDate = new Date(Math.max(...dates)).toLocaleDateString();
+    console.log(`Statement period: ${startDate} to ${endDate}`);
+  }
+  
   return {
     transactions,
     totalIncome,
     totalExpense,
     balance: totalIncome - totalExpense,
+    startDate,
+    endDate
   };
 };
 
@@ -248,17 +286,30 @@ export const categorizeTransaction = (description: string): string => {
  * Main function to process a bank statement PDF
  */
 export const processBankStatement = async (file: File): Promise<ProcessedStatement> => {
+  console.log('=== PROCESSING BANK STATEMENT ===');
+  console.log('File name:', file.name);
+  console.log('File size:', (file.size / 1024).toFixed(2), 'KB');
+  console.log('File type:', file.type);
+  
   try {
-    console.log('Processing bank statement:', file.name);
     const textContent = await extractTextFromPdf(file);
-    console.log('Extracted text content:', textContent.length, 'pages');
+    console.log('=== PDF TEXT EXTRACTION COMPLETE ===');
+    console.log('Extracted', textContent.length, 'pages of text');
+    
+    // Show sample of first page text for debugging
+    if (textContent.length > 0) {
+      const firstPageSample = textContent[0].substring(0, 200) + '...';
+      console.log('First page sample:', firstPageSample);
+    }
     
     const processedData = processTransactions(textContent);
-    console.log('Processed transactions:', processedData.transactions.length);
+    console.log('=== TRANSACTION PROCESSING COMPLETE ===');
+    console.log('Extracted transactions:', processedData.transactions.length);
     
     return processedData;
   } catch (error) {
-    console.error('Error processing bank statement:', error);
-    throw new Error('Failed to process bank statement');
+    console.error('=== ERROR PROCESSING BANK STATEMENT ===');
+    console.error('Error details:', error);
+    throw new Error(`Failed to process bank statement: ${error instanceof Error ? error.message : String(error)}`);
   }
 };
