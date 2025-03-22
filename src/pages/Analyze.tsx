@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -194,7 +195,7 @@ const Analyze = () => {
               <StatCard
                 title="Top Category"
                 value={categories[0]?.name || "N/A"}
-                icon={categories[0]?.icon ? <categories[0].icon className="w-4 h-4 text-green-500" /> : <Tag className="w-4 h-4 text-green-500" />}
+                icon={categories[0]?.icon ? React.createElement(categories[0].icon, { className: "w-4 h-4 text-green-500" }) : <Tag className="w-4 h-4 text-green-500" />}
                 trend="neutral"
                 trendValue={categories[0] ? `${categories[0].percentage}%` : "0%"}
               />
@@ -227,7 +228,7 @@ const Analyze = () => {
                               <div className="flex items-center justify-between mb-1">
                                 <div className="flex items-center">
                                   <div className={cn("p-1.5 rounded-md mr-2", category.color)}>
-                                    <category.icon className="w-3.5 h-3.5 text-white" />
+                                    {React.createElement(category.icon, { className: "w-3.5 h-3.5 text-white" })}
                                   </div>
                                   <span className="text-sm font-medium">{category.name}</span>
                                 </div>
@@ -393,4 +394,3 @@ const Analyze = () => {
 };
 
 export default Analyze;
-
