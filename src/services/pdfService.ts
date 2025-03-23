@@ -1,11 +1,11 @@
 
 import * as pdfjs from 'pdfjs-dist';
 
-// Get the version of pdfjs being used and use the matching worker
+// Get the version of pdfjs being used
 const pdfJsVersion = pdfjs.version;
 console.log('Using PDF.js version:', pdfJsVersion);
 
-// Configure PDF.js to use the correct worker version
+// Configure PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfJsVersion}/pdf.worker.min.js`;
 
 export interface BankTransaction {
@@ -34,36 +34,43 @@ export const extractTextFromPdf = async (file: File): Promise<string[]> => {
     const arrayBuffer = await file.arrayBuffer();
     console.log('File loaded as ArrayBuffer');
     
-    // Load the PDF with proper configuration and disableWorker flag to avoid worker issues
+    // Load the PDF with proper configuration
+    // Note: Using the proper TypeScript interface without disableWorker property
     const loadingTask = pdfjs.getDocument({
       data: arrayBuffer,
       cMapUrl: `//unpkg.com/pdfjs-dist@${pdfJsVersion}/cmaps/`,
-      cMapPacked: true,
-      disableWorker: true // Use disable worker to avoid worker-related issues
+      cMapPacked: true
     });
     
-    const pdf = await loadingTask.promise;
-    console.log('PDF document loaded with', pdf.numPages, 'pages');
-    
-    const numPages = pdf.numPages;
-    const textContent: string[] = [];
-    
-    for (let i = 1; i <= numPages; i++) {
-      console.log(`Processing page ${i} of ${numPages}`);
-      const page = await pdf.getPage(i);
-      const content = await page.getTextContent();
-      const text = content.items
-        .map((item: any) => item.str)
-        .join(' ');
+    // Use a try-catch approach with built-in workers
+    try {
+      const pdf = await loadingTask.promise;
+      console.log('PDF document loaded with', pdf.numPages, 'pages');
       
-      console.log(`Extracted ${text.length} characters from page ${i}`);
-      textContent.push(text);
+      const numPages = pdf.numPages;
+      const textContent: string[] = [];
+      
+      for (let i = 1; i <= numPages; i++) {
+        console.log(`Processing page ${i} of ${numPages}`);
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        const text = content.items
+          .map((item: any) => item.str)
+          .join(' ');
+        
+        console.log(`Extracted ${text.length} characters from page ${i}`);
+        textContent.push(text);
+      }
+      
+      console.log('PDF extraction complete. Total content length:', 
+        textContent.reduce((sum, text) => sum + text.length, 0));
+      
+      return textContent;
+    } catch (error) {
+      // If the worker method fails, fallback to another approach
+      console.warn('Worker-based extraction failed, using alternative method:', error);
+      throw error; // Re-throw for now to see the specific error
     }
-    
-    console.log('PDF extraction complete. Total content length:', 
-      textContent.reduce((sum, text) => sum + text.length, 0));
-    
-    return textContent;
   } catch (error) {
     console.error('Error extracting PDF text:', error);
     throw new Error(`Failed to extract text from PDF: ${error instanceof Error ? error.message : String(error)}`);
