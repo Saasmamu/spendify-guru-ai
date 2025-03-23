@@ -1,9 +1,12 @@
 
 import * as pdfjs from 'pdfjs-dist';
 
-// Configure PDF.js to use a fake worker
-// This is necessary when we can't load the external worker file
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js`;
+// Get the version of pdfjs being used and use the matching worker
+const pdfJsVersion = pdfjs.version;
+console.log('Using PDF.js version:', pdfJsVersion);
+
+// Configure PDF.js to use the correct worker version
+pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfJsVersion}/pdf.worker.min.js`;
 
 export interface BankTransaction {
   date: string;
@@ -31,11 +34,12 @@ export const extractTextFromPdf = async (file: File): Promise<string[]> => {
     const arrayBuffer = await file.arrayBuffer();
     console.log('File loaded as ArrayBuffer');
     
-    // Load the PDF with proper configuration
+    // Load the PDF with proper configuration and disableWorker flag to avoid worker issues
     const loadingTask = pdfjs.getDocument({
       data: arrayBuffer,
-      cMapUrl: 'https://unpkg.com/pdfjs-dist@3.4.120/cmaps/',
+      cMapUrl: `//unpkg.com/pdfjs-dist@${pdfJsVersion}/cmaps/`,
       cMapPacked: true,
+      disableWorker: true // Use disable worker to avoid worker-related issues
     });
     
     const pdf = await loadingTask.promise;
