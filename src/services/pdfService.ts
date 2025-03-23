@@ -1,12 +1,14 @@
+
 import * as pdfjs from 'pdfjs-dist';
 
 // Get the version of pdfjs being used
 const pdfJsVersion = pdfjs.version;
 console.log('Using PDF.js version:', pdfJsVersion);
 
-// Configure the worker - simpler and more reliable approach
+// Configure the worker using the correct approach for PDF.js v3.x
 if (typeof window !== 'undefined') {
-  // Set the worker source URL - this approach works with the ES module build
+  // PDF.js 3.x uses a different worker file name and path structure
+  // We'll use unpkg CDN with exact version match to ensure compatibility
   const workerSrc = `https://unpkg.com/pdfjs-dist@${pdfJsVersion}/build/pdf.worker.min.js`;
   pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
   console.log(`PDF.js worker configured: ${workerSrc}`);
