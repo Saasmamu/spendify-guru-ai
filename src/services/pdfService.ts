@@ -1,19 +1,15 @@
-
 import * as pdfjs from 'pdfjs-dist';
 
 // Get the version of pdfjs being used
 const pdfJsVersion = pdfjs.version;
 console.log('Using PDF.js version:', pdfJsVersion);
 
-// Create a local worker instead of relying on CDN
-// The Worker class is imported from pdfjs, and it's used to handle PDF parsing
-const pdfjsWorker = await import('pdfjs-dist/build/pdf.worker.mjs');
-// This will use the worker from memory rather than fetching from a CDN
-if (typeof window !== 'undefined' && 'Worker' in window) {
-  pdfjs.GlobalWorkerOptions.workerPort = new Worker(
-    new URL('pdfjs-dist/build/pdf.worker.mjs', import.meta.url),
-    { type: 'module' }
-  );
+// Configure the worker - simpler and more reliable approach
+if (typeof window !== 'undefined') {
+  // Set the worker source URL - this approach works with the ES module build
+  const workerSrc = `https://unpkg.com/pdfjs-dist@${pdfJsVersion}/build/pdf.worker.min.js`;
+  pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
+  console.log(`PDF.js worker configured: ${workerSrc}`);
 }
 
 // Export interfaces
@@ -46,7 +42,9 @@ export const extractTextFromPdf = async (file: File): Promise<string[]> => {
     // Load the PDF with proper configuration
     const loadingTask = pdfjs.getDocument({
       data: arrayBuffer,
-      // We don't need cMapUrl with this approach
+      // Using standard PDF.js config
+      cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfJsVersion}/cmaps/`,
+      cMapPacked: true
     });
     
     try {
@@ -359,4 +357,3 @@ export const processBankStatement = async (file: File): Promise<ProcessedStateme
     throw new Error(`Failed to process bank statement: ${error instanceof Error ? error.message : String(error)}`);
   }
 };
-
