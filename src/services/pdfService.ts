@@ -5,9 +5,18 @@ import * as pdfjs from 'pdfjs-dist';
 const pdfJsVersion = pdfjs.version;
 console.log('Using PDF.js version:', pdfJsVersion);
 
-// Configure PDF.js worker
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfJsVersion}/pdf.worker.min.js`;
+// Create a local worker instead of relying on CDN
+// The Worker class is imported from pdfjs, and it's used to handle PDF parsing
+const pdfjsWorker = await import('pdfjs-dist/build/pdf.worker.mjs');
+// This will use the worker from memory rather than fetching from a CDN
+if (typeof window !== 'undefined' && 'Worker' in window) {
+  pdfjs.GlobalWorkerOptions.workerPort = new Worker(
+    new URL('pdfjs-dist/build/pdf.worker.mjs', import.meta.url),
+    { type: 'module' }
+  );
+}
 
+// Export interfaces
 export interface BankTransaction {
   date: string;
   description: string;
@@ -35,14 +44,11 @@ export const extractTextFromPdf = async (file: File): Promise<string[]> => {
     console.log('File loaded as ArrayBuffer');
     
     // Load the PDF with proper configuration
-    // Note: Using the proper TypeScript interface without disableWorker property
     const loadingTask = pdfjs.getDocument({
       data: arrayBuffer,
-      cMapUrl: `//unpkg.com/pdfjs-dist@${pdfJsVersion}/cmaps/`,
-      cMapPacked: true
+      // We don't need cMapUrl with this approach
     });
     
-    // Use a try-catch approach with built-in workers
     try {
       const pdf = await loadingTask.promise;
       console.log('PDF document loaded with', pdf.numPages, 'pages');
@@ -67,9 +73,31 @@ export const extractTextFromPdf = async (file: File): Promise<string[]> => {
       
       return textContent;
     } catch (error) {
-      // If the worker method fails, fallback to another approach
-      console.warn('Worker-based extraction failed, using alternative method:', error);
-      throw error; // Re-throw for now to see the specific error
+      console.warn('Primary extraction method failed:', error);
+      
+      // Try an alternative approach - use getDocument directly with simpler config
+      try {
+        const pdf = await pdfjs.getDocument(arrayBuffer).promise;
+        console.log('PDF loaded with alternative method, pages:', pdf.numPages);
+        
+        const numPages = pdf.numPages;
+        const textContent: string[] = [];
+        
+        for (let i = 1; i <= numPages; i++) {
+          const page = await pdf.getPage(i);
+          const content = await page.getTextContent();
+          const text = content.items
+            .map((item: any) => item.str)
+            .join(' ');
+          
+          textContent.push(text);
+        }
+        
+        return textContent;
+      } catch (fallbackError) {
+        console.error('Alternative extraction method also failed:', fallbackError);
+        throw fallbackError;
+      }
     }
   } catch (error) {
     console.error('Error extracting PDF text:', error);
