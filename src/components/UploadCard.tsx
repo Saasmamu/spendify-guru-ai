@@ -21,6 +21,7 @@ const UploadCard = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [uploadComplete, setUploadComplete] = useState(false);
   const [processingError, setProcessingError] = useState<string | null>(null);
+  const [extractionProgress, setExtractionProgress] = useState(0);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -50,6 +51,7 @@ const UploadCard = () => {
   const processFile = async (file: File) => {
     console.log("Processing file in UploadCard:", file.name);
     setProcessingError(null);
+    setExtractionProgress(0);
     
     // Check if file is PDF
     if (file.type !== 'application/pdf') {
@@ -64,18 +66,29 @@ const UploadCard = () => {
     setIsProcessing(true);
     setError(null);
     
+    // Setup progress simulation
+    const progressInterval = setInterval(() => {
+      setExtractionProgress(prev => {
+        const next = prev + (Math.random() * 5);
+        return next > 90 ? 90 : next; // Max out at 90% until complete
+      });
+    }, 200);
+    
     try {
       console.log("Starting PDF processing...");
       // Process the PDF file
       const result = await processBankStatement(file);
       console.log("PDF processing complete, result:", result);
       
+      clearInterval(progressInterval);
+      setExtractionProgress(100);
+      
       if (result.transactions.length === 0) {
-        setProcessingError("No transactions found in the PDF. Please try a different statement or format.");
+        setProcessingError("No transactions found in the PDF. Please try a different statement or format. This app works best with Nigerian bank statements that contain transaction tables.");
         toast({
           variant: "destructive",
           title: "No transactions found",
-          description: "We couldn't find any transactions in this PDF. Please try a different statement.",
+          description: "We couldn't find any transactions in this PDF. Please ensure it's a bank statement with transaction data.",
         });
         setIsProcessing(false);
         return;
@@ -94,8 +107,10 @@ const UploadCard = () => {
         description: `Extracted ${result.transactions.length} transactions from statement.`,
       });
     } catch (error) {
+      clearInterval(progressInterval);
       console.error("Error processing PDF:", error);
       setIsProcessing(false);
+      setExtractionProgress(0);
       const errorMessage = error instanceof Error ? error.message : 'Failed to process PDF';
       setError(errorMessage);
       setProcessingError(errorMessage);
@@ -113,6 +128,7 @@ const UploadCard = () => {
     setStatementData(null);
     setUploadComplete(false);
     setProcessingError(null);
+    setExtractionProgress(0);
   };
 
   return (
@@ -156,6 +172,9 @@ const UploadCard = () => {
                 onChange={handleFileSelect}
                 className="hidden"
               />
+              <p className="mt-6 text-sm text-muted-foreground">
+                Works best with Nigerian bank statements from OPay, Kuda, GTBank, and others.
+              </p>
             </>
           ) : (
             <div className="w-full">
@@ -168,8 +187,14 @@ const UploadCard = () => {
                     <div className="flex-1">
                       <p className="font-medium">Processing...</p>
                       <div className="h-1 w-full bg-muted mt-2 rounded-full overflow-hidden">
-                        <div className="h-full bg-primary/80 animate-pulse w-2/3 rounded-full"></div>
+                        <div 
+                          className="h-full bg-primary/80 rounded-full transition-all duration-300"
+                          style={{ width: `${extractionProgress}%` }}
+                        ></div>
                       </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Extracting transactions ({Math.round(extractionProgress)}%)
+                      </p>
                     </div>
                   </div>
                 ) : (
