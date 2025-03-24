@@ -1,4 +1,3 @@
-
 import * as pdfjs from 'pdfjs-dist';
 
 // Get the version of pdfjs being used
@@ -60,9 +59,20 @@ export const extractTextFromPdf = async (file: File): Promise<string[]> => {
         console.log(`Processing page ${i} of ${numPages}`);
         const page = await pdf.getPage(i);
         const content = await page.getTextContent();
-        const text = content.items
-          .map((item: any) => item.str)
-          .join(' ');
+        
+        // Extract text with line breaks preserved
+        let lastY = null;
+        let text = '';
+        
+        // Process text by lines based on y-position
+        for (const item of content.items) {
+          const itemObj = item as any;
+          if (lastY !== null && lastY !== itemObj.transform[5]) {
+            text += '\n'; // Add line break when y-position changes
+          }
+          text += itemObj.str;
+          lastY = itemObj.transform[5];
+        }
         
         console.log(`Extracted ${text.length} characters from page ${i}`);
         textContent.push(text);
@@ -106,194 +116,307 @@ export const extractTextFromPdf = async (file: File): Promise<string[]> => {
 };
 
 /**
- * Process extracted text to identify transactions
- * Enhanced implementation with better pattern matching
+ * Process extracted text to identify transactions for Nigerian bank statements
  */
 export const processTransactions = (textContent: string[]): ProcessedStatement => {
   console.log('Starting transaction processing from extracted text');
   
-  // Sample implementation - this would need to be customized based on specific bank statement formats
   const transactions: BankTransaction[] = [];
   let totalIncome = 0;
   let totalExpense = 0;
   
-  // Improved regex patterns for date, description and amounts
-  const datePattern = /(\d{1,2}\/\d{1,2}\/\d{2,4}|\d{1,2}-\d{1,2}-\d{2,4}|\w+\s+\d{1,2},?\s+\d{4})/;
-  const amountPattern = /(\$|\€|\£|₦)?(\d{1,3}(,\d{3})*(\.\d{2})?)/;
+  let statementStartDate: string | undefined;
+  let statementEndDate: string | undefined;
+  
+  // Try to extract statement period from the first page
+  if (textContent.length > 0) {
+    const firstPage = textContent[0];
+    
+    // Extract start and end dates
+    const startDateMatch = firstPage.match(/Start Date\s+(\d{1,2}\s+\w+\s+\d{4})/);
+    const endDateMatch = firstPage.match(/End Date\s+(\d{1,2}\s+\w+\s+\d{4})/);
+    
+    if (startDateMatch) {
+      statementStartDate = startDateMatch[1];
+      console.log('Found statement start date:', statementStartDate);
+    }
+    
+    if (endDateMatch) {
+      statementEndDate = endDateMatch[1];
+      console.log('Found statement end date:', statementEndDate);
+    }
+  }
+  
+  // Multiple patterns to match transactions in different formats
+  const patterns = [
+    // Pattern 1: For Nigerian bank statements (₦ currency symbol)
+    // Date, description, amount with currency symbol ₦
+    /(\d{1,2}\s+\w+\s+\d{4})\s+([^₦]+)₦\s*([0-9,.]+)/g,
+    
+    // Pattern 2: Date (dd/mm/yyyy), description, amount
+    /(\d{1,2}\/\d{1,2}\/\d{4})\s+([^₦]+?)\s+₦?\s*([0-9,.]+)/g,
+    
+    // Pattern 3: Date (dd-mm-yyyy), description, amount
+    /(\d{1,2}-\d{1,2}-\d{4})\s+([^₦]+?)\s+₦?\s*([0-9,.]+)/g,
+    
+    // Pattern 4: More relaxed pattern for tables
+    /(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})\s+(.*?)\s+(\d{1,3}(?:,\d{3})*\.\d{2})/g,
+  ];
   
   // Process each page of text
   textContent.forEach((pageText, pageIndex) => {
     console.log(`Processing text from page ${pageIndex + 1}, length: ${pageText.length} characters`);
     
-    // Split text into lines and clean up
-    const lines = pageText
-      .split(/\r?\n/)
-      .filter(line => line.trim().length > 0)
-      .map(line => line.trim());
+    // Split text into lines for better processing
+    const lines = pageText.split('\n').filter(line => line.trim().length > 0);
+    console.log(`Page ${pageIndex + 1} has ${lines.length} lines after splitting`);
     
-    console.log(`Page ${pageIndex + 1} split into ${lines.length} lines`);
-    let matchesFound = 0;
+    // Print some sample lines for debugging
+    if (lines.length > 0) {
+      console.log('Sample lines:');
+      for (let i = 0; i < Math.min(5, lines.length); i++) {
+        console.log(`Line ${i + 1}: ${lines[i].substring(0, 100)}${lines[i].length > 100 ? '...' : ''}`);
+      }
+    }
     
-    lines.forEach((line, lineIndex) => {
-      // Skip header or summary lines
-      if (line.includes('BALANCE') || line.includes('PAGE') || 
-          line.includes('STATEMENT') || line.length < 10) {
-        return;
+    let totalMatchesFound = 0;
+    
+    // Look for transaction table sections
+    let inTransactionSection = false;
+    let transactionSection = '';
+    
+    // First, try to identify transaction section
+    for (const line of lines) {
+      const lowerLine = line.toLowerCase();
+      
+      // Check if we're entering a transaction section
+      if (lowerLine.includes('transaction') && 
+          (lowerLine.includes('date') || lowerLine.includes('description') || lowerLine.includes('amount'))) {
+        inTransactionSection = true;
+        console.log('Found transaction section header:', line);
+        continue;
       }
       
-      // Try to extract date
-      const dateMatch = line.match(datePattern);
-      if (!dateMatch) return;
-      
-      // Try to extract amount
-      const amountMatch = line.match(amountPattern);
-      if (!amountMatch) return;
-      
-      // Everything between date and amount is likely the description
-      const dateIndex = line.indexOf(dateMatch[0]);
-      const amountIndex = line.lastIndexOf(amountMatch[0]);
-      
-      if (dateIndex >= 0 && amountIndex > dateIndex) {
-        const date = dateMatch[0];
-        const description = line.substring(dateIndex + dateMatch[0].length, amountIndex).trim()
-          .replace(/\s+/g, ' '); // Clean up extra spaces
-        
-        // Remove currency symbols and commas from amount and convert to number
-        const amountStr = amountMatch[0].replace(/[$€£₦]/g, '').replace(/,/g, '');
-        const amount = parseFloat(amountStr);
-        
-        // Skip invalid amounts
-        if (isNaN(amount) || amount <= 0) return;
-        
-        matchesFound++;
-        
-        // Determine if it's a credit or debit
-        // This logic would need to be customized for specific bank formats
-        const isCredit = line.toLowerCase().includes('credit') || 
-                          line.toLowerCase().includes('deposit') || 
-                          line.toLowerCase().includes('payment received');
-        const type = isCredit ? 'credit' : 'debit';
-        
-        // Add to appropriate total
-        if (isCredit) {
-          totalIncome += amount;
-        } else {
-          totalExpense += amount;
+      // Collect lines in transaction section
+      if (inTransactionSection) {
+        // Check if we're exiting the transaction section (summary section or blank line)
+        if (lowerLine.includes('total') || lowerLine.includes('balance') || lowerLine.includes('summary') || line.trim() === '') {
+          inTransactionSection = false;
+          continue;
         }
         
-        // Create transaction object and add to array
-        const transaction: BankTransaction = {
-          date,
-          description,
-          amount,
-          type,
-          category: categorizeTransaction(description)
-        };
-        
-        console.log(`Found transaction: ${date} | ${description} | $${amount} | ${type}`);
-        transactions.push(transaction);
+        transactionSection += line + '\n';
       }
-    });
+    }
     
-    console.log(`Found ${matchesFound} transaction matches on page ${pageIndex + 1}`);
-  });
-
-  // If no transactions were found, try an alternative approach
-  if (transactions.length === 0) {
-    console.log("No transactions found with primary method, trying alternative approach");
+    console.log(`Collected ${transactionSection.length} characters of transaction data`);
     
-    // More aggressive pattern matching
-    textContent.forEach((pageText, pageIndex) => {
-      console.log(`Trying alternative pattern matching on page ${pageIndex + 1}`);
-      
-      // Look for table-like structures with dates and amounts
-      const tablePattern = /(\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4})\s+(.*?)\s+(\d+\.\d{2})/g;
+    // Try all patterns against the transaction section
+    for (const pattern of patterns) {
       let match;
-      let altMatchesFound = 0;
+      let matchesForPattern = 0;
       
-      while ((match = tablePattern.exec(pageText)) !== null) {
-        const date = match[1];
-        const description = match[2].trim();
-        const amount = parseFloat(match[3]);
-        
-        if (!isNaN(amount) && amount > 0) {
-          altMatchesFound++;
+      // Reset the regex index
+      pattern.lastIndex = 0;
+      
+      // Check the whole page first
+      while ((match = pattern.exec(pageText)) !== null) {
+        try {
+          const date = match[1].trim();
+          const description = match[2].trim().replace(/\s+/g, ' '); // Clean up extra spaces
+          
+          // Remove currency symbols, commas, and normalize dots
+          const amountStr = match[3].replace(/[₦$€£]/g, '').replace(/,/g, '');
+          const amount = parseFloat(amountStr);
+          
+          // Skip invalid amounts
+          if (isNaN(amount) || amount <= 0) continue;
+          
+          matchesForPattern++;
+          
+          // Try to determine if it's credit or debit
+          // For Nigerian statements, might need to look for keywords
+          const isCredit = description.toLowerCase().includes('credit') || 
+                          description.toLowerCase().includes('deposit') || 
+                          description.toLowerCase().includes('transfer received') ||
+                          description.toLowerCase().includes('inflow');
+          
+          const type = isCredit ? 'credit' : 'debit';
+          
+          // Add to appropriate total
+          if (isCredit) {
+            totalIncome += amount;
+          } else {
+            totalExpense += amount;
+          }
+          
+          // Create transaction object
           const transaction: BankTransaction = {
             date,
             description,
             amount,
-            type: 'debit',  // Default to debit
+            type,
             category: categorizeTransaction(description)
           };
           
+          console.log(`Found transaction: ${date} | ${description} | ${amount} | ${type}`);
           transactions.push(transaction);
-          totalExpense += amount;
-          console.log(`Alternative pattern found transaction: ${date} | ${description} | $${amount}`);
+        } catch (error) {
+          console.warn('Error processing match:', error);
         }
       }
       
-      // Try another pattern that might match dates and amounts
-      const dateAmountPattern = /(\d{1,2}\/\d{1,2}\/\d{2,4}).*?(\$|\€|\£|₦)?(\d+\.\d{2})/g;
-      while ((match = dateAmountPattern.exec(pageText)) !== null) {
-        const date = match[1];
-        const fullMatch = match[0];
-        const amount = parseFloat(match[3]);
+      if (matchesForPattern > 0) {
+        console.log(`Found ${matchesForPattern} transactions using pattern: ${pattern.toString().substring(0, 50)}...`);
+        totalMatchesFound += matchesForPattern;
+      }
+      
+      // If we found transactions with this pattern, try the next one
+      if (matchesForPattern > 0) {
+        continue;
+      }
+      
+      // If no matches found with the regular patterns, try line-by-line processing
+      if (transactions.length === 0) {
+        // Regex patterns for individual elements
+        const datePattern = /(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}|\d{1,2}\s+\w+\s+\d{4})/;
+        const amountPattern = /₦\s*([0-9,.]+)|([0-9,.]+)/;
         
-        if (!isNaN(amount) && amount > 0) {
-          altMatchesFound++;
+        for (const line of lines) {
+          // Skip header or summary lines
+          if (line.includes('BALANCE') || line.includes('STATEMENT') || line.length < 10) {
+            continue;
+          }
+          
+          const dateMatch = line.match(datePattern);
+          if (!dateMatch) continue;
+          
+          const amountMatch = line.match(amountPattern);
+          if (!amountMatch) continue;
+          
+          const date = dateMatch[0].trim();
+          const amountStr = (amountMatch[1] || amountMatch[2]).replace(/,/g, '');
+          const amount = parseFloat(amountStr);
+          
+          if (isNaN(amount) || amount <= 0) continue;
+          
           // Extract description (everything between date and amount)
-          const dateEndIndex = fullMatch.indexOf(date) + date.length;
-          const amountStartIndex = fullMatch.lastIndexOf(match[3]);
-          let description = fullMatch.substring(dateEndIndex, amountStartIndex).trim();
+          const dateIndex = line.indexOf(dateMatch[0]) + dateMatch[0].length;
+          const amountIndex = line.lastIndexOf(amountMatch[0]);
+          let description = '';
           
-          // Clean up description
-          description = description.replace(/\s+/g, ' ').trim();
+          if (amountIndex > dateIndex) {
+            description = line.substring(dateIndex, amountIndex).trim().replace(/\s+/g, ' ');
+          } else {
+            // If we can't determine description position, use the rest of the line
+            description = line.substring(dateIndex).replace(amountMatch[0], '').trim();
+          }
           
+          // Skip if description is too short
+          if (description.length < 2) continue;
+          
+          const isCredit = description.toLowerCase().includes('credit') || 
+                           description.toLowerCase().includes('deposit') || 
+                           description.toLowerCase().includes('received');
+          
+          const type = isCredit ? 'credit' : 'debit';
+          
+          // Add to appropriate total
+          if (isCredit) {
+            totalIncome += amount;
+          } else {
+            totalExpense += amount;
+          }
+          
+          // Create transaction object
           const transaction: BankTransaction = {
             date,
             description,
             amount,
-            type: 'debit',  // Default to debit
+            type,
             category: categorizeTransaction(description)
           };
           
-          console.log(`Second alternative pattern found transaction: ${date} | ${description} | $${amount}`);
+          console.log(`Found transaction using line-by-line: ${date} | ${description} | ${amount} | ${type}`);
           transactions.push(transaction);
-          totalExpense += amount;
+          totalMatchesFound++;
         }
       }
-      
-      console.log(`Found ${altMatchesFound} transaction matches with alternative patterns on page ${pageIndex + 1}`);
-    });
-  }
+    }
+    
+    console.log(`Found ${totalMatchesFound} total transaction matches on page ${pageIndex + 1}`);
+  });
 
   console.log(`Total transactions extracted: ${transactions.length}`);
   console.log(`Total income: $${totalIncome.toFixed(2)}, Total expense: $${totalExpense.toFixed(2)}`);
   
   // Sort transactions by date (newest first)
   transactions.sort((a, b) => {
-    const dateA = new Date(a.date);
-    const dateB = new Date(b.date);
-    return dateB.getTime() - dateA.getTime();
+    try {
+      // Try to normalize date formats for proper sorting
+      const dateA = new Date(normalizeDateString(a.date));
+      const dateB = new Date(normalizeDateString(b.date));
+      
+      if (isNaN(dateA.getTime()) || isNaN(dateB.getTime())) {
+        console.warn('Invalid date format for sorting:', a.date, b.date);
+        return 0;
+      }
+      
+      return dateB.getTime() - dateA.getTime();
+    } catch (error) {
+      console.warn('Error sorting by date:', error);
+      return 0;
+    }
   });
-  
-  // Determine statement period
-  let startDate, endDate;
-  if (transactions.length > 0) {
-    const dates = transactions.map(t => new Date(t.date).getTime());
-    startDate = new Date(Math.min(...dates)).toLocaleDateString();
-    endDate = new Date(Math.max(...dates)).toLocaleDateString();
-    console.log(`Statement period: ${startDate} to ${endDate}`);
-  }
   
   return {
     transactions,
     totalIncome,
     totalExpense,
     balance: totalIncome - totalExpense,
-    startDate,
-    endDate
+    startDate: statementStartDate,
+    endDate: statementEndDate
   };
+};
+
+/**
+ * Helper function to normalize date strings for consistent parsing
+ */
+const normalizeDateString = (dateStr: string): string => {
+  // Handle formats like "12 Mar 2025"
+  const monthNameFormat = /(\d{1,2})\s+(\w{3})\s+(\d{4})/;
+  const monthNameMatch = dateStr.match(monthNameFormat);
+  
+  if (monthNameMatch) {
+    const day = monthNameMatch[1];
+    const month = monthNameMatch[2];
+    const year = monthNameMatch[3];
+    return `${day} ${month} ${year}`;
+  }
+  
+  // Handle dd/mm/yyyy format
+  const slashFormat = /(\d{1,2})\/(\d{1,2})\/(\d{4})/;
+  const slashMatch = dateStr.match(slashFormat);
+  
+  if (slashMatch) {
+    const day = slashMatch[1];
+    const month = slashMatch[2];
+    const year = slashMatch[3];
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  }
+  
+  // Handle dd-mm-yyyy format
+  const dashFormat = /(\d{1,2})-(\d{1,2})-(\d{4})/;
+  const dashMatch = dateStr.match(dashFormat);
+  
+  if (dashMatch) {
+    const day = dashMatch[1];
+    const month = dashMatch[2];
+    const year = dashMatch[3];
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  }
+  
+  return dateStr;
 };
 
 /**
