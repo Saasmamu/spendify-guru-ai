@@ -59,7 +59,8 @@ export const generateInsights = async (
       }
     }
 
-    const model = genAI!.getGenerativeModel({ model: 'gemini-pro' });
+    // Use gemini-1.0-pro model instead of gemini-pro
+    const model = genAI!.getGenerativeModel({ model: 'gemini-1.0-pro' });
 
     // Prepare the prompt with transaction data
     const prompt = `

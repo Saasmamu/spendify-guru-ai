@@ -1,6 +1,7 @@
 
 import { Outlet } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
+import { Toaster } from '@/components/ui/toaster';
 
 const Dashboard = () => {
   return (
@@ -9,6 +10,7 @@ const Dashboard = () => {
       <div className="container mx-auto pt-8">
         <Outlet />
       </div>
+      <Toaster />
     </div>
   );
 };
