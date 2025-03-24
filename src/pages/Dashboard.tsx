@@ -6,7 +6,7 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen">
       <Navbar />
-      <div className="pt-20">
+      <div className="container mx-auto pt-8">
         <Outlet />
       </div>
     </div>

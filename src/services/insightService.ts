@@ -2,9 +2,8 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { ProcessedStatement } from './pdfService';
 
-// Hardcoded API key for the entire app
-// IMPORTANT: In a production environment, this should be stored in a secure environment variable
-const GEMINI_API_KEY = 'YOUR_GEMINI_API_KEY';
+// Set the default Gemini API key
+const GEMINI_API_KEY = 'AIzaSyAazifqpQ7imFjw57NsrKmelrq1hpEnxbE';
 
 // Initialize the Gemini API with the API key
 let genAI: GoogleGenerativeAI | null = null;

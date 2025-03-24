@@ -4,14 +4,15 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import StatCard from '@/components/StatCard';
-import Navbar from '@/components/Navbar';
-import { PieChart, ArrowDown, ArrowUp, DollarSign, ShoppingBag, Home, Car, Coffee, Tag, SparkleIcon } from 'lucide-react';
+import { PieChart as PieChartIcon, ArrowDown, ArrowUp, DollarSign, ShoppingBag, Home, Car, Coffee, Tag, SparkleIcon } from 'lucide-react';
 import { useStatement } from '@/contexts/StatementContext';
 import ApiKeyInput from '@/components/ApiKeyInput';
-import { getGeminiApiKey, generateInsights, hasGeminiApiKey } from '@/services/insightService';
+import { generateInsights, hasGeminiApiKey } from '@/services/insightService';
 import { useToast } from '@/components/ui/use-toast';
 import { BankTransaction } from '@/services/pdfService';
 import { useNavigate } from 'react-router-dom';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 
 const processCategoriesFromTransactions = (transactions: BankTransaction[]) => {
   const categoryMap = new Map();
@@ -27,34 +28,35 @@ const processCategoriesFromTransactions = (transactions: BankTransaction[]) => {
   });
   
   const categoryIcons: Record<string, any> = {
-    'Shopping': { icon: ShoppingBag, color: 'bg-blue-500' },
-    'Housing': { icon: Home, color: 'bg-green-500' },
-    'Transportation': { icon: Car, color: 'bg-amber-500' },
-    'Food & Dining': { icon: Coffee, color: 'bg-red-500' },
-    'Miscellaneous': { icon: Tag, color: 'bg-purple-500' }
+    'Shopping': { icon: ShoppingBag, color: 'bg-blue-500', pieColor: '#3b82f6' },
+    'Housing': { icon: Home, color: 'bg-green-500', pieColor: '#22c55e' },
+    'Transportation': { icon: Car, color: 'bg-amber-500', pieColor: '#f59e0b' },
+    'Food & Dining': { icon: Coffee, color: 'bg-red-500', pieColor: '#ef4444' },
+    'Miscellaneous': { icon: Tag, color: 'bg-purple-500', pieColor: '#a855f7' }
   };
   
   return Array.from(categoryMap.entries()).map(([name, data]: [string, any]) => {
     const amount = data.amount;
     const percentage = Math.round((amount / totalAmount) * 100);
-    const { icon, color } = categoryIcons[name] || categoryIcons['Miscellaneous'];
+    const { icon, color, pieColor } = categoryIcons[name] || categoryIcons['Miscellaneous'];
     
     return {
       name,
       amount,
       percentage,
       icon,
-      color
+      color,
+      pieColor
     };
   }).sort((a, b) => b.amount - a.amount);
 };
 
 const mockCategories = [
-  { name: 'Shopping', amount: 1240, percentage: 28, icon: ShoppingBag, color: 'bg-blue-500' },
-  { name: 'Housing', amount: 1800, percentage: 40, icon: Home, color: 'bg-green-500' },
-  { name: 'Transportation', amount: 450, percentage: 10, icon: Car, color: 'bg-amber-500' },
-  { name: 'Food & Dining', amount: 680, percentage: 15, icon: Coffee, color: 'bg-red-500' },
-  { name: 'Miscellaneous', amount: 320, percentage: 7, icon: Tag, color: 'bg-purple-500' }
+  { name: 'Shopping', amount: 1240, percentage: 28, icon: ShoppingBag, color: 'bg-blue-500', pieColor: '#3b82f6' },
+  { name: 'Housing', amount: 1800, percentage: 40, icon: Home, color: 'bg-green-500', pieColor: '#22c55e' },
+  { name: 'Transportation', amount: 450, percentage: 10, icon: Car, color: 'bg-amber-500', pieColor: '#f59e0b' },
+  { name: 'Food & Dining', amount: 680, percentage: 15, icon: Coffee, color: 'bg-red-500', pieColor: '#ef4444' },
+  { name: 'Miscellaneous', amount: 320, percentage: 7, icon: Tag, color: 'bg-purple-500', pieColor: '#a855f7' }
 ];
 
 const mockTransactions = [
@@ -68,15 +70,37 @@ const mockTransactions = [
   { id: 8, date: '2023-06-03', description: 'Grocery Store', amount: 112.34, category: 'Food & Dining' }
 ];
 
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
+const RADIAN = Math.PI / 180;
+
+const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, index, name }: any) => {
+  const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+  return (
+    <text 
+      x={x} 
+      y={y} 
+      fill="white" 
+      textAnchor={x > cx ? 'start' : 'end'} 
+      dominantBaseline="central"
+      className="text-xs font-medium"
+    >
+      {`${(percent * 100).toFixed(0)}%`}
+    </text>
+  );
+};
+
 const Analyze = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { statementData } = useStatement();
   const [loaded, setLoaded] = useState(false);
-  const [activeChart, setActiveChart] = useState('all');
   const [insights, setInsights] = useState<string[]>([]);
   const [isGeneratingInsights, setIsGeneratingInsights] = useState(false);
   const [useRealData, setUseRealData] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
   
   useEffect(() => {
     if (statementData && statementData.transactions && statementData.transactions.length > 0) {
@@ -97,10 +121,24 @@ const Analyze = () => {
   }, []);
 
   useEffect(() => {
-    if (statementData && statementData.transactions.length > 0 && hasGeminiApiKey()) {
+    if (statementData && statementData.transactions.length > 0) {
       generateAIInsights();
     }
   }, [statementData]);
+
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      setActiveIndex(prevIndex => {
+        const categories = useRealData && statementData?.transactions 
+          ? processCategoriesFromTransactions(statementData.transactions)
+          : mockCategories;
+          
+        return (prevIndex + 1) % categories.length;
+      });
+    }, 3000);
+
+    return () => clearInterval(intervalId);
+  }, [statementData, useRealData]);
 
   const categories = useRealData && statementData?.transactions 
     ? processCategoriesFromTransactions(statementData.transactions)
@@ -114,21 +152,28 @@ const Analyze = () => {
     ? statementData.totalExpense
     : mockCategories.reduce((sum, category) => sum + category.amount, 0);
 
+  const chartData = categories.map(category => ({
+    name: category.name,
+    value: category.amount,
+    color: category.pieColor
+  }));
+
+  const CHART_CONFIG = {
+    expenses: {
+      label: "Expenses",
+      theme: {
+        light: "hsl(var(--chart-1))",
+        dark: "hsl(var(--chart-1))"
+      }
+    }
+  };
+
   const generateAIInsights = async () => {
     if (!statementData) {
       toast({
         variant: "destructive",
         title: "No data available",
         description: "Please upload a bank statement to generate insights."
-      });
-      return;
-    }
-    
-    if (!hasGeminiApiKey()) {
-      toast({
-        variant: "destructive",
-        title: "API Key Required",
-        description: "Please enter your Gemini API key to generate insights."
       });
       return;
     }
@@ -155,271 +200,307 @@ const Analyze = () => {
       title: "No Statement Data",
       description: "Please upload a bank statement first.",
     });
-    navigate('/upload');
+    navigate('/dashboard/upload');
+  };
+
+  const onPieEnter = (_: any, index: number) => {
+    setActiveIndex(index);
   };
 
   return (
-    <div className="min-h-screen pb-20">
-      <Navbar />
-      
-      <div className="max-w-6xl mx-auto pt-32 px-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-10 animate-slide-down">
-          <div>
-            <h1 className="text-3xl md:text-4xl font-bold mb-2">Spending Analysis</h1>
-            <p className="text-muted-foreground">
-              {useRealData 
-                ? `Analysis of your uploaded statement with ${statementData?.transactions.length} transactions`
-                : 'Example data shown. Please upload a statement for real insights.'}
-            </p>
-          </div>
-          <div className="mt-4 md:mt-0">
-            {!useRealData && (
-              <Button 
-                variant="default" 
-                className="gap-2 text-sm"
-                onClick={handleNoDataRedirect}
-              >
-                <DollarSign className="w-4 h-4" />
-                Upload Statement
-              </Button>
-            )}
-            {useRealData && (
-              <Button variant="outline" className="gap-2 text-sm">
-                <DollarSign className="w-4 h-4" />
-                Your Statement
-              </Button>
-            )}
-          </div>
+    <div className="max-w-6xl mx-auto pt-20 px-6 pb-20">
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-10 animate-slide-down">
+        <div>
+          <h1 className="text-3xl md:text-4xl font-bold mb-2">Spending Analysis</h1>
+          <p className="text-muted-foreground">
+            {useRealData 
+              ? `Analysis of your uploaded statement with ${statementData?.transactions.length} transactions`
+              : 'Example data shown. Please upload a statement for real insights.'}
+          </p>
         </div>
-        
-        {!loaded ? (
-          <div className="space-y-6 animate-pulse">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {[1, 2, 3].map((i) => (
-                <Card key={i} className="h-28">
-                  <CardContent className="p-6">
-                    <div className="h-5 w-24 bg-muted/50 rounded-md mb-4"></div>
-                    <div className="h-6 w-16 bg-muted/50 rounded-md"></div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-            <Card className="h-96">
-              <CardContent className="p-6">
-                <div className="h-full w-full flex flex-col items-center justify-center">
-                  <div className="w-20 h-20 rounded-full bg-muted/50 mb-4"></div>
-                  <div className="h-4 w-32 bg-muted/50 rounded-md"></div>
-                </div>
-              </CardContent>
-            </Card>
+        <div className="mt-4 md:mt-0">
+          {!useRealData && (
+            <Button 
+              variant="default" 
+              className="gap-2 text-sm"
+              onClick={handleNoDataRedirect}
+            >
+              <DollarSign className="w-4 h-4" />
+              Upload Statement
+            </Button>
+          )}
+          {useRealData && (
+            <Button variant="outline" className="gap-2 text-sm">
+              <DollarSign className="w-4 h-4" />
+              Your Statement
+            </Button>
+          )}
+        </div>
+      </div>
+      
+      {!loaded ? (
+        <div className="space-y-6 animate-pulse">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[1, 2, 3].map((i) => (
+              <Card key={i} className="h-28">
+                <CardContent className="p-6">
+                  <div className="h-5 w-24 bg-muted/50 rounded-md mb-4"></div>
+                  <div className="h-6 w-16 bg-muted/50 rounded-md"></div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
-        ) : (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-slide-up">
-              <StatCard
-                title="Total Expenses"
-                value={`$${totalSpent.toLocaleString()}`}
-                icon={<DollarSign className="w-4 h-4 text-primary" />}
-                trend="up"
-                trendValue={statementData ? `${statementData.transactions.length} items` : "+12%"}
-              />
-              <StatCard
-                title="Top Category"
-                value={categories[0]?.name || "N/A"}
-                icon={categories[0]?.icon ? React.createElement(categories[0].icon, { className: "w-4 h-4 text-green-500" }) : <Tag className="w-4 h-4 text-green-500" />}
-                trend="neutral"
-                trendValue={categories[0] ? `${categories[0].percentage}%` : "0%"}
-              />
-              <StatCard
-                title="Transactions"
-                value={transactions.length}
-                icon={<Tag className="w-4 h-4 text-amber-500" />}
-                trend="down"
-                trendValue={statementData ? `From ${statementData.startDate || 'unknown'}` : "-3%"}
-              />
-            </div>
+          <Card className="h-96">
+            <CardContent className="p-6">
+              <div className="h-full w-full flex flex-col items-center justify-center">
+                <div className="w-20 h-20 rounded-full bg-muted/50 mb-4"></div>
+                <div className="h-4 w-32 bg-muted/50 rounded-md"></div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-slide-up">
+            <StatCard
+              title="Total Expenses"
+              value={`$${totalSpent.toLocaleString()}`}
+              icon={<DollarSign className="w-4 h-4 text-primary" />}
+              trend="up"
+              trendValue={statementData ? `${statementData.transactions.length} items` : "+12%"}
+            />
+            <StatCard
+              title="Top Category"
+              value={categories[0]?.name || "N/A"}
+              icon={categories[0]?.icon ? React.createElement(categories[0].icon, { className: "w-4 h-4 text-green-500" }) : <Tag className="w-4 h-4 text-green-500" />}
+              trend="neutral"
+              trendValue={categories[0] ? `${categories[0].percentage}%` : "0%"}
+            />
+            <StatCard
+              title="Transactions"
+              value={transactions.length}
+              icon={<Tag className="w-4 h-4 text-amber-500" />}
+              trend="down"
+              trendValue={statementData ? `From ${statementData.startDate || 'unknown'}` : "-3%"}
+            />
+          </div>
+          
+          <Tabs defaultValue="categories" className="animate-blur-in" style={{ animationDelay: '200ms' }}>
+            <TabsList className="mb-6">
+              <TabsTrigger value="categories">Categories</TabsTrigger>
+              <TabsTrigger value="transactions">Transactions</TabsTrigger>
+              <TabsTrigger value="insights">AI Insights</TabsTrigger>
+            </TabsList>
             
-            <Tabs defaultValue="categories" className="animate-blur-in" style={{ animationDelay: '200ms' }}>
-              <TabsList className="mb-6">
-                <TabsTrigger value="categories">Categories</TabsTrigger>
-                <TabsTrigger value="transactions">Transactions</TabsTrigger>
-                <TabsTrigger value="insights">AI Insights</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="categories">
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      <div>
-                        <h3 className="text-lg font-medium mb-4">Spending by Category</h3>
-                        
-                        <div className="space-y-4 mt-6">
-                          {categories.map((category, index) => (
-                            <div key={index} className="animate-fade-in" style={{ animationDelay: `${index * 100}ms` }}>
-                              <div className="flex items-center justify-between mb-1">
-                                <div className="flex items-center">
-                                  <div className={cn("p-1.5 rounded-md mr-2", category.color)}>
-                                    {React.createElement(category.icon, { className: "w-3.5 h-3.5 text-white" })}
-                                  </div>
-                                  <span className="text-sm font-medium">{category.name}</span>
+            <TabsContent value="categories">
+              <Card>
+                <CardContent className="p-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div>
+                      <h3 className="text-lg font-medium mb-4">Spending by Category</h3>
+                      
+                      <div className="space-y-4 mt-6">
+                        {categories.map((category, index) => (
+                          <div key={index} className={cn(
+                            "animate-fade-in",
+                            index === activeIndex ? "scale-105 transition-transform" : ""
+                          )} style={{ animationDelay: `${index * 100}ms` }}>
+                            <div className="flex items-center justify-between mb-1">
+                              <div className="flex items-center">
+                                <div className={cn("p-1.5 rounded-md mr-2", category.color)}>
+                                  {React.createElement(category.icon, { className: "w-3.5 h-3.5 text-white" })}
                                 </div>
-                                <span className="text-sm font-medium">${category.amount.toFixed(2)}</span>
+                                <span className="text-sm font-medium">{category.name}</span>
                               </div>
-                              <div className="w-full h-2 bg-muted/50 rounded-full overflow-hidden">
-                                <div 
-                                  className={cn("h-full rounded-full", category.color)}
-                                  style={{ width: `${category.percentage}%`, transition: "width 1s ease-in-out" }}
-                                ></div>
-                              </div>
-                              <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                                <span>{category.percentage}%</span>
-                              </div>
+                              <span className="text-sm font-medium">${category.amount.toFixed(2)}</span>
                             </div>
-                          ))}
-                        </div>
+                            <div className="w-full h-2 bg-muted/50 rounded-full overflow-hidden">
+                              <div 
+                                className={cn("h-full rounded-full", category.color)}
+                                style={{ width: `${category.percentage}%`, transition: "width 1s ease-in-out" }}
+                              ></div>
+                            </div>
+                            <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                              <span>{category.percentage}%</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-center">
+                      <div className="h-64 w-full max-w-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={chartData}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={60}
+                              outerRadius={80}
+                              paddingAngle={5}
+                              dataKey="value"
+                              labelLine={false}
+                              label={renderCustomizedLabel}
+                              animationBegin={0}
+                              animationDuration={1500}
+                              animationEasing="ease-out"
+                              onMouseEnter={onPieEnter}
+                            >
+                              {chartData.map((entry, index) => (
+                                <Cell 
+                                  key={`cell-${index}`} 
+                                  fill={entry.color} 
+                                  className={cn(
+                                    "transition-opacity duration-300",
+                                    index === activeIndex ? "filter drop-shadow(0 0 8px rgba(0, 0, 0, 0.3))" : "opacity-70"
+                                  )}
+                                  stroke={index === activeIndex ? "#fff" : "none"}
+                                  strokeWidth={index === activeIndex ? 2 : 0}
+                                />
+                              ))}
+                            </Pie>
+                            <Tooltip 
+                              content={({ active, payload }) => {
+                                if (active && payload && payload.length) {
+                                  const data = payload[0].payload;
+                                  return (
+                                    <div className="bg-background border border-border p-2 rounded-md shadow-md">
+                                      <p className="font-medium">{data.name}</p>
+                                      <p className="text-sm">${data.value.toFixed(2)}</p>
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              }}
+                            />
+                            <Legend 
+                              layout="horizontal" 
+                              verticalAlign="bottom" 
+                              align="center"
+                              wrapperStyle={{ paddingTop: "20px" }}
+                            />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            <TabsContent value="transactions">
+              <Card>
+                <CardContent className="p-6">
+                  <h3 className="text-lg font-medium mb-4">Recent Transactions</h3>
+                  
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Date</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Description</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Category</th>
+                          <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {transactions.map((transaction, index) => (
+                          <tr 
+                            key={transaction.id || index}
+                            className={cn(
+                              "border-b border-border/50 hover:bg-muted/20 transition-colors",
+                              "animate-fade-in"
+                            )}
+                            style={{ animationDelay: `${index * 50}ms` }}
+                          >
+                            <td className="py-3 px-4 text-sm">
+                              {transaction.date}
+                            </td>
+                            <td className="py-3 px-4 text-sm font-medium">{transaction.description}</td>
+                            <td className="py-3 px-4 text-sm">
+                              <span className="px-2 py-1 rounded-full text-xs bg-muted/50">
+                                {transaction.category || "Uncategorized"}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-sm text-right font-medium">
+                              ${transaction.amount.toFixed(2)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            <TabsContent value="insights">
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
+                    <h3 className="text-lg font-medium">AI-Powered Insights</h3>
+                    <div className="mt-2 md:mt-0">
+                      <Button 
+                        onClick={generateAIInsights} 
+                        disabled={isGeneratingInsights}
+                        className="gap-2"
+                      >
+                        <SparkleIcon className="w-4 h-4" />
+                        {isGeneratingInsights ? 'Generating...' : 'Generate Insights'}
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  {insights.length > 0 ? (
+                    <div className="space-y-6">
+                      <div className="p-4 rounded-md bg-primary/5 border border-primary/20 animate-slide-up">
+                        <h4 className="font-medium flex items-center gap-2 mb-2">
+                          <ArrowDown className="w-4 h-4 text-green-500" />
+                          {insights[0] ? 'Spending Opportunity' : 'No Insights Available'}
+                        </h4>
+                        <p className="text-muted-foreground">
+                          {insights[0] || 'Generate insights to see recommendations based on your spending patterns.'}
+                        </p>
                       </div>
                       
-                      <div className="flex items-center justify-center">
-                        <div className="relative w-64 h-64">
-                          <div className="absolute inset-0 rounded-full border-8 border-muted/30 animate-float"></div>
-                          <div className="absolute inset-4 rounded-full border-8 border-blue-500/70 animate-pulse-subtle"></div>
-                          <div className="absolute inset-8 rounded-full border-8 border-green-500/70"></div>
-                          <div className="absolute inset-12 rounded-full border-8 border-amber-500/70 animate-pulse-subtle"></div>
-                          <div className="absolute inset-16 rounded-full border-8 border-red-500/70"></div>
-                          <div className="absolute inset-20 rounded-full border-8 border-purple-500/70 animate-pulse-subtle"></div>
-                          <div className="absolute inset-0 flex items-center justify-center flex-col text-center">
-                            <span className="text-3xl font-bold">${totalSpent.toFixed(2)}</span>
-                            <span className="text-sm text-muted-foreground">Total Spent</span>
-                          </div>
+                      {insights[1] && (
+                        <div className="p-4 rounded-md bg-amber-500/5 border border-amber-500/20 animate-slide-up" style={{ animationDelay: '100ms' }}>
+                          <h4 className="font-medium flex items-center gap-2 mb-2">
+                            <PieChartIcon className="w-4 h-4 text-amber-500" />
+                            Category Analysis
+                          </h4>
+                          <p className="text-muted-foreground">{insights[1]}</p>
                         </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-              
-              <TabsContent value="transactions">
-                <Card>
-                  <CardContent className="p-6">
-                    <h3 className="text-lg font-medium mb-4">Recent Transactions</h3>
-                    
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b">
-                            <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Date</th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Description</th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Category</th>
-                            <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Amount</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {transactions.map((transaction, index) => (
-                            <tr 
-                              key={transaction.id || index}
-                              className={cn(
-                                "border-b border-border/50 hover:bg-muted/20 transition-colors",
-                                "animate-fade-in"
-                              )}
-                              style={{ animationDelay: `${index * 50}ms` }}
-                            >
-                              <td className="py-3 px-4 text-sm">
-                                {transaction.date}
-                              </td>
-                              <td className="py-3 px-4 text-sm font-medium">{transaction.description}</td>
-                              <td className="py-3 px-4 text-sm">
-                                <span className="px-2 py-1 rounded-full text-xs bg-muted/50">
-                                  {transaction.category || "Uncategorized"}
-                                </span>
-                              </td>
-                              <td className="py-3 px-4 text-sm text-right font-medium">
-                                ${transaction.amount.toFixed(2)}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-              
-              <TabsContent value="insights">
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
-                      <h3 className="text-lg font-medium">AI-Powered Insights</h3>
-                      <div className="mt-2 md:mt-0">
-                        <Button 
-                          onClick={generateAIInsights} 
-                          disabled={isGeneratingInsights}
-                          className="gap-2"
-                        >
-                          <SparkleIcon className="w-4 h-4" />
-                          {isGeneratingInsights ? 'Generating...' : 'Generate Insights'}
-                        </Button>
-                      </div>
-                    </div>
-                    
-                    {hasGeminiApiKey() ? (
-                      insights.length > 0 ? (
-                        <div className="space-y-6">
-                          <div className="p-4 rounded-md bg-primary/5 border border-primary/20 animate-slide-up">
-                            <h4 className="font-medium flex items-center gap-2 mb-2">
-                              <ArrowDown className="w-4 h-4 text-green-500" />
-                              {insights[0] ? 'Spending Opportunity' : 'No Insights Available'}
-                            </h4>
-                            <p className="text-muted-foreground">
-                              {insights[0] || 'Generate insights to see recommendations based on your spending patterns.'}
-                            </p>
-                          </div>
-                          
-                          {insights[1] && (
-                            <div className="p-4 rounded-md bg-amber-500/5 border border-amber-500/20 animate-slide-up" style={{ animationDelay: '100ms' }}>
-                              <h4 className="font-medium flex items-center gap-2 mb-2">
-                                <PieChart className="w-4 h-4 text-amber-500" />
-                                Category Analysis
-                              </h4>
-                              <p className="text-muted-foreground">{insights[1]}</p>
-                            </div>
-                          )}
-                          
-                          {insights[2] && (
-                            <div className="p-4 rounded-md bg-green-500/5 border border-green-500/20 animate-slide-up" style={{ animationDelay: '200ms' }}>
-                              <h4 className="font-medium flex items-center gap-2 mb-2">
-                                <ArrowUp className="w-4 h-4 text-green-500" />
-                                Savings Recommendation
-                              </h4>
-                              <p className="text-muted-foreground">{insights[2]}</p>
-                            </div>
-                          )}
+                      )}
+                      
+                      {insights[2] && (
+                        <div className="p-4 rounded-md bg-green-500/5 border border-green-500/20 animate-slide-up" style={{ animationDelay: '200ms' }}>
+                          <h4 className="font-medium flex items-center gap-2 mb-2">
+                            <ArrowUp className="w-4 h-4 text-green-500" />
+                            Savings Recommendation
+                          </h4>
+                          <p className="text-muted-foreground">{insights[2]}</p>
                         </div>
-                      ) : (
-                        <div className="flex flex-col items-center justify-center py-8 text-center">
-                          <div className="bg-muted/30 p-4 rounded-full mb-4">
-                            <SparkleIcon className="w-8 h-8 text-primary/50" />
-                          </div>
-                          <h4 className="text-lg font-medium mb-2">No insights generated yet</h4>
-                          <p className="text-muted-foreground max-w-md mb-6">
-                            Click the "Generate Insights" button to get AI-powered recommendations based on your financial data.
-                          </p>
-                        </div>
-                      )
-                    ) : (
-                      <div className="space-y-6">
-                        <p className="text-muted-foreground mb-6">
-                          To generate AI-powered insights, you'll need to provide a Gemini API key.
-                        </p>
-                        <ApiKeyInput onKeySubmit={generateAIInsights} />
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-8 text-center">
+                      <div className="bg-muted/30 p-4 rounded-full mb-4">
+                        <SparkleIcon className="w-8 h-8 text-primary/50" />
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
-          </div>
-        )}
-      </div>
+                      <h4 className="text-lg font-medium mb-2">No insights generated yet</h4>
+                      <p className="text-muted-foreground max-w-md mb-6">
+                        Click the "Generate Insights" button to get AI-powered recommendations based on your financial data.
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </div>
+      )}
     </div>
   );
 };
