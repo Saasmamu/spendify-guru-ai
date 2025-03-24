@@ -3,10 +3,12 @@ import { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Receipt, Upload, PieChart, ArrowRight } from 'lucide-react';
+import { Receipt, Upload, PieChart, ArrowRight, LogIn } from 'lucide-react';
 import Navbar from '@/components/Navbar';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Index = () => {
+  const { user } = useAuth();
   const heroRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {
@@ -73,19 +75,32 @@ const Index = () => {
           </p>
           
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-slide-up" style={{ animationDelay: '200ms' }}>
-            <Link to="/upload">
-              <Button size="lg" className="rounded-full px-6 gap-2 h-12">
-                <Upload className="w-4 h-4" />
-                Upload Statement
-                <ArrowRight className="w-4 h-4 ml-1" />
-              </Button>
-            </Link>
-            <Link to="/analyze">
-              <Button size="lg" variant="outline" className="rounded-full px-6 gap-2 h-12">
-                <PieChart className="w-4 h-4" />
-                View Analysis
-              </Button>
-            </Link>
+            {user ? (
+              <Link to="/dashboard/upload">
+                <Button size="lg" className="rounded-full px-6 gap-2 h-12">
+                  <Upload className="w-4 h-4" />
+                  Go to Dashboard
+                  <ArrowRight className="w-4 h-4 ml-1" />
+                </Button>
+              </Link>
+            ) : (
+              <Link to="/auth">
+                <Button size="lg" className="rounded-full px-6 gap-2 h-12">
+                  <LogIn className="w-4 h-4" />
+                  Sign In
+                  <ArrowRight className="w-4 h-4 ml-1" />
+                </Button>
+              </Link>
+            )}
+            
+            {!user && (
+              <Link to="/auth">
+                <Button size="lg" variant="outline" className="rounded-full px-6 gap-2 h-12">
+                  <Receipt className="w-4 h-4" />
+                  Create Account
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
         
