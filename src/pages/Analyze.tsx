@@ -181,14 +181,27 @@ const Analyze = () => {
     setIsGeneratingInsights(true);
     
     try {
+      console.log('Starting insight generation with data:', 
+        `${statementData.transactions.length} transactions, income: ${statementData.totalIncome}, expenses: ${statementData.totalExpense}`);
       const generatedInsights = await generateInsights(statementData);
       setInsights(generatedInsights);
+      
+      toast({
+        title: "Insights Generated",
+        description: "AI analysis of your statement is complete!",
+      });
     } catch (error) {
       console.error('Error generating insights:', error);
+      setInsights([
+        'Failed to generate AI insights. Please try again or check your connection.',
+        'Consider reviewing your largest transactions for savings opportunities.',
+        'Try categorizing your transactions to better understand spending patterns.'
+      ]);
+      
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to generate insights. Please try again."
+        description: "Failed to generate insights: " + (error instanceof Error ? error.message : "Unknown error"),
       });
     } finally {
       setIsGeneratingInsights(false);
@@ -493,6 +506,12 @@ const Analyze = () => {
                       <p className="text-muted-foreground max-w-md mb-6">
                         Click the "Generate Insights" button to get AI-powered recommendations based on your financial data.
                       </p>
+                      {!hasGeminiApiKey() && (
+                        <div className="mt-2 p-3 bg-amber-100 dark:bg-amber-900/20 text-amber-800 dark:text-amber-300 rounded-md text-sm max-w-md">
+                          <p className="font-medium mb-1">API Key Required</p>
+                          <p>Please set your Gemini API key in the settings to enable AI insights.</p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </CardContent>
@@ -506,3 +525,4 @@ const Analyze = () => {
 };
 
 export default Analyze;
+

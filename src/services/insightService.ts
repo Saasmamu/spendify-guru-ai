@@ -12,19 +12,32 @@ let genAI: GoogleGenerativeAI | null = null;
  * Initialize the Gemini API client
  */
 const initializeGeminiAPI = () => {
-  if (!genAI && GEMINI_API_KEY) {
-    genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    return true;
+  try {
+    const apiKey = getGeminiApiKey();
+    if (!genAI && apiKey) {
+      console.log('Initializing Gemini API with key');
+      genAI = new GoogleGenerativeAI(apiKey);
+      return true;
+    }
+    return !!genAI;
+  } catch (error) {
+    console.error('Error initializing Gemini API:', error);
+    return false;
   }
-  return !!genAI;
 };
 
 /**
  * Set a custom Gemini API key
  */
 export const setGeminiApiKey = (key: string) => {
-  localStorage.setItem('gemini_api_key', key);
-  genAI = new GoogleGenerativeAI(key);
+  try {
+    console.log('Setting new Gemini API key');
+    localStorage.setItem('gemini_api_key', key);
+    genAI = new GoogleGenerativeAI(key);
+  } catch (error) {
+    console.error('Error setting Gemini API key:', error);
+    throw new Error('Failed to set API key');
+  }
 };
 
 /**
@@ -53,18 +66,21 @@ export const generateInsights = async (
       // Try to use a stored key if available
       const storedKey = localStorage.getItem('gemini_api_key');
       if (storedKey) {
+        console.log('Using stored API key');
         genAI = new GoogleGenerativeAI(storedKey);
       } else {
+        console.error('No Gemini API key available');
         throw new Error('Gemini API key not available');
       }
     }
 
-    // Use gemini-1.0-pro model instead of gemini-pro
-    const model = genAI!.getGenerativeModel({ model: 'gemini-1.0-pro' });
+    // Use the latest Gemini 1.5-flash model
+    console.log('Using Gemini 1.5-flash model');
+    const model = genAI!.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
     // Prepare the prompt with transaction data
     const prompt = `
-      Please analyze this financial data and provide 3 concise, actionable insights for the user.
+      Please analyze this financial data from a bank statement and provide 3 concise, actionable insights for the user.
       Focus on spending patterns, potential savings opportunities, and budget recommendations.
       Keep each insight to 1-2 sentences. Format each insight as a separate response.
 
@@ -80,10 +96,12 @@ export const generateInsights = async (
       ${getTopTransactions(statement)}
     `;
 
+    console.log('Sending prompt to Gemini');
     // Generate the response
     const result = await model.generateContent(prompt);
     const response = result.response;
     const text = response.text();
+    console.log('Received response from Gemini:', text.substring(0, 100) + '...');
 
     // Split into separate insights
     const insights = text
@@ -92,11 +110,20 @@ export const generateInsights = async (
       .map(line => line.replace(/^\d+\.\s*/, '').trim())
       .slice(0, 3);
 
+    if (insights.length === 0) {
+      console.warn('No insights found in Gemini response');
+      return [
+        'Your highest spending category presents an opportunity to reduce expenses.',
+        'Consider reviewing your transaction history to identify recurring subscriptions you may no longer need.',
+        'Creating a monthly budget based on your recent spending patterns could help improve your financial position.'
+      ];
+    }
+
     return insights;
   } catch (error) {
     console.error('Error generating insights:', error);
     return [
-      'Failed to generate AI insights. Please check your API key.',
+      'Failed to generate AI insights. Please try again or check your internet connection.',
       'Consider reviewing your largest transactions for savings opportunities.',
       'Try categorizing your transactions to better understand spending patterns.'
     ];
