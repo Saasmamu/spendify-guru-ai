@@ -141,154 +141,244 @@ export const processTransactions = (textContent: string[]): ProcessedStatement =
     const firstPage = textContent[0];
     
     // Extract account name
-    const accountNameMatch = firstPage.match(/Account Name\s+([^\n]+)/);
+    const accountNameMatch = firstPage.match(/Account Name\s*:\s*([^\n]+)/i) || 
+                           firstPage.match(/Account Holder\s*:\s*([^\n]+)/i);
     if (accountNameMatch) {
       accountName = accountNameMatch[1].trim();
-      console.log('Found account name:', accountName);
+      console.log('Found account name/holder:', accountName);
     }
     
     // Extract account number
-    const accountNumberMatch = firstPage.match(/Account Number\s+([0-9]+)/);
+    const accountNumberMatch = firstPage.match(/Account Number\s*:\s*([0-9]+)/i);
     if (accountNumberMatch) {
       accountNumber = accountNumberMatch[1].trim();
       console.log('Found account number:', accountNumber);
     }
     
-    // Extract start and end dates
-    const startDateMatch = firstPage.match(/Start Date\s+(\d{1,2}\s+\w+\s+\d{4})/);
-    const endDateMatch = firstPage.match(/End Date\s+(\d{1,2}\s+\w+\s+\d{4})/);
-    
-    if (startDateMatch) {
-      statementStartDate = startDateMatch[1];
-      console.log('Found statement start date:', statementStartDate);
-    }
-    
-    if (endDateMatch) {
-      statementEndDate = endDateMatch[1];
-      console.log('Found statement end date:', statementEndDate);
+    // Extract statement period
+    const periodMatch = firstPage.match(/Statement Period\s*:\s*([^\n]+)/i);
+    if (periodMatch) {
+      const periodText = periodMatch[1].trim();
+      console.log('Found statement period:', periodText);
+      
+      // Try to parse start and end dates from period
+      const dateRangeMatch = periodText.match(/([A-Za-z]+\s+\d{1,2},?\s+\d{4})\s*[-–]\s*([A-Za-z]+\s+\d{1,2},?\s+\d{4})/);
+      if (dateRangeMatch) {
+        statementStartDate = dateRangeMatch[1];
+        statementEndDate = dateRangeMatch[2];
+        console.log('Parsed date range:', statementStartDate, 'to', statementEndDate);
+      }
     }
   }
 
   // Process table rows in Nigerian bank statement format
-  // Patterns to extract transaction rows
-  const lookForTransactionTable = (text: string) => {
-    // Find table header and transaction rows
-    const tableHeaderPattern = /Trans Date\s+Value Date\s+Description\s+Debit\/Credit\s+Balance/i;
-    const hasTransactionTable = tableHeaderPattern.test(text);
+  const tryExtractTable = (text: string) => {
+    // Find common transaction table headers
+    const tableHeaders = [
+      'Date\\s+Description\\s+Type\\s+Amount\\s+Balance',
+      'Trans Date\\s+Value Date\\s+Description\\s+Debit/Credit\\s+Balance',
+      'Date\\s+Description\\s+Withdrawals\\s+Deposits\\s+Balance',
+      'Date\\s+Details\\s+Debit\\s+Credit\\s+Balance'
+    ];
     
-    if (hasTransactionTable) {
-      console.log('Found transaction table header - using table parsing logic');
+    let hasTable = false;
+    for (const headerPattern of tableHeaders) {
+      if (new RegExp(headerPattern, 'i').test(text)) {
+        hasTable = true;
+        break;
+      }
+    }
+    
+    if (hasTable || text.includes('Transaction History')) {
+      console.log('Found transaction table header - using enhanced table parsing logic');
       
-      // Split by lines to process each row
+      // Split content by lines
       const lines = text.split('\n');
-      let inTransactionSection = false;
       
-      // Process each line as a potential transaction
+      // Detect table start by finding a line that has multiple column headers
+      let tableStartIndex = -1;
       for (let i = 0; i < lines.length; i++) {
-        const line = lines[i].trim();
+        if (lines[i].match(/Date|Trans Date|Description|Type|Amount|Balance|Debit|Credit|Withdrawals|Deposits/gi) 
+            && lines[i].match(/(Date|Trans Date|Description|Type|Amount|Balance|Debit|Credit|Withdrawals|Deposits)/gi)?.length >= 3) {
+          tableStartIndex = i;
+          console.log('Found table header row at line', i, ':', lines[i]);
+          break;
+        }
+      }
+      
+      if (tableStartIndex === -1) {
+        // Try to find a line with "Transaction History" which often precedes the table
+        for (let i = 0; i < lines.length; i++) {
+          if (lines[i].includes('Transaction History')) {
+            // The header is usually 1-3 lines after this title
+            for (let j = i + 1; j <= i + 3 && j < lines.length; j++) {
+              if (lines[j].match(/(Date|Description|Type|Amount|Balance|Debit|Credit)/gi)?.length >= 3) {
+                tableStartIndex = j;
+                console.log('Found table header after "Transaction History" at line', j, ':', lines[j]);
+                break;
+              }
+            }
+            break;
+          }
+        }
+      }
+      
+      if (tableStartIndex >= 0) {
+        // Determine the columns from the header
+        const headerLine = lines[tableStartIndex];
+        console.log('Analyzing header:', headerLine);
         
-        // Check if we've found the transaction table header
-        if (tableHeaderPattern.test(line)) {
-          inTransactionSection = true;
-          console.log('Found transaction table header at line', i);
-          continue;
+        // Identify column positions
+        const headerPositions: {name: string, start: number, end: number}[] = [];
+        
+        // Common column names and their variations
+        const columnPatterns = [
+          { name: 'date', pattern: /\b(Date|Trans Date)\b/i },
+          { name: 'description', pattern: /\b(Description|Details|Narration|Particulars)\b/i },
+          { name: 'type', pattern: /\b(Type|Trans Type)\b/i },
+          { name: 'debit', pattern: /\b(Debit|Withdrawal|Withdrawals|Out|Expense)\b/i },
+          { name: 'credit', pattern: /\b(Credit|Deposit|Deposits|In|Income)\b/i },
+          { name: 'amount', pattern: /\b(Amount|Amt)\b/i },
+          { name: 'balance', pattern: /\b(Balance|Bal|Ending Balance)\b/i }
+        ];
+
+        // Try to find the positions of each column in the header
+        for (const colInfo of columnPatterns) {
+          const matches = [...headerLine.matchAll(new RegExp(colInfo.pattern, 'gi'))];
+          for (const match of matches) {
+            if (match.index !== undefined) {
+              // Estimate the end of this column - either the start of the next word after a space, or end of line
+              const nextWordMatch = headerLine.substring(match.index + match[0].length).match(/\s+\S/);
+              const end = nextWordMatch 
+                  ? match.index + match[0].length + nextWordMatch.index + 1 
+                  : headerLine.length;
+              
+              headerPositions.push({
+                name: colInfo.name,
+                start: match.index,
+                end: end
+              });
+              
+              console.log(`Found column "${colInfo.name}" at position ${match.index}-${end}`);
+            }
+          }
         }
         
-        // Skip if not in transaction section or empty line
-        if (!inTransactionSection || line.length < 10) continue;
+        // Sort header positions by start position
+        headerPositions.sort((a, b) => a.start - b.start);
         
-        // Check for date pattern at beginning of line (indicating a transaction row)
-        const datePattern = /^\d{1,2}\s+\w{3}\s+\d{4}/;
-        if (!datePattern.test(line)) continue;
-        
-        // Try to parse transaction row - this handles the specific format in the PDF
-        try {
-          // Based on the PDF format - extract parts using position
-          const parts = line.split(/\s{2,}/); // Split by 2+ spaces
+        // Now process each line after the header as a potential transaction
+        for (let i = tableStartIndex + 1; i < lines.length; i++) {
+          const line = lines[i].trim();
           
-          if (parts.length >= 5) {
-            const transDate = parts[0].trim();
-            const valueDate = parts[1].trim();
-            const description = parts[2].trim();
+          // Skip empty lines or lines that don't look like transaction rows
+          if (line.length < 5 || !/\d/.test(line)) continue;
+          
+          // Skip lines that look like page headers or footers
+          if (line.match(/page|statement|generated|report|summary|total|balance/i) && !line.match(/\d{1,2}[-/]\d{1,2}[-/]\d{2,4}/)) continue;
+          
+          try {
+            // Extract values from each column based on positions
+            const rowValues: Record<string, string> = {};
             
-            // Extract debit/credit value
-            let amount = 0;
-            let type: 'debit' | 'credit' = 'debit';
-            
-            // Check for + prefix (credit) or - prefix (debit) in amount field
-            const amountStr = parts[3].trim();
-            if (amountStr.startsWith('+')) {
-              // Credit (money in)
-              type = 'credit';
-              amount = parseFloat(amountStr.replace(/[+₦,]/g, ''));
-              totalIncome += amount;
-            } else if (amountStr.startsWith('-')) {
-              // Debit (money out)
-              type = 'debit';
-              amount = parseFloat(amountStr.replace(/[-₦,]/g, ''));
-              totalExpense += amount;
-            } else {
-              // If no prefix, try to determine type based on description
-              const amountNum = parseFloat(amountStr.replace(/[₦,]/g, ''));
+            for (let j = 0; j < headerPositions.length; j++) {
+              const col = headerPositions[j];
+              const nextCol = headerPositions[j + 1];
               
-              if (description.toLowerCase().includes('credit') || 
-                 description.toLowerCase().includes('from')) {
-                type = 'credit';
-                totalIncome += amountNum;
+              // Get text in this column range
+              let value = '';
+              if (nextCol) {
+                // If there's another column, extract text between this column start and next column start
+                value = line.substring(
+                  Math.min(col.start, line.length), 
+                  Math.min(nextCol.start, line.length)
+                ).trim();
               } else {
-                type = 'debit'; 
-                totalExpense += amountNum;
+                // If this is the last column, take everything to the end
+                value = line.substring(Math.min(col.start, line.length)).trim();
               }
               
-              amount = amountNum;
+              // If positions don't work well due to varied formatting, do a fallback
+              if (!value && j === 0 && col.name === 'date') {
+                // Try to extract date at the beginning
+                const dateMatch = line.match(/^(\d{1,2}[-/]\d{1,2}[-/]\d{2,4}|\d{1,2}[-\s][A-Za-z]{3}[-\s]\d{2,4})/);
+                if (dateMatch) {
+                  value = dateMatch[0];
+                }
+              }
+              
+              rowValues[col.name] = value;
             }
             
-            // Extract balance
-            const balanceStr = parts[4].trim();
-            const balance = parseFloat(balanceStr.replace(/[₦,]/g, ''));
+            console.log('Extracted row values:', rowValues);
             
-            // Extract channel and reference if available
-            let channel = '';
-            let reference = '';
-            
-            if (parts.length > 5) {
-              channel = parts[5].trim();
+            // Determine if we have a valid transaction
+            if (rowValues.date && (rowValues.amount || rowValues.debit || rowValues.credit)) {
+              let transDate = rowValues.date;
+              let description = rowValues.description || '';
+              let transType: 'debit' | 'credit' = 'debit';
+              let amount = 0;
+              let balance = parseFloat(rowValues.balance?.replace(/[^\d.-]/g, '') || '0');
+              
+              // Parse amount
+              if (rowValues.amount) {
+                const cleanAmount = rowValues.amount.replace(/[^\d.-]/g, '');
+                amount = parseFloat(cleanAmount || '0');
+                
+                // Determine transaction type based on the type column or description
+                if (rowValues.type) {
+                  transType = rowValues.type.toLowerCase().includes('credit') ? 'credit' : 'debit';
+                } else if (description.toLowerCase().includes('credit') || 
+                          description.toLowerCase().includes('deposit')) {
+                  transType = 'credit';
+                }
+              } 
+              // If separate debit/credit columns
+              else if (rowValues.debit || rowValues.credit) {
+                if (rowValues.debit && rowValues.debit.replace(/[^\d.-]/g, '')) {
+                  amount = parseFloat(rowValues.debit.replace(/[^\d.-]/g, '') || '0');
+                  transType = 'debit';
+                } else if (rowValues.credit && rowValues.credit.replace(/[^\d.-]/g, '')) {
+                  amount = parseFloat(rowValues.credit.replace(/[^\d.-]/g, '') || '0');
+                  transType = 'credit';
+                }
+              }
+              
+              // Only add if we have a valid amount
+              if (amount > 0) {
+                const transaction: BankTransaction = {
+                  date: transDate,
+                  description,
+                  amount,
+                  type: transType,
+                  balance,
+                  category: categorizeTransaction(description)
+                };
+                
+                if (transType === 'credit') {
+                  totalIncome += amount;
+                } else {
+                  totalExpense += amount;
+                }
+                
+                console.log(`Found transaction from table: ${transDate} | ${description} | ${amount} | ${transType}`);
+                transactions.push(transaction);
+              }
             }
-            
-            if (parts.length > 6) {
-              reference = parts[6].trim();
-            }
-            
-            // Create transaction object
-            const transaction: BankTransaction = {
-              date: valueDate, // Use value date as the actual transaction date
-              description,
-              amount,
-              type,
-              balance,
-              channel,
-              reference,
-              category: categorizeTransaction(description)
-            };
-            
-            console.log(`Found transaction: ${valueDate} | ${description} | ${amount} | ${type}`);
-            transactions.push(transaction);
+          } catch (err) {
+            console.warn('Error processing transaction row:', err);
           }
-        } catch (error) {
-          console.warn('Error parsing transaction row:', error);
         }
       }
     }
   };
   
-  // Process each page of text
-  textContent.forEach((pageText, pageIndex) => {
-    console.log(`Processing text from page ${pageIndex + 1}, length: ${pageText.length} characters`);
-    
-    // Look for transaction tables in each page
-    lookForTransactionTable(pageText);
+  // Try to find tables in each page
+  textContent.forEach((pageText, index) => {
+    console.log(`Looking for transaction tables in page ${index + 1}`);
+    tryExtractTable(pageText);
   });
-  
+
   // If no transactions were found with table parsing, try line-by-line parsing with Nigerian patterns
   if (transactions.length === 0) {
     console.log('No transactions found with table parsing, trying line-by-line approach');
@@ -381,6 +471,195 @@ export const processTransactions = (textContent: string[]): ProcessedStatement =
             transactions.push(transaction);
           } catch (error) {
             console.warn('Error processing pattern match:', error);
+          }
+        }
+      }
+    });
+  }
+
+  // If still no transactions found, try to find structured transaction data
+  if (transactions.length === 0) {
+    console.log('Trying to extract structured transaction data from account summary information');
+    
+    // Look for account summary sections in each page
+    textContent.forEach((pageText) => {
+      // Look for total deposits/withdrawals in summary
+      const depositMatch = pageText.match(/Total Deposits:?\s*([^0-9]*)([\d,.]+)/i);
+      const withdrawalMatch = pageText.match(/Total Withdrawals:?\s*([^0-9]*)([\d,.]+)/i);
+      
+      if (depositMatch && withdrawalMatch) {
+        console.log('Found account summary with deposits and withdrawals');
+        
+        // Extract total values
+        const totalDepositsStr = depositMatch[2].replace(/[,]/g, '');
+        const totalWithdrawalsStr = withdrawalMatch[2].replace(/[,]/g, '');
+        
+        // Try to parse the numbers
+        try {
+          const totalDeposits = parseFloat(totalDepositsStr);
+          const totalWithdrawals = parseFloat(totalWithdrawalsStr);
+          
+          if (!isNaN(totalDeposits) && !isNaN(totalWithdrawals)) {
+            totalIncome += totalDeposits;
+            totalExpense += totalWithdrawals;
+            console.log(`Using summary totals - Deposits: ${totalDeposits}, Withdrawals: ${totalWithdrawals}`);
+          }
+        } catch (err) {
+          console.warn('Error parsing summary totals:', err);
+        }
+      }
+      
+      // Try to find individual transactions in tabular format - look for date patterns at line start
+      const lines = pageText.split('\n');
+      
+      // Check if this might be a table - look for multiple date-like entries
+      const datePatterns = [
+        /^\d{1,2}[-/]\d{1,2}[-/]\d{2,4}/, // dd/mm/yyyy or dd-mm-yyyy format
+        /^\d{1,2}[-\s][A-Za-z]{3}[-\s]\d{2,4}/, // dd-MMM-yyyy format
+        /^\d{2}-[A-Za-z]{3}-\d{2}/ // common Nigerian date format: dd-MMM-yy
+      ];
+      
+      let dateLineCount = 0;
+      lines.forEach(line => {
+        for (const pattern of datePatterns) {
+          if (pattern.test(line.trim())) {
+            dateLineCount++;
+            break;
+          }
+        }
+      });
+      
+      // If we have multiple date entries, this might be a transaction table
+      if (dateLineCount >= 3) {
+        console.log(`Found ${dateLineCount} potential transaction rows with date patterns`);
+        
+        // Process each line as a potential transaction
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i].trim();
+          let isDateLine = false;
+          
+          // Check if this line starts with a date
+          for (const pattern of datePatterns) {
+            if (pattern.test(line)) {
+              isDateLine = true;
+              break;
+            }
+          }
+          
+          if (isDateLine) {
+            try {
+              // Parse the line - try to extract date, description, amount, and type
+              const parts = line.split(/\s{2,}|\t/); // Split by 2+ spaces or tabs
+              
+              if (parts.length >= 3) {
+                // First part should be the date
+                const dateStr = parts[0].trim();
+                
+                // Description might be the second part or we might need to combine parts
+                let description = parts[1].trim();
+                let amountIndex = 2;
+                
+                // If we have many parts, try to detect which ones are the amounts
+                if (parts.length > 3) {
+                  // Find which parts contain currency values
+                  const currencyParts = parts.map((p, idx) => ({
+                    text: p.trim(),
+                    index: idx,
+                    hasCurrency: /[\d,.]+/.test(p.trim()) && !/^[0-9]{1,2}[-/][0-9]{1,2}/.test(p.trim()) // Has numbers but not a date
+                  }));
+                  
+                  const numberParts = currencyParts.filter(p => p.hasCurrency);
+                  
+                  // If we found some currency parts
+                  if (numberParts.length >= 2) {
+                    // The description is likely everything between date and first currency value
+                    const firstCurrencyIndex = numberParts[0].index;
+                    if (firstCurrencyIndex > 1) {
+                      description = parts.slice(1, firstCurrencyIndex).join(' ').trim();
+                      amountIndex = firstCurrencyIndex;
+                    }
+                  }
+                }
+                
+                // Try to determine if this is debit or credit
+                // In many statements, there are separate columns for debit and credit
+                let amount = 0;
+                let type: 'debit' | 'credit' = 'debit';
+                
+                // Check if we have debit/credit column format
+                const debitIndex = parts.findIndex(p => 
+                  p.trim().match(/^[\d,.]+$/) && !p.trim().match(/^0+[.,]?0*$/) && 
+                  (parts[amountIndex].trim() === '' || 
+                   parts[amountIndex+1]?.trim() === '')
+                );
+                
+                const creditIndex = parts.findIndex(p => 
+                  p.trim().match(/^[\d,.]+$/) && !p.trim().match(/^0+[.,]?0*$/) && 
+                  debitIndex >= 0 && p !== parts[debitIndex]
+                );
+                
+                if (debitIndex >= 0 && creditIndex >= 0) {
+                  // We have separate debit/credit columns
+                  const debitValue = parseFloat(parts[debitIndex].trim().replace(/[^0-9.]/g, ''));
+                  const creditValue = parseFloat(parts[creditIndex].trim().replace(/[^0-9.]/g, ''));
+                  
+                  if (creditValue > 0 && (debitValue === 0 || isNaN(debitValue))) {
+                    amount = creditValue;
+                    type = 'credit';
+                    totalIncome += amount;
+                  } else if (debitValue > 0) {
+                    amount = debitValue;
+                    type = 'debit';
+                    totalExpense += amount;
+                  }
+                }
+                // If we couldn't find separate columns, try to determine from description or other clues
+                else {
+                  // Get amount from the expected position
+                  if (amountIndex < parts.length) {
+                    const amountStr = parts[amountIndex].trim().replace(/[^0-9.,-]/g, '');
+                    amount = parseFloat(amountStr);
+                    
+                    // Determine type from description or context
+                    if (description.toLowerCase().includes('credit') || 
+                        description.toLowerCase().includes('deposit') ||
+                        description.toLowerCase().includes('salary')) {
+                      type = 'credit';
+                      totalIncome += amount;
+                    } else {
+                      totalExpense += amount;
+                    }
+                  }
+                }
+                
+                // Get balance if available (usually the last number)
+                let balance = 0;
+                for (let j = parts.length - 1; j >= 0; j--) {
+                  const partTxt = parts[j].trim();
+                  if (/^[\d,.]+$/.test(partTxt.replace(/[^0-9.,]/g, ''))) {
+                    balance = parseFloat(partTxt.replace(/[^0-9.]/g, ''));
+                    break;
+                  }
+                }
+                
+                // Only add if we have a valid amount
+                if (!isNaN(amount) && amount > 0) {
+                  const transaction: BankTransaction = {
+                    date: dateStr,
+                    description,
+                    amount,
+                    type,
+                    balance: isNaN(balance) ? undefined : balance,
+                    category: categorizeTransaction(description)
+                  };
+                  
+                  console.log(`Found transaction from structured data: ${dateStr} | ${description} | ${amount} | ${type}`);
+                  transactions.push(transaction);
+                }
+              }
+            } catch (err) {
+              console.warn('Error processing structured data line:', err);
+            }
           }
         }
       }
@@ -537,6 +816,17 @@ const normalizeDateString = (dateStr: string): string => {
     return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
   }
   
+  // Handle dd-MMM-yy format (common in Nigerian banks)
+  const nigerianFormat = /(\d{1,2})-([A-Za-z]{3})-(\d{2})/;
+  const nigerianMatch = dateStr.match(nigerianFormat);
+  
+  if (nigerianMatch) {
+    const day = nigerianMatch[1];
+    const month = nigerianMatch[2];
+    const year = `20${nigerianMatch[3]}`; // Assume 20xx for yy format
+    return `${day} ${month} ${year}`;
+  }
+  
   return dateStr;
 };
 
@@ -549,7 +839,7 @@ export const categorizeTransaction = (description: string): string => {
   const categories = [
     { name: 'Housing', keywords: ['rent', 'mortgage', 'hoa', 'property', 'housing', 'apartment', 'condo', 'lease', 'tenant'] },
     { name: 'Transportation', keywords: ['gas', 'uber', 'lyft', 'train', 'subway', 'bus', 'car', 'auto', 'vehicle', 'parking', 'toll', 'transport', 'taxi', 'fare'] },
-    { name: 'Food & Dining', keywords: ['restaurant', 'café', 'cafe', 'coffee', 'doordash', 'grubhub', 'uber eat', 'food', 'grocery', 'meal', 'supermarket', 'dine', 'lunch', 'dinner', 'breakfast', 'pizza', 'burger'] },
+    { name: 'Food & Dining', keywords: ['restaurant', 'café', 'cafe', 'coffee', 'doordash', 'grubhub', 'uber eat', 'food', 'grocery', 'meal', 'supermarket', 'dine', 'lunch', 'dinner', 'breakfast', 'pizza', 'burger', 'purchase', 'mart', 'market', 'pos', 'shop'] },
     { name: 'Shopping', keywords: ['amazon', 'walmart', 'target', 'costco', 'shop', 'store', 'buy', 'purchase', 'retail', 'market', 'mall', 'outlet', 'online', 'ecommerce'] },
     { name: 'Utilities', keywords: ['electric', 'water', 'gas', 'internet', 'phone', 'cell', 'utility', 'utilities', 'bill', 'cable', 'tv', 'service', 'provider', 'broadband'] },
     { name: 'Entertainment', keywords: ['movie', 'netflix', 'hulu', 'spotify', 'disney', 'game', 'entertain', 'theater', 'concert', 'event', 'ticket', 'show', 'streaming', 'subscription'] },
@@ -557,10 +847,11 @@ export const categorizeTransaction = (description: string): string => {
     { name: 'Education', keywords: ['tuition', 'book', 'course', 'class', 'school', 'university', 'college', 'education', 'student', 'loan', 'academic', 'degree', 'study'] },
     { name: 'Personal', keywords: ['haircut', 'salon', 'spa', 'gym', 'fitness', 'clothing', 'beauty', 'cosmetic', 'apparel', 'fashion'] },
     { name: 'Telecom', keywords: ['airtime', 'data', 'recharge', 'ussd', 'telecom', 'communication', 'mobile', 'phone', 'cellular', 'network', 'internet'] },
-    { name: 'Income', keywords: ['salary', 'payroll', 'deposit', 'direct deposit', 'income', 'revenue', 'payment received', 'wage', 'earnings', 'compensation', 'bonus'] },
+    { name: 'Income', keywords: ['salary', 'payroll', 'deposit', 'direct deposit', 'income', 'revenue', 'payment received', 'wage', 'earnings', 'compensation', 'bonus', 'credit'] },
     { name: 'Investments', keywords: ['invest', 'stock', 'dividend', 'bond', 'mutual fund', 'etf', 'retirement', 'ira', '401k', 'trading', 'portfolio'] },
     { name: 'Debt', keywords: ['loan', 'credit card', 'payment', 'interest', 'debt', 'finance charge', 'late fee', 'minimum payment'] },
-    { name: 'Transfers', keywords: ['transfer', 'send money', 'receive money', 'wire', 'zelle', 'venmo', 'cashapp', 'paypal'] }
+    { name: 'Transfers', keywords: ['transfer', 'send money', 'receive money', 'wire', 'zelle', 'venmo', 'cashapp', 'paypal'] },
+    { name: 'Cash', keywords: ['atm', 'cash', 'withdraw', 'withdrawal'] }
   ];
 
   for (const category of categories) {
