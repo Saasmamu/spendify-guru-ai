@@ -74,7 +74,7 @@ export const generateInsights = async (
       }
     }
 
-    // Use the latest Gemini 1.5-flash model
+    // Use the latest Gemini 1.5-flash model as requested
     console.log('Using Gemini 1.5-flash model');
     const model = genAI!.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
@@ -96,30 +96,63 @@ export const generateInsights = async (
       ${getTopTransactions(statement)}
     `;
 
-    console.log('Sending prompt to Gemini');
-    // Generate the response
-    const result = await model.generateContent(prompt);
-    const response = result.response;
-    const text = response.text();
-    console.log('Received response from Gemini:', text.substring(0, 100) + '...');
+    console.log('Sending prompt to Gemini with data summary:', 
+      `Income: $${statement.totalIncome.toFixed(2)}, Expenses: $${statement.totalExpense.toFixed(2)}, Categories: ${Object.keys(getCategoryCounts(statement)).length}`);
+    
+    try {
+      // Generate the response with timeout handling
+      const result = await Promise.race([
+        model.generateContent(prompt),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Request to Gemini API timed out after 15 seconds')), 15000)
+        )
+      ]) as any;
+      
+      const response = result.response;
+      const text = response.text();
+      console.log('Received response from Gemini:', text.substring(0, 100) + '...');
 
-    // Split into separate insights
-    const insights = text
-      .split('\n')
-      .filter(line => line.trim().length > 0 && !line.includes('Insight'))
-      .map(line => line.replace(/^\d+\.\s*/, '').trim())
-      .slice(0, 3);
+      // Split into separate insights
+      const insights = text
+        .split('\n')
+        .filter(line => line.trim().length > 0 && !line.includes('Insight'))
+        .map(line => line.replace(/^\d+\.\s*/, '').trim())
+        .slice(0, 3);
 
-    if (insights.length === 0) {
-      console.warn('No insights found in Gemini response');
-      return [
-        'Your highest spending category presents an opportunity to reduce expenses.',
-        'Consider reviewing your transaction history to identify recurring subscriptions you may no longer need.',
-        'Creating a monthly budget based on your recent spending patterns could help improve your financial position.'
-      ];
+      if (insights.length === 0) {
+        console.warn('No insights found in Gemini response');
+        return [
+          'Your highest spending category presents an opportunity to reduce expenses.',
+          'Consider reviewing your transaction history to identify recurring subscriptions you may no longer need.',
+          'Creating a monthly budget based on your recent spending patterns could help improve your financial position.'
+        ];
+      }
+
+      return insights;
+    } catch (apiError) {
+      console.error('Error during Gemini API call:', apiError);
+      // Try with fallback model if the first attempt fails
+      try {
+        console.log('Attempting with fallback model gemini-pro');
+        const fallbackModel = genAI!.getGenerativeModel({ model: 'gemini-pro' });
+        const fallbackResult = await fallbackModel.generateContent(prompt);
+        const fallbackText = fallbackResult.response.text();
+        
+        const fallbackInsights = fallbackText
+          .split('\n')
+          .filter(line => line.trim().length > 0 && !line.includes('Insight'))
+          .map(line => line.replace(/^\d+\.\s*/, '').trim())
+          .slice(0, 3);
+          
+        if (fallbackInsights.length > 0) {
+          return fallbackInsights;
+        }
+        throw new Error('Failed to generate insights with fallback model');
+      } catch (fallbackError) {
+        console.error('Fallback model also failed:', fallbackError);
+        throw apiError; // Throw the original error
+      }
     }
-
-    return insights;
   } catch (error) {
     console.error('Error generating insights:', error);
     return [
@@ -145,6 +178,20 @@ const getCategoryBreakdown = (statement: ProcessedStatement): string => {
   return Array.from(categories.entries())
     .map(([category, amount]) => `${category}: $${amount.toFixed(2)}`)
     .join('\n');
+};
+
+/**
+ * Helper function to get category counts for better logging
+ */
+const getCategoryCounts = (statement: ProcessedStatement): Record<string, number> => {
+  const categoryCounts: Record<string, number> = {};
+  
+  statement.transactions.forEach(transaction => {
+    const category = transaction.category || 'Uncategorized';
+    categoryCounts[category] = (categoryCounts[category] || 0) + 1;
+  });
+  
+  return categoryCounts;
 };
 
 /**
