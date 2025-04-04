@@ -92,23 +92,20 @@ export async function extractTransactionsFromImage(
       - Set the balance as the final account balance if available
     `;
 
-    // Construct the content parts for the API request
-    const content = {
-      role: 'user',
-      parts: [
-        { text: prompt },
-        {
-          inlineData: {
-            mimeType: imageFile.type,
-            data: imageBase64.split(',')[1] // Remove the data URL prefix
-          }
+    // Create parts for the Gemini API request
+    const parts = [
+      { text: prompt },
+      {
+        inlineData: {
+          mimeType: imageFile.type,
+          data: imageBase64.split(',')[1] // Remove the data URL prefix
         }
-      ]
-    };
+      }
+    ];
 
     // Generate content using the Gemini model
     console.log('Sending request to Gemini for transaction extraction');
-    const result: GenerateContentResult = await model.generateContent([content]);
+    const result: GenerateContentResult = await model.generateContent(parts);
 
     const response = result.response;
     const text = response.text();
@@ -155,8 +152,6 @@ export async function extractTransactionsFromImage(
         totalIncome,
         totalExpense,
         balance: parsedData.balance || totalIncome - totalExpense,
-        // Use only properties that exist in the ProcessedStatement type
-        // Remove accountHolder, accountNumber, period, bankName if they don't exist in the type
       };
       
       return result;
