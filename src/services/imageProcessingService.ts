@@ -1,4 +1,3 @@
-
 import { GoogleGenerativeAI, GenerateContentResult } from '@google/generative-ai';
 import { BankTransaction, ProcessedStatement } from './pdfService';
 import { getGeminiApiKey } from './insightService';
@@ -92,20 +91,21 @@ export async function extractTransactionsFromImage(
       - Set the balance as the final account balance if available
     `;
 
-    // Create parts for the Gemini API request
-    const parts = [
-      { text: prompt },
-      {
-        inlineData: {
-          mimeType: imageFile.type,
-          data: imageBase64.split(',')[1] // Remove the data URL prefix
-        }
-      }
-    ];
-
-    // Generate content using the Gemini model
+    // Generate content using the Gemini model with properly formatted request
     console.log('Sending request to Gemini for transaction extraction');
-    const result: GenerateContentResult = await model.generateContent(parts);
+    const result: GenerateContentResult = await model.generateContent({
+      contents: [{
+        parts: [
+          {text: prompt},
+          {
+            inlineData: {
+              mimeType: imageFile.type,
+              data: imageBase64.split(',')[1] // Remove the data URL prefix
+            }
+          }
+        ]
+      }]
+    });
 
     const response = result.response;
     const text = response.text();
@@ -128,6 +128,7 @@ export async function extractTransactionsFromImage(
         date: t.date,
         description: t.description,
         amount: typeof t.amount === 'number' ? t.amount : parseFloat(t.amount),
+        // Fix the case-sensitivity issue by converting both sides to uppercase
         type: t.type?.toUpperCase() === 'CREDIT' ? 'CREDIT' : 'DEBIT',
         category: t.category || categorizeTransaction(t.description)
       }));
