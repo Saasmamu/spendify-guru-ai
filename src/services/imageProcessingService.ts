@@ -128,8 +128,8 @@ export async function extractTransactionsFromImage(
           date: t.date,
           description: t.description,
           amount: typeof t.amount === 'number' ? t.amount : parseFloat(t.amount),
-          // Compare standardized uppercase values
-          type: transactionType === 'CREDIT' ? 'CREDIT' : 'DEBIT',
+          // Fix the case sensitivity issue by using typed literals instead of comparing strings
+          type: transactionType === 'CREDIT' ? 'CREDIT' as const : 'DEBIT' as const,
           category: t.category || categorizeTransaction(t.description)
         };
       });
