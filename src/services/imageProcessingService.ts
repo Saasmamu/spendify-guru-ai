@@ -124,12 +124,16 @@ export async function extractTransactionsFromImage(
       const transactions: BankTransaction[] = (parsedData.transactions || []).map((t: any) => {
         // Standardize the transaction type to uppercase to avoid case-sensitivity issues
         const transactionType = t.type?.toUpperCase();
+        
+        // Using explicit type assertion to match the expected BankTransaction type
         return {
           date: t.date,
           description: t.description,
           amount: typeof t.amount === 'number' ? t.amount : parseFloat(t.amount),
-          // Fix the case sensitivity issue by using typed literals instead of comparing strings
-          type: transactionType === 'CREDIT' ? 'CREDIT' as const : 'DEBIT' as const,
+          // Use proper type assertion based on the actual type definition in BankTransaction
+          type: transactionType === 'CREDIT' 
+            ? ('CREDIT' as BankTransaction['type']) 
+            : ('DEBIT' as BankTransaction['type']),
           category: t.category || categorizeTransaction(t.description)
         };
       });
