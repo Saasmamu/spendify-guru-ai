@@ -92,28 +92,23 @@ export async function extractTransactionsFromImage(
       - Set the balance as the final account balance if available
     `;
 
-    // Construct parts array with image and text
-    const parts = [
-      { text: prompt },
-      {
-        inlineData: {
-          mimeType: imageFile.type,
-          data: imageBase64.split(',')[1] // Remove the data URL prefix
+    // Construct the content parts for the API request
+    const content = {
+      role: 'user',
+      parts: [
+        { text: prompt },
+        {
+          inlineData: {
+            mimeType: imageFile.type,
+            data: imageBase64.split(',')[1] // Remove the data URL prefix
+          }
         }
-      }
-    ];
+      ]
+    };
 
     // Generate content using the Gemini model
     console.log('Sending request to Gemini for transaction extraction');
-    const result: GenerateContentResult = await model.generateContent({
-      contents: [{ role: 'user', parts }],
-      generationConfig: {
-        temperature: 0.1,
-        topK: 1,
-        topP: 0.95,
-        maxOutputTokens: 2048,
-      },
-    });
+    const result: GenerateContentResult = await model.generateContent([content]);
 
     const response = result.response;
     const text = response.text();
@@ -121,8 +116,8 @@ export async function extractTransactionsFromImage(
     
     // Extract the JSON part from the response
     const jsonMatch = text.match(/```(?:json)?([\s\S]*?)```/) || 
-                     text.match(/{[\s\S]*}/) || 
-                     [null, text];
+                      text.match(/{[\s\S]*}/) || 
+                      [null, text];
     
     const jsonString = jsonMatch[1]?.trim() || text.trim();
     console.log('Extracted JSON string:', jsonString.substring(0, 200) + '...');
@@ -160,10 +155,8 @@ export async function extractTransactionsFromImage(
         totalIncome,
         totalExpense,
         balance: parsedData.balance || totalIncome - totalExpense,
-        accountHolder: parsedData.accountHolder || '',
-        accountNumber: parsedData.accountNumber || '',
-        period: parsedData.period || '',
-        bankName: parsedData.bankName || ''
+        // Use only properties that exist in the ProcessedStatement type
+        // Remove accountHolder, accountNumber, period, bankName if they don't exist in the type
       };
       
       return result;
