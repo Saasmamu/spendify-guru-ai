@@ -9,6 +9,63 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      financial_goals: {
+        Row: {
+          ai_suggestions: string[] | null
+          category: string | null
+          created_at: string | null
+          current_amount: number | null
+          description: string | null
+          goal_type: Database["public"]["Enums"]["goal_type"]
+          id: string
+          last_notification_date: string | null
+          notifications_enabled: boolean | null
+          start_date: string | null
+          status: Database["public"]["Enums"]["goal_status"] | null
+          target_amount: number
+          target_date: string
+          title: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          ai_suggestions?: string[] | null
+          category?: string | null
+          created_at?: string | null
+          current_amount?: number | null
+          description?: string | null
+          goal_type?: Database["public"]["Enums"]["goal_type"]
+          id?: string
+          last_notification_date?: string | null
+          notifications_enabled?: boolean | null
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["goal_status"] | null
+          target_amount: number
+          target_date: string
+          title: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          ai_suggestions?: string[] | null
+          category?: string | null
+          created_at?: string | null
+          current_amount?: number | null
+          description?: string | null
+          goal_type?: Database["public"]["Enums"]["goal_type"]
+          id?: string
+          last_notification_date?: string | null
+          notifications_enabled?: boolean | null
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["goal_status"] | null
+          target_amount?: number
+          target_date?: string
+          title?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -33,15 +90,89 @@ export type Database = {
         }
         Relationships: []
       }
+      saved_analyses: {
+        Row: {
+          categories: Json
+          created_at: string
+          date: string
+          id: string
+          insights: Json
+          name: string
+          total_expense: number
+          total_income: number
+          transactions: Json
+          user_id: string
+        }
+        Insert: {
+          categories: Json
+          created_at?: string
+          date?: string
+          id: string
+          insights: Json
+          name: string
+          total_expense: number
+          total_income: number
+          transactions: Json
+          user_id: string
+        }
+        Update: {
+          categories?: Json
+          created_at?: string
+          date?: string
+          id?: string
+          insights?: Json
+          name?: string
+          total_expense?: number
+          total_income?: number
+          transactions?: Json
+          user_id?: string
+        }
+        Relationships: []
+      }
+      subscriptions: {
+        Row: {
+          created_at: string | null
+          id: string
+          plan: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          plan: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          plan?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
-      [_ in never]: never
+      goal_progress_stats: {
+        Row: {
+          active_goals: number | null
+          average_progress: number | null
+          completed_goals: number | null
+          off_track_goals: number | null
+          total_goals: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      goal_status: "in_progress" | "completed" | "off_track" | "failed"
+      goal_type: "savings" | "budget" | "debt_payment" | "custom"
     }
     CompositeTypes: {
       [_ in never]: never

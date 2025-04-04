@@ -1,12 +1,13 @@
 
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { Upload, File, Check, X, AlertTriangle } from 'lucide-react';
+import { Upload, File, Image, Check, X, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 import { useStatement } from '@/contexts/StatementContext';
 import { processBankStatement } from '@/services/pdfService';
+import { extractTransactionsFromImage } from '@/services/imageProcessingService';
 
 const UploadCard = () => {
   const { toast } = useToast();
@@ -22,6 +23,7 @@ const UploadCard = () => {
   const [uploadComplete, setUploadComplete] = useState(false);
   const [processingError, setProcessingError] = useState<string | null>(null);
   const [extractionProgress, setExtractionProgress] = useState(0);
+  const [fileType, setFileType] = useState<'pdf' | 'image' | null>(null);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -53,16 +55,20 @@ const UploadCard = () => {
     setProcessingError(null);
     setExtractionProgress(0);
     
-    // Check if file is PDF
-    if (file.type !== 'application/pdf') {
+    // Check if file is PDF or image
+    const isPdf = file.type === 'application/pdf';
+    const isImage = file.type.startsWith('image/');
+    
+    if (!isPdf && !isImage) {
       toast({
         variant: "destructive",
         title: "Invalid file type",
-        description: "Please upload a PDF file.",
+        description: "Please upload a PDF or image file (JPG, PNG, etc.).",
       });
       return;
     }
-
+    
+    setFileType(isPdf ? 'pdf' : 'image');
     setIsProcessing(true);
     setError(null);
     
@@ -75,20 +81,25 @@ const UploadCard = () => {
     }, 200);
     
     try {
-      console.log("Starting PDF processing...");
-      // Process the PDF file
-      const result = await processBankStatement(file);
-      console.log("PDF processing complete, result:", result);
+      console.log(`Starting ${isPdf ? 'PDF' : 'image'} processing...`);
+      
+      // Process the file based on its type
+      const result = isPdf 
+        ? await processBankStatement(file)
+        : await extractTransactionsFromImage(file);
+      
+      console.log(`${isPdf ? 'PDF' : 'Image'} processing complete, result:`, result);
       
       clearInterval(progressInterval);
       setExtractionProgress(100);
       
       if (result.transactions.length === 0) {
-        setProcessingError("No transactions found in the PDF. Please try a different statement or format. This app works best with Nigerian bank statements that contain transaction tables.");
+        const errorMessage = `No transactions found in the ${isPdf ? 'PDF' : 'image'}. Please try a different ${isPdf ? 'statement' : 'image'}.`;
+        setProcessingError(errorMessage);
         toast({
           variant: "destructive",
           title: "No transactions found",
-          description: "We couldn't find any transactions in this PDF. Please ensure it's a bank statement with transaction data.",
+          description: `We couldn't find any transactions in this ${isPdf ? 'PDF' : 'image'}. Please ensure it's a bank statement with transaction data.`,
         });
         setIsProcessing(false);
         return;
@@ -104,21 +115,21 @@ const UploadCard = () => {
       
       toast({
         title: "Processing complete",
-        description: `Extracted ${result.transactions.length} transactions from statement.`,
+        description: `Extracted ${result.transactions.length} transactions from ${isPdf ? 'statement' : 'image'}.`,
       });
     } catch (error) {
       clearInterval(progressInterval);
-      console.error("Error processing PDF:", error);
+      console.error(`Error processing ${isPdf ? 'PDF' : 'image'}:`, error);
       setIsProcessing(false);
       setExtractionProgress(0);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to process PDF';
+      const errorMessage = error instanceof Error ? error.message : `Failed to process ${isPdf ? 'PDF' : 'image'}`;
       setError(errorMessage);
       setProcessingError(errorMessage);
       
       toast({
         variant: "destructive",
         title: "Processing failed",
-        description: "Could not extract data from the PDF. Please try another file.",
+        description: `Could not extract data from the ${isPdf ? 'PDF' : 'image'}. Please try another file.`,
       });
     }
   };
@@ -129,6 +140,7 @@ const UploadCard = () => {
     setUploadComplete(false);
     setProcessingError(null);
     setExtractionProgress(0);
+    setFileType(null);
   };
 
   return (
@@ -155,7 +167,7 @@ const UploadCard = () => {
               </div>
               <h3 className="text-xl font-medium mb-2">Upload Bank Statement</h3>
               <p className="text-muted-foreground mb-6 max-w-md">
-                Drag and drop your PDF bank statement here, or click to browse your files
+                Drag and drop your bank statement (PDF or image) here, or click to browse your files
               </p>
               <Button 
                 onClick={() => document.getElementById('file-upload')?.click()}
@@ -168,12 +180,22 @@ const UploadCard = () => {
               <input
                 id="file-upload"
                 type="file"
-                accept="application/pdf"
+                accept="application/pdf,image/jpeg,image/png,image/jpg,image/webp"
                 onChange={handleFileSelect}
                 className="hidden"
               />
-              <p className="mt-6 text-sm text-muted-foreground">
-                Works best with Nigerian bank statements from OPay, Kuda, GTBank, and others.
+              <div className="mt-6 flex items-center justify-center gap-4">
+                <div className="flex items-center text-sm text-muted-foreground">
+                  <File className="w-4 h-4 mr-2" />
+                  <span>PDF Statements</span>
+                </div>
+                <div className="flex items-center text-sm text-muted-foreground">
+                  <Image className="w-4 h-4 mr-2" />
+                  <span>Statement Images</span>
+                </div>
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Works with most Nigerian bank statements
               </p>
             </>
           ) : (
@@ -182,7 +204,11 @@ const UploadCard = () => {
                 {isProcessing ? (
                   <div className="flex-1 flex items-center">
                     <div className="animate-spin mr-3">
-                      <File className="w-5 h-5 text-primary" />
+                      {fileType === 'pdf' ? (
+                        <File className="w-5 h-5 text-primary" />
+                      ) : (
+                        <Image className="w-5 h-5 text-primary" />
+                      )}
                     </div>
                     <div className="flex-1">
                       <p className="font-medium">Processing...</p>
@@ -205,7 +231,11 @@ const UploadCard = () => {
                       ) : processingError ? (
                         <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400" />
                       ) : (
-                        <File className="w-4 h-4 text-primary" />
+                        fileType === 'pdf' ? (
+                          <File className="w-4 h-4 text-primary" />
+                        ) : (
+                          <Image className="w-4 h-4 text-primary" />
+                        )
                       )}
                     </div>
                     <div className="flex-1">
