@@ -95,17 +95,12 @@ export async function extractTransactionsFromImage(
     // Generate content using the Gemini model with properly formatted request
     console.log('Sending request to Gemini for transaction extraction');
     const result: GenerateContentResult = await model.generateContent([
+      prompt,
       {
-        role: "user",
-        parts: [
-          { text: prompt },
-          {
-            inlineData: {
-              mimeType: imageFile.type,
-              data: imageBase64.split(',')[1] // Remove the data URL prefix
-            }
-          }
-        ]
+        inlineData: {
+          mimeType: imageFile.type,
+          data: imageBase64.split(',')[1] // Remove the data URL prefix
+        }
       }
     ]);
 
@@ -126,14 +121,18 @@ export async function extractTransactionsFromImage(
       const parsedData = JSON.parse(jsonString);
       
       // Process the extracted data
-      const transactions: BankTransaction[] = (parsedData.transactions || []).map((t: any) => ({
-        date: t.date,
-        description: t.description,
-        amount: typeof t.amount === 'number' ? t.amount : parseFloat(t.amount),
-        // Fix the case-sensitivity issue by standardizing to uppercase for comparison
-        type: t.type?.toUpperCase() === 'CREDIT' ? 'CREDIT' : 'DEBIT',
-        category: t.category || categorizeTransaction(t.description)
-      }));
+      const transactions: BankTransaction[] = (parsedData.transactions || []).map((t: any) => {
+        // Standardize the transaction type to uppercase to avoid case-sensitivity issues
+        const transactionType = t.type?.toUpperCase();
+        return {
+          date: t.date,
+          description: t.description,
+          amount: typeof t.amount === 'number' ? t.amount : parseFloat(t.amount),
+          // Compare standardized uppercase values
+          type: transactionType === 'CREDIT' ? 'CREDIT' : 'DEBIT',
+          category: t.category || categorizeTransaction(t.description)
+        };
+      });
       
       console.log(`Successfully extracted ${transactions.length} transactions from image`);
       
