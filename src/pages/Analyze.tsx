@@ -100,14 +100,14 @@ const mockCategories = [
 ];
 
 const mockTransactions: BankTransaction[] = [
-  { id: 1, date: '2023-06-15', description: 'Whole Foods Market', amount: 78.35, category: 'Food & Dining', type: 'debit' },
-  { id: 2, date: '2023-06-14', description: 'Amazon.com', amount: 124.99, category: 'Shopping', type: 'debit' },
-  { id: 3, date: '2023-06-13', description: 'Uber', amount: 24.50, category: 'Transportation', type: 'debit' },
-  { id: 4, date: '2023-06-10', description: 'Rent Payment', amount: 1800, category: 'Housing', type: 'debit' },
-  { id: 5, date: '2023-06-08', description: 'Starbucks', amount: 5.65, category: 'Food & Dining', type: 'debit' },
-  { id: 6, date: '2023-06-06', description: 'Target', amount: 95.47, category: 'Shopping', type: 'debit' },
-  { id: 7, date: '2023-06-05', description: 'Gas Station', amount: 45.23, category: 'Transportation', type: 'debit' },
-  { id: 8, date: '2023-06-03', description: 'Grocery Store', amount: 112.34, category: 'Food & Dining', type: 'debit' }
+  { date: '2023-06-15', description: 'Whole Foods Market', amount: 78.35, category: 'Food & Dining', type: 'debit' },
+  { date: '2023-06-14', description: 'Amazon.com', amount: 124.99, category: 'Shopping', type: 'debit' },
+  { date: '2023-06-13', description: 'Uber', amount: 24.50, category: 'Transportation', type: 'debit' },
+  { date: '2023-06-10', description: 'Rent Payment', amount: 1800, category: 'Housing', type: 'debit' },
+  { date: '2023-06-08', description: 'Starbucks', amount: 5.65, category: 'Food & Dining', type: 'debit' },
+  { date: '2023-06-06', description: 'Target', amount: 95.47, category: 'Shopping', type: 'debit' },
+  { date: '2023-06-05', description: 'Gas Station', amount: 45.23, category: 'Transportation', type: 'debit' },
+  { date: '2023-06-03', description: 'Grocery Store', amount: 112.34, category: 'Food & Dining', type: 'debit' }
 ];
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
