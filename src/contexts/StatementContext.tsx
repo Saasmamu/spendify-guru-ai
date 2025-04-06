@@ -2,15 +2,23 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { BankTransaction, ProcessedStatement } from '../services/pdfService';
 
+interface PreviousMonthData {
+  totalExpense: number;
+  totalIncome: number;
+  categoryPercentages: Record<string, number>;
+}
+
 interface StatementContextType {
   statementData: ProcessedStatement | null;
   uploadedFile: File | null;
   isProcessing: boolean;
   error: string | null;
+  previousMonthData: PreviousMonthData | null;
   setUploadedFile: (file: File | null) => void;
   setStatementData: (data: ProcessedStatement | null) => void;
   setIsProcessing: (isProcessing: boolean) => void;
   setError: (error: string | null) => void;
+  setPreviousMonthData: (data: PreviousMonthData | null) => void;
   clearData: () => void;
 }
 
@@ -21,6 +29,7 @@ export const StatementProvider = ({ children }: { children: ReactNode }) => {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [previousMonthData, setPreviousMonthData] = useState<PreviousMonthData | null>(null);
 
   // Debug logging for context changes
   useEffect(() => {
@@ -41,6 +50,7 @@ export const StatementProvider = ({ children }: { children: ReactNode }) => {
     setStatementData(null);
     setUploadedFile(null);
     setError(null);
+    setPreviousMonthData(null);
   };
 
   return (
@@ -50,10 +60,12 @@ export const StatementProvider = ({ children }: { children: ReactNode }) => {
         uploadedFile,
         isProcessing,
         error,
+        previousMonthData,
         setUploadedFile,
         setStatementData,
         setIsProcessing,
         setError,
+        setPreviousMonthData,
         clearData
       }}
     >

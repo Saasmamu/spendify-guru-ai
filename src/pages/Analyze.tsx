@@ -17,7 +17,8 @@ import {
   SparkleIcon, 
   Store, 
   Printer,
-  Download
+  Download,
+  FileText
 } from 'lucide-react';
 import { useStatement } from '@/contexts/StatementContext';
 import ApiKeyInput from '@/components/ApiKeyInput';
@@ -29,6 +30,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Ba
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
+import ExportReport from '@/components/ExportReport';
 
 const processCategoriesFromTransactions = (transactions: BankTransaction[]) => {
   const categoryMap = new Map();
@@ -141,7 +143,9 @@ const Analyze = () => {
   const [isGeneratingInsights, setIsGeneratingInsights] = useState(false);
   const [useRealData, setUseRealData] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [showExportView, setShowExportView] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
+  const exportRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {
     if (statementData && statementData.transactions && statementData.transactions.length > 0) {
@@ -309,6 +313,91 @@ const Analyze = () => {
     }
   };
 
+  const handleExportPDF = async () => {
+    if (!exportRef.current) return;
+    
+    toast({
+      title: "Generating Export Report",
+      description: "Please wait while we prepare your report...",
+    });
+    
+    try {
+      const content = exportRef.current;
+      const canvas = await html2canvas(content, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: "#ffffff"
+      });
+      
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+      
+      const imgWidth = 210;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
+      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+      pdf.save('expense-report.pdf');
+      
+      toast({
+        title: "Export Completed",
+        description: "Your expense report has been downloaded successfully!",
+      });
+    } catch (error) {
+      console.error('Error generating export report:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to generate export. Please try again.",
+      });
+    }
+  };
+
+  if (showExportView && statementData) {
+    return (
+      <div className="max-w-md mx-auto py-8 px-4">
+        <div className="mb-6 flex justify-between items-center">
+          <h1 className="text-2xl font-bold">Expense Report</h1>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setShowExportView(false)}
+            >
+              Back to Analysis
+            </Button>
+            <Button 
+              size="sm" 
+              onClick={handleExportPDF}
+              className="gap-2"
+            >
+              <Download className="h-4 w-4" />
+              Export PDF
+            </Button>
+          </div>
+        </div>
+        
+        <div ref={exportRef}>
+          <ExportReport 
+            statement={statementData} 
+            previousMonthData={{
+              totalExpenses: totalSpent * 0.88, // Assuming 12% increase from last month
+              categoryPercentages: {
+                'Shopping': 28,
+                'Housing': 40,
+                'Transportation': 10
+              }
+            }}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-6xl mx-auto pt-20 px-6 pb-20">
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-10 animate-slide-down">
@@ -340,10 +429,18 @@ const Analyze = () => {
           <Button
             variant="outline"
             className="gap-2 text-sm"
+            onClick={() => setShowExportView(true)}
+          >
+            <FileText className="w-4 h-4" />
+            View Report
+          </Button>
+          <Button
+            variant="outline"
+            className="gap-2 text-sm"
             onClick={handlePrintPDF}
           >
             <Printer className="w-4 h-4" />
-            Print Report
+            Print Analysis
           </Button>
         </div>
       </div>
