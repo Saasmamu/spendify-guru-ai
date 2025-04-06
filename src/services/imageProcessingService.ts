@@ -1,4 +1,3 @@
-
 import { GoogleGenerativeAI, GenerateContentResult } from '@google/generative-ai';
 import { BankTransaction, ProcessedStatement } from './pdfService';
 import { getGeminiApiKey } from './insightService';
@@ -122,18 +121,16 @@ export async function extractTransactionsFromImage(
       
       // Process the extracted data
       const transactions: BankTransaction[] = (parsedData.transactions || []).map((t: any) => {
-        // Standardize the transaction type to uppercase to avoid case-sensitivity issues
-        const transactionType = t.type?.toUpperCase();
+        // Standardize the transaction type to uppercase for comparison but use lowercase for the actual value
+        const transactionTypeUpper = t.type?.toUpperCase();
         
         // Using explicit type assertion to match the expected BankTransaction type
         return {
           date: t.date,
           description: t.description,
           amount: typeof t.amount === 'number' ? t.amount : parseFloat(t.amount),
-          // Use proper type assertion based on the actual type definition in BankTransaction
-          type: transactionType === 'CREDIT' 
-            ? ('CREDIT' as BankTransaction['type']) 
-            : ('DEBIT' as BankTransaction['type']),
+          // Convert to lowercase to match the expected 'debit' | 'credit' type
+          type: transactionTypeUpper === 'CREDIT' ? 'credit' : 'debit',
           category: t.category || categorizeTransaction(t.description)
         };
       });
@@ -145,7 +142,7 @@ export async function extractTransactionsFromImage(
       let totalExpense = 0;
       
       transactions.forEach(transaction => {
-        if (transaction.type === 'CREDIT') {
+        if (transaction.type === 'credit') {
           totalIncome += transaction.amount;
         } else {
           totalExpense += transaction.amount;
