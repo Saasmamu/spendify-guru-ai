@@ -87,7 +87,7 @@ export const generateInsights = async (
       Here is the transaction data:
       Total Income: $${statement.totalIncome.toFixed(2)}
       Total Expenses: $${statement.totalExpense.toFixed(2)}
-      Current Balance: $${statement.balance.toFixed(2)}
+      Current Balance: $${statement.balance !== undefined ? statement.balance.toFixed(2) : (statement.totalIncome - statement.totalExpense).toFixed(2)}
       
       Transactions by Category:
       ${getCategoryBreakdown(statement)}

@@ -153,9 +153,16 @@ export async function extractTransactionsFromImage(
       const result: ProcessedStatement = {
         transactions,
         totalIncome,
-        totalExpense,
-        balance: parsedData.balance || totalIncome - totalExpense,
+        totalExpense
       };
+      
+      // Add balance if available from parsing or calculated
+      if (parsedData.balance) {
+        result.balance = typeof parsedData.balance === 'number' ? 
+          parsedData.balance : parseFloat(parsedData.balance);
+      } else {
+        result.balance = totalIncome - totalExpense;
+      }
       
       return result;
     } catch (jsonError) {
