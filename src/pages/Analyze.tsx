@@ -1,18 +1,34 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import StatCard from '@/components/StatCard';
-import { PieChart as PieChartIcon, ArrowDown, ArrowUp, DollarSign, ShoppingBag, Home, Car, Coffee, Tag, SparkleIcon } from 'lucide-react';
+import { 
+  PieChart as PieChartIcon, 
+  ArrowDown, 
+  ArrowUp, 
+  DollarSign, 
+  ShoppingBag, 
+  Home, 
+  Car, 
+  Coffee, 
+  Tag, 
+  SparkleIcon, 
+  Store, 
+  Printer,
+  Download
+} from 'lucide-react';
 import { useStatement } from '@/contexts/StatementContext';
 import ApiKeyInput from '@/components/ApiKeyInput';
 import { generateInsights, hasGeminiApiKey } from '@/services/insightService';
 import { useToast } from '@/components/ui/use-toast';
 import { BankTransaction } from '@/services/pdfService';
 import { useNavigate } from 'react-router-dom';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
 
 const processCategoriesFromTransactions = (transactions: BankTransaction[]) => {
   const categoryMap = new Map();
@@ -49,6 +65,30 @@ const processCategoriesFromTransactions = (transactions: BankTransaction[]) => {
       pieColor
     };
   }).sort((a, b) => b.amount - a.amount);
+};
+
+const processMerchantsFromTransactions = (transactions: BankTransaction[]) => {
+  const merchantMap = new Map();
+  
+  transactions.forEach(t => {
+    const merchantName = t.description.split(' ')[0];
+    const currentAmount = merchantMap.get(merchantName)?.amount || 0;
+    const currentCount = merchantMap.get(merchantName)?.count || 0;
+    
+    merchantMap.set(merchantName, {
+      amount: currentAmount + t.amount,
+      count: currentCount + 1
+    });
+  });
+  
+  return Array.from(merchantMap.entries())
+    .map(([name, data]: [string, any]) => ({
+      name,
+      amount: data.amount,
+      count: data.count
+    }))
+    .sort((a, b) => b.amount - a.amount)
+    .slice(0, 10);
 };
 
 const mockCategories = [
@@ -101,6 +141,7 @@ const Analyze = () => {
   const [isGeneratingInsights, setIsGeneratingInsights] = useState(false);
   const [useRealData, setUseRealData] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
+  const printRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {
     if (statementData && statementData.transactions && statementData.transactions.length > 0) {
@@ -148,6 +189,10 @@ const Analyze = () => {
     ? statementData.transactions 
     : mockTransactions;
   
+  const merchants = useRealData && statementData?.transactions
+    ? processMerchantsFromTransactions(statementData.transactions)
+    : processMerchantsFromTransactions(mockTransactions);
+    
   const totalSpent = useRealData && statementData?.totalExpense 
     ? statementData.totalExpense
     : mockCategories.reduce((sum, category) => sum + category.amount, 0);
@@ -220,6 +265,50 @@ const Analyze = () => {
     setActiveIndex(index);
   };
 
+  const handlePrintPDF = async () => {
+    if (!printRef.current) return;
+    
+    toast({
+      title: "Generating PDF",
+      description: "Please wait while we prepare your report...",
+    });
+    
+    try {
+      const content = printRef.current;
+      const canvas = await html2canvas(content, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: "#ffffff"
+      });
+      
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+      
+      const imgWidth = 210;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
+      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+      pdf.save('financial-analysis.pdf');
+      
+      toast({
+        title: "PDF Generated",
+        description: "Your financial analysis has been downloaded successfully!",
+      });
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to generate PDF. Please try again.",
+      });
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto pt-20 px-6 pb-20">
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-10 animate-slide-down">
@@ -231,7 +320,7 @@ const Analyze = () => {
               : 'Example data shown. Please upload a statement for real insights.'}
           </p>
         </div>
-        <div className="mt-4 md:mt-0">
+        <div className="mt-4 md:mt-0 flex gap-2">
           {!useRealData && (
             <Button 
               variant="default" 
@@ -248,6 +337,14 @@ const Analyze = () => {
               Your Statement
             </Button>
           )}
+          <Button
+            variant="outline"
+            className="gap-2 text-sm"
+            onClick={handlePrintPDF}
+          >
+            <Printer className="w-4 h-4" />
+            Print Report
+          </Button>
         </div>
       </div>
       
@@ -273,7 +370,7 @@ const Analyze = () => {
           </Card>
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-6" ref={printRef}>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-slide-up">
             <StatCard
               title="Total Expenses"
@@ -290,17 +387,18 @@ const Analyze = () => {
               trendValue={categories[0] ? `${categories[0].percentage}%` : "0%"}
             />
             <StatCard
-              title="Transactions"
-              value={transactions.length}
-              icon={<Tag className="w-4 h-4 text-amber-500" />}
-              trend="down"
-              trendValue={statementData ? `From ${statementData.startDate || 'unknown'}` : "-3%"}
+              title="Top Merchant"
+              value={merchants[0]?.name || "N/A"}
+              icon={<Store className="w-4 h-4 text-amber-500" />}
+              trend="neutral"
+              trendValue={merchants[0] ? `$${merchants[0].amount.toFixed(2)}` : "$0.00"}
             />
           </div>
           
           <Tabs defaultValue="categories" className="animate-blur-in" style={{ animationDelay: '200ms' }}>
             <TabsList className="mb-6">
               <TabsTrigger value="categories">Categories</TabsTrigger>
+              <TabsTrigger value="merchants">Merchants</TabsTrigger>
               <TabsTrigger value="transactions">Transactions</TabsTrigger>
               <TabsTrigger value="insights">AI Insights</TabsTrigger>
             </TabsList>
@@ -402,6 +500,74 @@ const Analyze = () => {
               </Card>
             </TabsContent>
             
+            <TabsContent value="merchants">
+              <Card>
+                <CardContent className="p-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div>
+                      <h3 className="text-lg font-medium mb-4">Top Merchants</h3>
+                      
+                      <div className="space-y-4 mt-6">
+                        {merchants.map((merchant, index) => (
+                          <div key={index} className="animate-fade-in" style={{ animationDelay: `${index * 100}ms` }}>
+                            <div className="flex items-center justify-between mb-1">
+                              <div className="flex items-center">
+                                <div className={cn("p-1.5 rounded-md mr-2", `bg-${COLORS[index % COLORS.length].replace('#', '')}-500`)}
+                                style={{ backgroundColor: COLORS[index % COLORS.length] }}>
+                                  <Store className="w-3.5 h-3.5 text-white" />
+                                </div>
+                                <span className="text-sm font-medium">{merchant.name}</span>
+                              </div>
+                              <span className="text-sm font-medium">${merchant.amount.toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                              <span>{merchant.count} transactions</span>
+                              <span>Avg: ${(merchant.amount / merchant.count).toFixed(2)}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-center">
+                      <div className="h-80 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart
+                            data={merchants.slice(0, 8)}
+                            margin={{ top: 20, right: 30, left: 20, bottom: 50 }}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="name" angle={-45} textAnchor="end" height={70} />
+                            <YAxis />
+                            <Tooltip
+                              content={({ active, payload }) => {
+                                if (active && payload && payload.length) {
+                                  const data = payload[0].payload;
+                                  return (
+                                    <div className="bg-background border border-border p-2 rounded-md shadow-md">
+                                      <p className="font-medium">{data.name}</p>
+                                      <p className="text-sm">${data.amount.toFixed(2)}</p>
+                                      <p className="text-sm">{data.count} transactions</p>
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              }}
+                            />
+                            <Bar dataKey="amount" fill="#8884d8">
+                              {merchants.slice(0, 8).map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                              ))}
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
             <TabsContent value="transactions">
               <Card>
                 <CardContent className="p-6">
@@ -453,7 +619,7 @@ const Analyze = () => {
                 <CardContent className="p-6">
                   <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
                     <h3 className="text-lg font-medium">AI-Powered Insights</h3>
-                    <div className="mt-2 md:mt-0">
+                    <div className="mt-2 md:mt-0 flex gap-2">
                       <Button 
                         onClick={generateAIInsights} 
                         disabled={isGeneratingInsights}
@@ -461,6 +627,14 @@ const Analyze = () => {
                       >
                         <SparkleIcon className="w-4 h-4" />
                         {isGeneratingInsights ? 'Generating...' : 'Generate Insights'}
+                      </Button>
+                      <Button 
+                        variant="outline"
+                        onClick={handlePrintPDF}
+                        className="gap-2"
+                      >
+                        <Download className="w-4 h-4" />
+                        Download PDF
                       </Button>
                     </div>
                   </div>
@@ -525,4 +699,3 @@ const Analyze = () => {
 };
 
 export default Analyze;
-
