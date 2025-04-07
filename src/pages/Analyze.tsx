@@ -31,8 +31,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import ExportReport from '@/components/ExportReport';
-import Table from '@/components/ui/table';
-import { TableHeader, TableRow, TableBody, TableCell } from '@/components/ui/table';
+import { Table, TableHeader, TableRow, TableBody, TableCell } from '@/components/ui/table';
 
 const processCategoriesFromTransactions = (transactions: BankTransaction[]) => {
   const categoryMap = new Map();
@@ -806,10 +805,10 @@ const Analyze = () => {
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-muted/50">
-                          <TableHead className="font-medium">Merchant</TableHead>
-                          <TableHead className="font-medium">Category</TableHead>
-                          <TableHead className="font-medium text-right">Total Spent</TableHead>
-                          <TableHead className="font-medium text-right">Frequency</TableHead>
+                          <TableHeader className="font-medium">Merchant</TableHeader>
+                          <TableHeader className="font-medium">Category</TableHeader>
+                          <TableHeader className="font-medium text-right">Total Spent</TableHeader>
+                          <TableHeader className="font-medium text-right">Frequency</TableHeader>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
