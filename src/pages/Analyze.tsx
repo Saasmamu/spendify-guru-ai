@@ -31,6 +31,8 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import ExportReport from '@/components/ExportReport';
+import Table from '@/components/ui/table';
+import { TableHeader, TableRow, TableBody, TableCell } from '@/components/ui/table';
 
 const processCategoriesFromTransactions = (transactions: BankTransaction[]) => {
   const categoryMap = new Map();
@@ -132,6 +134,11 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
       {`${(percent * 100).toFixed(0)}%`}
     </text>
   );
+};
+
+const getMerchantCategory = (merchantName: string, transactions: any[]): string | null => {
+  const transaction = transactions.find(t => t.description.includes(merchantName));
+  return transaction?.category || null;
 };
 
 const Analyze = () => {
@@ -498,6 +505,7 @@ const Analyze = () => {
               <TabsTrigger value="merchants">Merchants</TabsTrigger>
               <TabsTrigger value="transactions">Transactions</TabsTrigger>
               <TabsTrigger value="insights">AI Insights</TabsTrigger>
+              <TabsTrigger value="merchant-insights">Merchant Analysis</TabsTrigger>
             </TabsList>
             
             <TabsContent value="categories">
@@ -785,6 +793,46 @@ const Analyze = () => {
                       )}
                     </div>
                   )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            <TabsContent value="merchant-insights">
+              <Card>
+                <CardContent className="p-6">
+                  <h3 className="text-lg font-medium mb-4">Top Merchants Analysis</h3>
+                  
+                  <div className="overflow-x-auto rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/50">
+                          <TableHead className="font-medium">Merchant</TableHead>
+                          <TableHead className="font-medium">Category</TableHead>
+                          <TableHead className="font-medium text-right">Total Spent</TableHead>
+                          <TableHead className="font-medium text-right">Frequency</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {merchants.map((merchant, i) => (
+                          <TableRow key={i} className={cn(
+                            "animate-fade-in",
+                            i % 2 === 0 ? "bg-background" : "bg-muted/20"
+                          )} style={{ animationDelay: `${i * 50}ms` }}>
+                            <TableCell className="font-medium">{merchant.name}</TableCell>
+                            <TableCell>
+                              {getMerchantCategory(merchant.name, transactions) || "Other"}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              ${merchant.amount.toLocaleString()}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {merchant.count}x
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>

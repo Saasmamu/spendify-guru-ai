@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { ProcessedStatement } from '@/services/pdfService';
@@ -13,6 +12,15 @@ import {
   Coffee
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { 
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface CategoryBreakdown {
   name: string;
@@ -132,40 +140,88 @@ const ExportReport: React.FC<ExportReportProps> = ({
       </div>
 
       {/* Tab Navigation */}
-      <div className="flex border-b border-border mb-6">
-        <div className="text-primary border-b-2 border-primary px-4 py-2 font-medium">Categories</div>
-        <div className="text-muted-foreground px-4 py-2">Merchants</div>
-        <div className="text-muted-foreground px-4 py-2">Transactions</div>
-        <div className="text-muted-foreground px-4 py-2">AI Insights</div>
-      </div>
+      <Tabs defaultValue="categories" className="w-full">
+        <TabsList className="w-full mb-6 grid grid-cols-4">
+          <TabsTrigger value="categories">Categories</TabsTrigger>
+          <TabsTrigger value="merchants">Merchants</TabsTrigger>
+          <TabsTrigger value="transactions">Transactions</TabsTrigger>
+          <TabsTrigger value="insights">Insights</TabsTrigger>
+        </TabsList>
 
-      {/* Spending by Category */}
-      <div className="mb-6">
-        <h3 className="text-lg font-medium mb-6">Spending by Category</h3>
-        
-        {categories.slice(0, 3).map((category, index) => (
-          <div key={index} className="mb-6">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center">
-                <div className={cn("p-1.5 rounded-full mr-3", category.color)}>
-                  {React.createElement(category.icon, { className: "text-white h-4 w-4" })}
+        {/* Categories Tab Content */}
+        <TabsContent value="categories">
+          <h3 className="text-lg font-medium mb-6">Spending by Category</h3>
+          
+          {categories.slice(0, 3).map((category, index) => (
+            <div key={index} className="mb-6">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center">
+                  <div className={cn("p-1.5 rounded-full mr-3", category.color)}>
+                    {React.createElement(category.icon, { className: "text-white h-4 w-4" })}
+                  </div>
+                  <span>{category.name}</span>
                 </div>
-                <span>{category.name}</span>
+                <span className="font-medium">${category.amount.toLocaleString()}</span>
               </div>
-              <span className="font-medium">${category.amount.toLocaleString()}</span>
+              <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                <div 
+                  className={cn("h-full rounded-full", category.color)}
+                  style={{ width: `${category.percentage}%` }}
+                ></div>
+              </div>
+              <div className="mt-1 text-sm text-muted-foreground">
+                {category.percentage}%
+              </div>
             </div>
-            <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-              <div 
-                className={cn("h-full rounded-full", category.color)}
-                style={{ width: `${category.percentage}%` }}
-              ></div>
-            </div>
-            <div className="mt-1 text-sm text-muted-foreground">
-              {category.percentage}%
-            </div>
+          ))}
+        </TabsContent>
+
+        {/* Merchants Tab Content */}
+        <TabsContent value="merchants">
+          <h3 className="text-lg font-medium mb-4">Top Merchants</h3>
+          <div className="rounded-md border overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/50">
+                  <TableHead className="py-2 font-medium text-sm">Merchant</TableHead>
+                  <TableHead className="py-2 font-medium text-sm">Category</TableHead>
+                  <TableHead className="py-2 font-medium text-sm text-right">Total Spent</TableHead>
+                  <TableHead className="py-2 font-medium text-sm text-right">Frequency</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {merchants.slice(0, 10).map((merchant, i) => (
+                  <TableRow key={i} className="border-t border-border/30">
+                    <TableCell className="font-medium py-2 text-sm">{merchant.name}</TableCell>
+                    <TableCell className="py-2 text-sm">
+                      {getMerchantCategory(merchant.name, statement.transactions) || "Other"}
+                    </TableCell>
+                    <TableCell className="py-2 text-sm text-right">
+                      ${merchant.amount.toLocaleString()}
+                    </TableCell>
+                    <TableCell className="py-2 text-sm text-right">
+                      {merchant.count}x
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
-        ))}
-      </div>
+        </TabsContent>
+
+        {/* Other tabs would go here */}
+        <TabsContent value="transactions">
+          <div className="p-4 text-center text-muted-foreground">
+            Transactions list will appear here
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="insights">
+          <div className="p-4 text-center text-muted-foreground">
+            AI insights will appear here
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
@@ -230,6 +286,12 @@ const processMerchantsFromTransactions = (transactions: any[]) => {
       count: data.count
     }))
     .sort((a, b) => b.amount - a.amount);
+};
+
+// New helper function to get merchant category
+const getMerchantCategory = (merchantName: string, transactions: any[]): string | null => {
+  const transaction = transactions.find(t => t.description.includes(merchantName));
+  return transaction?.category || null;
 };
 
 export default ExportReport;
