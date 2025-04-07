@@ -31,13 +31,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import ExportReport from '@/components/ExportReport';
-import { 
-  Table, 
-  TableHeader,
-  TableRow, 
-  TableBody, 
-  TableCell 
-} from '@/components/ui/table';
+import { Table, TableHeader, TableRow, TableBody, TableCell } from '@/components/ui/table';
 
 const processCategoriesFromTransactions = (transactions: BankTransaction[]) => {
   const categoryMap = new Map();
@@ -81,15 +75,12 @@ const processMerchantsFromTransactions = (transactions: BankTransaction[]) => {
   
   transactions.forEach(t => {
     const merchantName = t.description.split(' ')[0];
-    const fullDescription = t.description;
-    
     const currentAmount = merchantMap.get(merchantName)?.amount || 0;
     const currentCount = merchantMap.get(merchantName)?.count || 0;
     
     merchantMap.set(merchantName, {
       amount: currentAmount + t.amount,
-      count: currentCount + 1,
-      displayName: fullDescription
+      count: currentCount + 1
     });
   });
   
@@ -97,8 +88,7 @@ const processMerchantsFromTransactions = (transactions: BankTransaction[]) => {
     .map(([name, data]: [string, any]) => ({
       name,
       amount: data.amount,
-      count: data.count,
-      displayName: data.displayName
+      count: data.count
     }))
     .sort((a, b) => b.amount - a.amount)
     .slice(0, 10);
@@ -816,7 +806,6 @@ const Analyze = () => {
                       <TableHeader>
                         <TableRow className="bg-muted/50">
                           <TableHeader className="font-medium">Merchant</TableHeader>
-                          <TableHeader className="font-medium">Full Description</TableHeader>
                           <TableHeader className="font-medium">Category</TableHeader>
                           <TableHeader className="font-medium text-right">Total Spent</TableHeader>
                           <TableHeader className="font-medium text-right">Frequency</TableHeader>
@@ -829,9 +818,6 @@ const Analyze = () => {
                             i % 2 === 0 ? "bg-background" : "bg-muted/20"
                           )} style={{ animationDelay: `${i * 50}ms` }}>
                             <TableCell className="font-medium">{merchant.name}</TableCell>
-                            <TableCell className="text-sm">
-                              {merchant.displayName !== merchant.name ? merchant.displayName : "-"}
-                            </TableCell>
                             <TableCell>
                               {getMerchantCategory(merchant.name, transactions) || "Other"}
                             </TableCell>

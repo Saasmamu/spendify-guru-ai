@@ -67,8 +67,7 @@ const ExportReport: React.FC<ExportReportProps> = ({
   const topMerchant = merchants[0] || {
     name: 'Rent',
     amount: 1800,
-    count: 1,
-    displayName: 'Rent Payment'
+    count: 1
   };
 
   // Calculate category percentage change
@@ -185,7 +184,6 @@ const ExportReport: React.FC<ExportReportProps> = ({
               <TableHeader>
                 <TableRow className="bg-muted/50">
                   <TableHeader className="py-2 font-medium text-sm">Merchant</TableHeader>
-                  <TableHeader className="py-2 font-medium text-sm">Details</TableHeader>
                   <TableHeader className="py-2 font-medium text-sm">Category</TableHeader>
                   <TableHeader className="py-2 font-medium text-sm text-right">Total Spent</TableHeader>
                   <TableHeader className="py-2 font-medium text-sm text-right">Frequency</TableHeader>
@@ -195,9 +193,6 @@ const ExportReport: React.FC<ExportReportProps> = ({
                 {merchants.slice(0, 10).map((merchant, i) => (
                   <TableRow key={i} className="border-t border-border/30">
                     <TableCell className="font-medium py-2 text-sm">{merchant.name}</TableCell>
-                    <TableCell className="py-2 text-sm">
-                      {merchant.displayName !== merchant.name ? merchant.displayName : "-"}
-                    </TableCell>
                     <TableCell className="py-2 text-sm">
                       {getMerchantCategory(merchant.name, statement.transactions) || "Other"}
                     </TableCell>
@@ -274,17 +269,13 @@ const processMerchantsFromTransactions = (transactions: any[]) => {
   const merchantMap = new Map();
   
   transactions.forEach(t => {
-    // Extract merchant name (first word) and full description
     const merchantName = t.description.split(' ')[0];
-    const fullDescription = t.description;
-    
     const currentAmount = merchantMap.get(merchantName)?.amount || 0;
     const currentCount = merchantMap.get(merchantName)?.count || 0;
     
     merchantMap.set(merchantName, {
       amount: currentAmount + t.amount,
-      count: currentCount + 1,
-      displayName: fullDescription
+      count: currentCount + 1
     });
   });
   
@@ -292,8 +283,7 @@ const processMerchantsFromTransactions = (transactions: any[]) => {
     .map(([name, data]: [string, any]) => ({
       name,
       amount: data.amount,
-      count: data.count,
-      displayName: data.displayName
+      count: data.count
     }))
     .sort((a, b) => b.amount - a.amount);
 };
