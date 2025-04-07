@@ -183,10 +183,10 @@ const ExportReport: React.FC<ExportReportProps> = ({
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50">
-                  <TableHead className="py-2 font-medium text-sm">Merchant</TableHead>
-                  <TableHead className="py-2 font-medium text-sm">Category</TableHead>
-                  <TableHead className="py-2 font-medium text-sm text-right">Total Spent</TableHead>
-                  <TableHead className="py-2 font-medium text-sm text-right">Frequency</TableHead>
+                  <TableHeader className="py-2 font-medium text-sm">Merchant</TableHeader>
+                  <TableHeader className="py-2 font-medium text-sm">Category</TableHeader>
+                  <TableHeader className="py-2 font-medium text-sm text-right">Total Spent</TableHeader>
+                  <TableHeader className="py-2 font-medium text-sm text-right">Frequency</TableHeader>
                 </TableRow>
               </TableHeader>
               <TableBody>
