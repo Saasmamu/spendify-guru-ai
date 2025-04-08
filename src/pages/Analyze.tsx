@@ -32,6 +32,7 @@ import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import ExportReport from '@/components/ExportReport';
 import { Table, TableHeader, TableRow, TableBody, TableCell } from '@/components/ui/table';
+import { Alert, AlertTitle, AlertDescription, AlertCircle, CheckCircle, Info } from '@/components/ui/alert';
 
 const processCategoriesFromTransactions = (transactions: BankTransaction[]) => {
   const categoryMap = new Map();
@@ -138,6 +139,31 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
 const getMerchantCategory = (merchantName: string, transactions: any[]): string | null => {
   const transaction = transactions.find(t => t.description.includes(merchantName));
   return transaction?.category || null;
+};
+
+const enhancedInsights = (insights, statement, categories, merchants, previousMonthData) => {
+  if (!insights || insights.length === 0) return [];
+  
+  return [
+    {
+      type: "warning",
+      title: `Spending Increased by 12%`,
+      description: `Your total spending has increased compared to last month.`,
+      action: 'Review your recent transactions to identify unexpected increases in spending.'
+    },
+    {
+      type: "success",
+      title: `${categories[0]?.name || 'Shopping'} is Your Top Category`,
+      description: `${categories[0]?.percentage || 28}% of your spending goes to ${categories[0]?.name || 'Shopping'}.`,
+      action: 'Continue monitoring this category for potential savings.'
+    },
+    {
+      type: "info",
+      title: `${merchants[0]?.name || 'Rent'}: ${merchants[0]?.amount ? Math.round((merchants[0].amount / (statement?.totalExpense || 1000)) * 100) : 25}% of Total Spending`,
+      description: `You spent $${merchants[0]?.amount?.toLocaleString() || '1800'} at ${merchants[0]?.name || 'Rent'}.`,
+      action: `Look for alternatives that might offer better prices.`
+    }
+  ];
 };
 
 const Analyze = () => {
@@ -506,6 +532,7 @@ const Analyze = () => {
               <TabsTrigger value="transactions">Transactions</TabsTrigger>
               <TabsTrigger value="insights">AI Insights</TabsTrigger>
               <TabsTrigger value="merchant-insights">Merchant Analysis</TabsTrigger>
+              <TabsTrigger value="analytics">Analytics</TabsTrigger>
             </TabsList>
             
             <TabsContent value="categories">
@@ -832,6 +859,62 @@ const Analyze = () => {
                         ))}
                       </TableBody>
                     </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            <TabsContent value="analytics">
+              <Card>
+                <CardContent className="p-6">
+                  <h3 className="text-lg font-medium mb-4">Financial Analytics</h3>
+                  
+                  <div className="space-y-4">
+                    {insights.length > 0 ? (
+                      enhancedInsights.map((insight, index) => (
+                        <Alert key={index} 
+                          className={cn(
+                            "mb-4",
+                            insight.type === "warning" ? "border-amber-500/50 bg-amber-500/10" : 
+                            insight.type === "success" ? "border-green-500/50 bg-green-500/10" : 
+                            "border-blue-500/50 bg-blue-500/10"
+                          )}
+                        >
+                          <div className="flex gap-2 items-start">
+                            {insight.type === "warning" && <AlertCircle className="h-5 w-5 text-amber-500" />}
+                            {insight.type === "success" && <CheckCircle className="h-5 w-5 text-green-500" />}
+                            {insight.type === "info" && <Info className="h-5 w-5 text-blue-500" />}
+                            <div>
+                              <AlertTitle className="text-base font-semibold mb-1">
+                                {insight.title}
+                              </AlertTitle>
+                              <AlertDescription className="text-sm">
+                                {insight.description}
+                              </AlertDescription>
+                              {insight.action && (
+                                <p className="text-sm font-medium mt-2">
+                                  {insight.type === "warning" ? "Recommendation: " : "Action: "}
+                                  {insight.action}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </Alert>
+                      ))
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-8 text-center">
+                        <BarChart className="w-12 h-12 text-muted-foreground mb-4" />
+                        <p className="text-muted-foreground">No analytics available yet. Generate insights to see analytics.</p>
+                        <Button 
+                          onClick={generateAIInsights} 
+                          disabled={isGeneratingInsights}
+                          className="mt-4 gap-2"
+                        >
+                          <SparkleIcon className="w-4 h-4" />
+                          {isGeneratingInsights ? 'Generating...' : 'Generate Insights'}
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>

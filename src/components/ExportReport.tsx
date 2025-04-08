@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { ProcessedStatement } from '@/services/pdfService';
@@ -155,7 +156,7 @@ const ExportReport: React.FC<ExportReportProps> = ({
           <TabsTrigger value="merchants">Merchants</TabsTrigger>
           <TabsTrigger value="transactions">Transactions</TabsTrigger>
           <TabsTrigger value="insights">Insights</TabsTrigger>
-          <TabsTrigger value="enhanced-insights">Analytics</TabsTrigger>
+          <TabsTrigger value="analytics">Analytics</TabsTrigger>
         </TabsList>
 
         {/* Categories Tab Content */}
@@ -232,8 +233,8 @@ const ExportReport: React.FC<ExportReportProps> = ({
           </div>
         </TabsContent>
 
-        {/* New Enhanced Insights Tab */}
-        <TabsContent value="enhanced-insights">
+        {/* Analytics Tab (renamed from enhanced-insights) */}
+        <TabsContent value="analytics">
           <div className="space-y-4">
             <h3 className="text-lg font-medium mb-2">Financial Analytics</h3>
             
