@@ -29,7 +29,17 @@ export const StatementProvider = ({ children }: { children: ReactNode }) => {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [previousMonthData, setPreviousMonthData] = useState<PreviousMonthData | null>(null);
+  const [previousMonthData, setPreviousMonthData] = useState<PreviousMonthData | null>({
+    totalExpense: 0,
+    totalIncome: 0,
+    categoryPercentages: {
+      'Shopping': 28,
+      'Housing': 40,
+      'Transportation': 10,
+      'Food & Dining': 15,
+      'Miscellaneous': 7
+    }
+  });
 
   // Debug logging for context changes
   useEffect(() => {
@@ -45,12 +55,26 @@ export const StatementProvider = ({ children }: { children: ReactNode }) => {
     console.log("StatementContext - isProcessing changed:", isProcessing);
   }, [isProcessing]);
 
+  useEffect(() => {
+    console.log("StatementContext - previousMonthData changed:", previousMonthData);
+  }, [previousMonthData]);
+
   const clearData = () => {
     console.log("StatementContext - clearing all data");
     setStatementData(null);
     setUploadedFile(null);
     setError(null);
-    setPreviousMonthData(null);
+    setPreviousMonthData({
+      totalExpense: 0,
+      totalIncome: 0,
+      categoryPercentages: {
+        'Shopping': 28,
+        'Housing': 40,
+        'Transportation': 10,
+        'Food & Dining': 15,
+        'Miscellaneous': 7
+      }
+    });
   };
 
   return (

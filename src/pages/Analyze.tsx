@@ -144,7 +144,7 @@ const getMerchantCategory = (merchantName: string, transactions: any[]): string 
   return transaction?.category || null;
 };
 
-const enhancedInsights = (insights, statement, categories, merchants, previousMonthData) => {
+const enhancedInsights = (insights, statement, categories, merchants, prevMonthData) => {
   if (!insights || insights.length === 0) return [];
   
   return [
@@ -172,7 +172,7 @@ const enhancedInsights = (insights, statement, categories, merchants, previousMo
 const Analyze = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { statementData } = useStatement();
+  const { statementData, previousMonthData } = useStatement();
   const [loaded, setLoaded] = useState(false);
   const [insights, setInsights] = useState<string[]>([]);
   const [isGeneratingInsights, setIsGeneratingInsights] = useState(false);
@@ -874,7 +874,7 @@ const Analyze = () => {
                   
                   <div className="space-y-4">
                     {insights.length > 0 ? (
-                      enhancedInsights(insights, statementData, categories, merchants, previousMonthData).map((insight, index) => (
+                      enhancedInsights(insights, statementData, categories, merchants, previousMonthData || null).map((insight, index) => (
                         <Alert key={index} 
                           className={cn(
                             "mb-4",
