@@ -18,7 +18,10 @@ import {
   Store, 
   Printer,
   Download,
-  FileText
+  FileText,
+  AlertCircle,
+  CheckCircle,
+  Info
 } from 'lucide-react';
 import { useStatement } from '@/contexts/StatementContext';
 import ApiKeyInput from '@/components/ApiKeyInput';
@@ -32,7 +35,7 @@ import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import ExportReport from '@/components/ExportReport';
 import { Table, TableHeader, TableRow, TableBody, TableCell } from '@/components/ui/table';
-import { Alert, AlertTitle, AlertDescription, AlertCircle, CheckCircle, Info } from '@/components/ui/alert';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 const processCategoriesFromTransactions = (transactions: BankTransaction[]) => {
   const categoryMap = new Map();
@@ -871,7 +874,7 @@ const Analyze = () => {
                   
                   <div className="space-y-4">
                     {insights.length > 0 ? (
-                      enhancedInsights.map((insight, index) => (
+                      enhancedInsights(insights, statementData, categories, merchants, previousMonthData).map((insight, index) => (
                         <Alert key={index} 
                           className={cn(
                             "mb-4",
