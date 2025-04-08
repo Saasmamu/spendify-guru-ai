@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { ProcessedStatement } from '@/services/pdfService';
@@ -10,7 +9,11 @@ import {
   Store,
   TrendingUp,
   ArrowUpCircle,
-  Coffee
+  Coffee,
+  Info,
+  AlertCircle,
+  CheckCircle,
+  BarChart
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { 
@@ -21,6 +24,7 @@ import {
   TableRow
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 interface CategoryBreakdown {
   name: string;
@@ -36,6 +40,7 @@ interface ExportReportProps {
     totalExpenses: number;
     categoryPercentages: Record<string, number>;
   };
+  insights?: string[];
 }
 
 const ExportReport: React.FC<ExportReportProps> = ({ 
@@ -43,7 +48,8 @@ const ExportReport: React.FC<ExportReportProps> = ({
   previousMonthData = {
     totalExpenses: 0,
     categoryPercentages: {}
-  }
+  },
+  insights = []
 }) => {
   // Process category data
   const categories = processCategoriesFromTransactions(statement.transactions);
@@ -80,6 +86,9 @@ const ExportReport: React.FC<ExportReportProps> = ({
     
     return Math.round(currentCategory.percentage - prevPercentage);
   };
+
+  // Generate enhanced insights with more specific details and categorization
+  const enhancedInsights = generateEnhancedInsights(statement, categories, merchants, previousMonthData);
 
   return (
     <div className="bg-background rounded-lg p-6 max-w-md mx-auto">
@@ -141,11 +150,12 @@ const ExportReport: React.FC<ExportReportProps> = ({
 
       {/* Tab Navigation */}
       <Tabs defaultValue="categories" className="w-full">
-        <TabsList className="w-full mb-6 grid grid-cols-4">
+        <TabsList className="w-full mb-6 grid grid-cols-5">
           <TabsTrigger value="categories">Categories</TabsTrigger>
           <TabsTrigger value="merchants">Merchants</TabsTrigger>
           <TabsTrigger value="transactions">Transactions</TabsTrigger>
           <TabsTrigger value="insights">Insights</TabsTrigger>
+          <TabsTrigger value="enhanced-insights">Analytics</TabsTrigger>
         </TabsList>
 
         {/* Categories Tab Content */}
@@ -221,6 +231,51 @@ const ExportReport: React.FC<ExportReportProps> = ({
             AI insights will appear here
           </div>
         </TabsContent>
+
+        {/* New Enhanced Insights Tab */}
+        <TabsContent value="enhanced-insights">
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium mb-2">Financial Analytics</h3>
+            
+            {enhancedInsights.map((insight, index) => (
+              <Alert key={index} 
+                className={cn(
+                  "mb-4",
+                  insight.type === "warning" ? "border-amber-500/50 bg-amber-500/10" : 
+                  insight.type === "success" ? "border-green-500/50 bg-green-500/10" : 
+                  "border-blue-500/50 bg-blue-500/10"
+                )}
+              >
+                <div className="flex gap-2 items-start">
+                  {insight.type === "warning" && <AlertCircle className="h-5 w-5 text-amber-500" />}
+                  {insight.type === "success" && <CheckCircle className="h-5 w-5 text-green-500" />}
+                  {insight.type === "info" && <Info className="h-5 w-5 text-blue-500" />}
+                  <div>
+                    <AlertTitle className="text-base font-semibold mb-1">
+                      {insight.title}
+                    </AlertTitle>
+                    <AlertDescription className="text-sm">
+                      {insight.description}
+                    </AlertDescription>
+                    {insight.action && (
+                      <p className="text-sm font-medium mt-2">
+                        {insight.type === "warning" ? "Recommendation: " : "Action: "}
+                        {insight.action}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </Alert>
+            ))}
+            
+            {enhancedInsights.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <BarChart className="w-12 h-12 text-muted-foreground mb-4" />
+                <p className="text-muted-foreground">No analytics available for this statement.</p>
+              </div>
+            )}
+          </div>
+        </TabsContent>
       </Tabs>
     </div>
   );
@@ -288,10 +343,107 @@ const processMerchantsFromTransactions = (transactions: any[]) => {
     .sort((a, b) => b.amount - a.amount);
 };
 
-// New helper function to get merchant category
+// Helper function to get merchant category
 const getMerchantCategory = (merchantName: string, transactions: any[]): string | null => {
   const transaction = transactions.find(t => t.description.includes(merchantName));
   return transaction?.category || null;
+};
+
+// New helper function to generate enhanced insights with actionable recommendations
+const generateEnhancedInsights = (
+  statement: ProcessedStatement, 
+  categories: CategoryBreakdown[],
+  merchants: any[], 
+  previousMonthData: { totalExpenses: number; categoryPercentages: Record<string, number> }
+) => {
+  const insights: {
+    type: 'warning' | 'success' | 'info';
+    title: string;
+    description: string;
+    action?: string;
+  }[] = [];
+
+  // Calculate monthly budget based on total expenses
+  const monthlyBudget = statement.totalExpense;
+  const topCategory = categories[0];
+  const topMerchant = merchants[0];
+
+  // Calculate month-over-month changes
+  const expenseChange = previousMonthData.totalExpenses > 0 
+    ? ((statement.totalExpense - previousMonthData.totalExpenses) / previousMonthData.totalExpenses) * 100 
+    : 0;
+  const expenseChangeRounded = Math.round(expenseChange);
+
+  // Add insights based on spending patterns
+  if (topCategory && topCategory.percentage > 35) {
+    insights.push({
+      type: 'warning',
+      title: `High ${topCategory.name} Spending (${topCategory.percentage}%)`,
+      description: `Your ${topCategory.name} spending of $${topCategory.amount.toLocaleString()} represents ${topCategory.percentage}% of your total expenses, which is higher than the recommended 30% threshold.`,
+      action: `Consider reducing your ${topCategory.name} expenses by $${Math.round((topCategory.percentage - 30) * statement.totalExpense / 100).toLocaleString()} per month to reach the recommended level.`
+    });
+  }
+
+  // Month-over-month comparison insight
+  if (Math.abs(expenseChangeRounded) > 0) {
+    if (expenseChangeRounded > 15) {
+      insights.push({
+        type: 'warning',
+        title: `Spending Increased by ${expenseChangeRounded}%`,
+        description: `Your total spending of $${statement.totalExpense.toLocaleString()} has increased by ${expenseChangeRounded}% compared to last month ($${previousMonthData.totalExpenses.toLocaleString()}).`,
+        action: 'Review your recent transactions to identify unexpected increases in spending.'
+      });
+    } else if (expenseChangeRounded < -10) {
+      insights.push({
+        type: 'success',
+        title: `Spending Decreased by ${Math.abs(expenseChangeRounded)}%`,
+        description: `Your total spending of $${statement.totalExpense.toLocaleString()} has decreased by ${Math.abs(expenseChangeRounded)}% compared to last month ($${previousMonthData.totalExpenses.toLocaleString()}).`,
+        action: 'Continue your savings momentum and consider directing saved amounts to investments or savings.'
+      });
+    }
+  }
+
+  // Merchant concentration insight
+  if (topMerchant && (topMerchant.amount / statement.totalExpense) > 0.25) {
+    const merchantPercentage = Math.round((topMerchant.amount / statement.totalExpense) * 100);
+    insights.push({
+      type: 'info',
+      title: `${topMerchant.name}: ${merchantPercentage}% of Total Spending`,
+      description: `You spent $${topMerchant.amount.toLocaleString()} at ${topMerchant.name}, which represents ${merchantPercentage}% of your total monthly expenses.`,
+      action: `Look for alternatives to ${topMerchant.name} that might offer better prices or negotiate better terms if this is a recurring expense.`
+    });
+  }
+
+  // Balance insight
+  if (statement.balance !== undefined) {
+    if (statement.balance < 0) {
+      insights.push({
+        type: 'warning',
+        title: 'Negative Account Balance',
+        description: `Your current balance of $${statement.balance.toLocaleString()} is negative. This may incur overdraft fees.`,
+        action: 'Consider transferring funds into this account to avoid overdraft fees and interest charges.'
+      });
+    } else if (statement.balance > statement.totalExpense * 3) {
+      insights.push({
+        type: 'info',
+        title: 'Excess Cash on Hand',
+        description: `Your balance of $${statement.balance.toLocaleString()} is more than 3x your monthly expenses of $${statement.totalExpense.toLocaleString()}.`,
+        action: 'Consider moving excess funds to high-yield savings or investments to earn better returns.'
+      });
+    }
+  }
+
+  // If no insights were generated, add some generic ones
+  if (insights.length === 0) {
+    insights.push({
+      type: 'info',
+      title: 'Spending Analysis',
+      description: `Your total monthly expenses are $${statement.totalExpense.toLocaleString()}, with ${topCategory ? topCategory.name : 'N/A'} as your largest spending category at ${topCategory ? topCategory.percentage : 0}%.`,
+      action: 'Consider creating a budget to track and optimize your spending patterns.'
+    });
+  }
+
+  return insights;
 };
 
 export default ExportReport;

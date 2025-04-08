@@ -398,6 +398,7 @@ const Analyze = () => {
                 'Transportation': 10
               }
             }}
+            insights={insights}
           />
         </div>
       </div>
