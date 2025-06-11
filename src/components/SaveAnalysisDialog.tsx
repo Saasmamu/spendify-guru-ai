@@ -47,16 +47,16 @@ const SaveAnalysisDialog: React.FC<SaveAnalysisDialogProps> = ({
         throw new Error('User not authenticated');
       }
 
-      // Use the correct column mapping for the saved_analyses table
-      const { error } = await supabase.from('saved_analyses').insert({
+      // Insert without id since it's auto-generated, and ensure JSON compatibility
+      const { error } = await supabase.from('saved_analyses').insert([{
         name: name.trim(),
         user_id: user.id,
-        transactions: JSON.parse(JSON.stringify(statementData.transactions)),
+        transactions: statementData.transactions as any,
         total_income: statementData.totalIncome,
         total_expense: statementData.totalExpense,
-        categories: JSON.parse(JSON.stringify(categories)),
-        insights: JSON.parse(JSON.stringify(insights))
-      });
+        categories: categories as any,
+        insights: insights as any
+      }]);
 
       if (error) throw error;
 
