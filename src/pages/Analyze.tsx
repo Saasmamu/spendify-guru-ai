@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -135,12 +134,23 @@ const Analyze = () => {
   const totalExpense = statementData.totalExpense || 0;
   const netBalance = totalIncome - totalExpense;
 
-  // Prepare data for the category pie chart
-  const categoryData: CategoryData[] = (statementData.categories || []).map((category, index) => ({
-    name: category.name,
-    value: category.amount,
-    color: COLORS[index % COLORS.length],
-  }));
+  // Create category data from transactions if categories don't exist
+  const createCategoryData = () => {
+    const categoryMap = new Map();
+    statementData.transactions.forEach(transaction => {
+      const category = transaction.category || 'Miscellaneous';
+      const currentAmount = categoryMap.get(category) || 0;
+      categoryMap.set(category, currentAmount + Math.abs(transaction.amount));
+    });
+
+    return Array.from(categoryMap.entries()).map(([name, amount], index) => ({
+      name,
+      value: amount as number,
+      color: COLORS[index % COLORS.length],
+    }));
+  };
+
+  const categoryData: CategoryData[] = createCategoryData();
 
   const comparisonData = previousMonthData ? {
     totalExpenses: previousMonthData.totalExpense || 0,
@@ -294,7 +304,7 @@ const Analyze = () => {
       </Card>
 
       <ExportReport 
-        statementData={statementData}
+        statement={statementData}
         insights={insights}
         categoryData={categoryData}
       />
