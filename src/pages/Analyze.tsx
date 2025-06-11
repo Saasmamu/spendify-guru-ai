@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -32,7 +33,8 @@ import {
   Save,
   AlertTriangle,
   Target,
-  Lightbulb
+  Lightbulb,
+  Loader2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import ExportReport from '@/components/ExportReport';
@@ -134,7 +136,7 @@ const Analyze = () => {
   const netBalance = totalIncome - totalExpense;
 
   // Prepare data for the category pie chart
-  const categoryData: CategoryData[] = statementData.categories.map((category, index) => ({
+  const categoryData: CategoryData[] = (statementData.categories || []).map((category, index) => ({
     name: category.name,
     value: category.amount,
     color: COLORS[index % COLORS.length],
@@ -269,31 +271,29 @@ const Analyze = () => {
       <Card>
         <CardHeader>
           <CardTitle>Insights</CardTitle>
-          <CardContent>
-            {isGeneratingInsights ? (
-              <div className="flex items-center justify-center">
-                <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                Generating Insights...
-              </div>
-            ) : insights.length > 0 ? (
-              <ul className="list-none pl-0">
-                {insights.map((insight, index) => (
-                  renderInsight(insight, index)
-                ))}
-              </ul>
-            ) : (
-              <div className="text-center">
-                <AlertTriangle className="h-6 w-6 text-gray-400 mx-auto mb-2" />
-                No insights generated.
-              </div>
-            )}
-          </CardContent>
         </CardHeader>
+        <CardContent>
+          {isGeneratingInsights ? (
+            <div className="flex items-center justify-center">
+              <Loader2 className="h-6 w-6 animate-spin mr-2" />
+              Generating Insights...
+            </div>
+          ) : insights.length > 0 ? (
+            <ul className="list-none pl-0">
+              {insights.map((insight, index) => (
+                renderInsight(insight, index)
+              ))}
+            </ul>
+          ) : (
+            <div className="text-center">
+              <AlertTriangle className="h-6 w-6 text-gray-400 mx-auto mb-2" />
+              No insights generated.
+            </div>
+          )}
+        </CardContent>
       </Card>
 
       <ExportReport 
-        open={showExportDialog}
-        onOpenChange={setShowExportDialog}
         statementData={statementData}
         insights={insights}
         categoryData={categoryData}

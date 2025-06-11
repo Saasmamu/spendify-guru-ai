@@ -58,12 +58,14 @@ const SavedAnalyses = () => {
 
       if (error) throw error;
 
-      // Transform the data to match our interface
+      // Transform the data to match our interface and ensure proper type conversion
       const transformedData = (data || []).map(item => ({
         ...item,
         transactions: Array.isArray(item.transactions) ? item.transactions : [],
         categories: Array.isArray(item.categories) ? item.categories : [],
-        insights: Array.isArray(item.insights) ? item.insights : []
+        insights: Array.isArray(item.insights) 
+          ? item.insights.map(insight => typeof insight === 'string' ? insight : String(insight))
+          : []
       }));
 
       setAnalyses(transformedData);

@@ -50,11 +50,11 @@ const SaveAnalysisDialog: React.FC<SaveAnalysisDialogProps> = ({
       const { error } = await supabase.from('saved_analyses').insert({
         user_id: user.id,
         name: name.trim(),
-        transactions: statementData.transactions as any,
+        transactions: statementData.transactions,
         total_income: statementData.totalIncome,
         total_expense: statementData.totalExpense,
-        categories: categories as any,
-        insights: insights as any
+        categories: categories,
+        insights: insights
       });
 
       if (error) throw error;
