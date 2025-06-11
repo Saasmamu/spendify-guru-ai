@@ -306,7 +306,7 @@ const Analyze = () => {
       <ExportReport 
         statement={statementData}
         insights={insights}
-        categoryData={categoryData}
+        previousMonthData={comparisonData}
       />
 
       <SaveAnalysisDialog
