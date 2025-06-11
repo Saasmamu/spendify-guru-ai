@@ -1,43 +1,36 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { cn } from '@/lib/utils';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import StatCard from '@/components/StatCard';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
+import { useStatement } from '@/contexts/StatementContext';
 import { 
-  PieChart as PieChartIcon, 
-  ArrowDown, 
-  ArrowUp, 
   DollarSign, 
-  ShoppingBag, 
-  Home, 
-  Car, 
-  Coffee, 
-  Tag, 
-  SparkleIcon, 
-  Store, 
-  Printer,
-  Download,
+  TrendingUp, 
+  Calendar,
   FileText,
+  ArrowUpCircle,
+  ArrowDownCircle,
+  PieChart,
+  BarChart3,
   AlertCircle,
   CheckCircle,
-  Info
+  Info,
+  Download,
+  Bookmark
 } from 'lucide-react';
-import { useStatement } from '@/contexts/StatementContext';
-import ApiKeyInput from '@/components/ApiKeyInput';
-import { generateInsights, hasGeminiApiKey } from '@/services/insightService';
-import { useToast } from '@/components/ui/use-toast';
-import { BankTransaction } from '@/services/pdfService';
-import { useNavigate } from 'react-router-dom';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { jsPDF } from 'jspdf';
-import html2canvas from 'html2canvas';
 import ExportReport from '@/components/ExportReport';
-import { Table, TableHeader, TableRow, TableBody, TableCell } from '@/components/ui/table';
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import SaveAnalysisDialog from '@/components/SaveAnalysisDialog';
+import { cn } from '@/lib/utils';
+import { generateInsights } from '@/services/insightService';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
-const processCategoriesFromTransactions = (transactions: BankTransaction[]) => {
+// Helper function to process categories from transactions
+const processCategoriesFromTransactions = (transactions: any[]) => {
   const categoryMap = new Map();
   const totalAmount = transactions.reduce((sum, t) => sum + t.amount, 0);
   
@@ -51,11 +44,11 @@ const processCategoriesFromTransactions = (transactions: BankTransaction[]) => {
   });
   
   const categoryIcons: Record<string, any> = {
-    'Shopping': { icon: ShoppingBag, color: 'bg-blue-500', pieColor: '#3b82f6' },
+    'Shopping': { icon: TrendingUp, color: 'bg-blue-500', pieColor: '#3b82f6' },
     'Housing': { icon: Home, color: 'bg-green-500', pieColor: '#22c55e' },
-    'Transportation': { icon: Car, color: 'bg-amber-500', pieColor: '#f59e0b' },
-    'Food & Dining': { icon: Coffee, color: 'bg-red-500', pieColor: '#ef4444' },
-    'Miscellaneous': { icon: Tag, color: 'bg-purple-500', pieColor: '#a855f7' }
+    'Transportation': { icon: ArrowUpCircle, color: 'bg-amber-500', pieColor: '#f59e0b' },
+    'Food & Dining': { icon: ArrowDownCircle, color: 'bg-red-500', pieColor: '#ef4444' },
+    'Miscellaneous': { icon: Info, color: 'bg-purple-500', pieColor: '#a855f7' }
   };
   
   return Array.from(categoryMap.entries()).map(([name, data]: [string, any]) => {
@@ -74,7 +67,8 @@ const processCategoriesFromTransactions = (transactions: BankTransaction[]) => {
   }).sort((a, b) => b.amount - a.amount);
 };
 
-const processMerchantsFromTransactions = (transactions: BankTransaction[]) => {
+// Helper function to process merchants from transactions
+const processMerchantsFromTransactions = (transactions: any[]) => {
   const merchantMap = new Map();
   
   transactions.forEach(t => {
@@ -94,79 +88,110 @@ const processMerchantsFromTransactions = (transactions: BankTransaction[]) => {
       amount: data.amount,
       count: data.count
     }))
-    .sort((a, b) => b.amount - a.amount)
-    .slice(0, 10);
+    .sort((a, b) => b.amount - a.amount);
 };
 
-const mockCategories = [
-  { name: 'Shopping', amount: 1240, percentage: 28, icon: ShoppingBag, color: 'bg-blue-500', pieColor: '#3b82f6' },
-  { name: 'Housing', amount: 1800, percentage: 40, icon: Home, color: 'bg-green-500', pieColor: '#22c55e' },
-  { name: 'Transportation', amount: 450, percentage: 10, icon: Car, color: 'bg-amber-500', pieColor: '#f59e0b' },
-  { name: 'Food & Dining', amount: 680, percentage: 15, icon: Coffee, color: 'bg-red-500', pieColor: '#ef4444' },
-  { name: 'Miscellaneous', amount: 320, percentage: 7, icon: Tag, color: 'bg-purple-500', pieColor: '#a855f7' }
-];
-
-const mockTransactions: BankTransaction[] = [
-  { date: '2023-06-15', description: 'Whole Foods Market', amount: 78.35, category: 'Food & Dining', type: 'debit' },
-  { date: '2023-06-14', description: 'Amazon.com', amount: 124.99, category: 'Shopping', type: 'debit' },
-  { date: '2023-06-13', description: 'Uber', amount: 24.50, category: 'Transportation', type: 'debit' },
-  { date: '2023-06-10', description: 'Rent Payment', amount: 1800, category: 'Housing', type: 'debit' },
-  { date: '2023-06-08', description: 'Starbucks', amount: 5.65, category: 'Food & Dining', type: 'debit' },
-  { date: '2023-06-06', description: 'Target', amount: 95.47, category: 'Shopping', type: 'debit' },
-  { date: '2023-06-05', description: 'Gas Station', amount: 45.23, category: 'Transportation', type: 'debit' },
-  { date: '2023-06-03', description: 'Grocery Store', amount: 112.34, category: 'Food & Dining', type: 'debit' }
-];
-
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
-const RADIAN = Math.PI / 180;
-
-const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, index, name }: any) => {
-  const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-  const x = cx + radius * Math.cos(-midAngle * RADIAN);
-  const y = cy + radius * Math.sin(-midAngle * RADIAN);
-
-  return (
-    <text 
-      x={x} 
-      y={y} 
-      fill="white" 
-      textAnchor={x > cx ? 'start' : 'end'} 
-      dominantBaseline="central"
-      className="text-xs font-medium"
-    >
-      {`${(percent * 100).toFixed(0)}%`}
-    </text>
-  );
-};
-
+// Helper function to get merchant category
 const getMerchantCategory = (merchantName: string, transactions: any[]): string | null => {
   const transaction = transactions.find(t => t.description.includes(merchantName));
   return transaction?.category || null;
 };
 
-const enhancedInsights = (insights, statement, categories, merchants, prevMonthData) => {
-  if (!insights || insights.length === 0) return [];
-  
-  return [
-    {
-      type: "warning",
-      title: `Spending Increased by 12%`,
-      description: `Your total spending has increased compared to last month.`,
-      action: 'Review your recent transactions to identify unexpected increases in spending.'
-    },
-    {
-      type: "success",
-      title: `${categories[0]?.name || 'Shopping'} is Your Top Category`,
-      description: `${categories[0]?.percentage || 28}% of your spending goes to ${categories[0]?.name || 'Shopping'}.`,
-      action: 'Continue monitoring this category for potential savings.'
-    },
-    {
-      type: "info",
-      title: `${merchants[0]?.name || 'Rent'}: ${merchants[0]?.amount ? Math.round((merchants[0].amount / (statement?.totalExpense || 1000)) * 100) : 25}% of Total Spending`,
-      description: `You spent $${merchants[0]?.amount?.toLocaleString() || '1800'} at ${merchants[0]?.name || 'Rent'}.`,
-      action: `Look for alternatives that might offer better prices.`
+// New helper function to generate enhanced insights with actionable recommendations
+const generateEnhancedInsights = (
+  statement: any, 
+  categories: any[],
+  merchants: any[], 
+  previousMonthData: { totalExpenses: number; categoryPercentages: Record<string, number> }
+) => {
+  const insights: {
+    type: 'warning' | 'success' | 'info';
+    title: string;
+    description: string;
+    action?: string;
+  }[] = [];
+
+  // Calculate monthly budget based on total expenses
+  const monthlyBudget = statement.totalExpense;
+  const topCategory = categories[0];
+  const topMerchant = merchants[0];
+
+  // Calculate month-over-month changes
+  const expenseChange = previousMonthData.totalExpenses > 0 
+    ? ((statement.totalExpense - previousMonthData.totalExpenses) / previousMonthData.totalExpenses) * 100 
+    : 0;
+  const expenseChangeRounded = Math.round(expenseChange);
+
+  // Add insights based on spending patterns
+  if (topCategory && topCategory.percentage > 35) {
+    insights.push({
+      type: 'warning',
+      title: `High ${topCategory.name} Spending (${topCategory.percentage}%)`,
+      description: `Your ${topCategory.name} spending of $${topCategory.amount.toLocaleString()} represents ${topCategory.percentage}% of your total expenses, which is higher than the recommended 30% threshold.`,
+      action: `Consider reducing your ${topCategory.name} expenses by $${Math.round((topCategory.percentage - 30) * statement.totalExpense / 100).toLocaleString()} per month to reach the recommended level.`
+    });
+  }
+
+  // Month-over-month comparison insight
+  if (Math.abs(expenseChangeRounded) > 0) {
+    if (expenseChangeRounded > 15) {
+      insights.push({
+        type: 'warning',
+        title: `Spending Increased by ${expenseChangeRounded}%`,
+        description: `Your total spending of $${statement.totalExpense.toLocaleString()} has increased by ${expenseChangeRounded}% compared to last month ($${previousMonthData.totalExpenses.toLocaleString()}).`,
+        action: 'Review your recent transactions to identify unexpected increases in spending.'
+      });
+    } else if (expenseChangeRounded < -10) {
+      insights.push({
+        type: 'success',
+        title: `Spending Decreased by ${Math.abs(expenseChangeRounded)}%`,
+        description: `Your total spending of $${statement.totalExpense.toLocaleString()} has decreased by ${Math.abs(expenseChangeRounded)}% compared to last month ($${previousMonthData.totalExpenses.toLocaleString()}).`,
+        action: 'Continue your savings momentum and consider directing saved amounts to investments or savings.'
+      });
     }
-  ];
+  }
+
+  // Merchant concentration insight
+  if (topMerchant && (topMerchant.amount / statement.totalExpense) > 0.25) {
+    const merchantPercentage = Math.round((topMerchant.amount / statement.totalExpense) * 100);
+    insights.push({
+      type: 'info',
+      title: `${topMerchant.name}: ${merchantPercentage}% of Total Spending`,
+      description: `You spent $${topMerchant.amount.toLocaleString()} at ${topMerchant.name}, which represents ${merchantPercentage}% of your total monthly expenses.`,
+      action: `Look for alternatives to ${topMerchant.name} that might offer better prices or negotiate better terms if this is a recurring expense.`
+    });
+  }
+
+  // Balance insight
+  if (statement.balance !== undefined) {
+    if (statement.balance < 0) {
+      insights.push({
+        type: 'warning',
+        title: 'Negative Account Balance',
+        description: `Your current balance of $${statement.balance.toLocaleString()} is negative. This may incur overdraft fees.`,
+        action: 'Consider transferring funds into this account to avoid overdraft fees and interest charges.'
+      });
+    } else if (statement.balance > statement.totalExpense * 3) {
+      insights.push({
+        type: 'info',
+        title: 'Excess Cash on Hand',
+        description: `Your balance of $${statement.balance.toLocaleString()} is more than 3x your monthly expenses of $${statement.totalExpense.toLocaleString()}.`,
+        action: 'Consider moving excess funds to high-yield savings or investments to earn better returns.'
+      });
+    }
+  }
+
+  // If no insights were generated, add some generic ones
+  if (insights.length === 0) {
+    insights.push({
+      type: 'info',
+      title: 'Spending Analysis',
+      description: `Your total monthly expenses are $${statement.totalExpense.toLocaleString()}, with ${topCategory ? topCategory.name : 'N/A'} as your largest spending category at ${topCategory ? topCategory.percentage : 0}%.`,
+      action: 'Consider creating a budget to track and optimize your spending patterns.'
+    });
+  }
+
+  return insights;
 };
 
 const Analyze = () => {
@@ -176,755 +201,158 @@ const Analyze = () => {
   const [loaded, setLoaded] = useState(false);
   const [insights, setInsights] = useState<string[]>([]);
   const [isGeneratingInsights, setIsGeneratingInsights] = useState(false);
-  const [useRealData, setUseRealData] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [showExportView, setShowExportView] = useState(false);
-  const printRef = useRef<HTMLDivElement>(null);
-  const exportRef = useRef<HTMLDivElement>(null);
-  
-  useEffect(() => {
-    if (statementData && statementData.transactions && statementData.transactions.length > 0) {
-      console.log("Using real statement data with", statementData.transactions.length, "transactions");
-      setUseRealData(true);
-    } else {
-      console.log("No statement data available, using mock data");
-      setUseRealData(false);
-    }
-  }, [statementData]);
+  const [exportFormat, setExportFormat] = useState<'image' | 'pdf'>('image');
+  const [isExporting, setIsExporting] = useState(false);
+  const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
+    if (statementData) {
       setLoaded(true);
-    }, 800);
-    
-    return () => clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
-    if (statementData && statementData.transactions.length > 0) {
-      generateAIInsights();
+      generateFinancialInsights();
     }
   }, [statementData]);
 
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      setActiveIndex(prevIndex => {
-        const categories = useRealData && statementData?.transactions 
-          ? processCategoriesFromTransactions(statementData.transactions)
-          : mockCategories;
-          
-        return (prevIndex + 1) % categories.length;
-      });
-    }, 3000);
-
-    return () => clearInterval(intervalId);
-  }, [statementData, useRealData]);
-
-  const categories = useRealData && statementData?.transactions 
-    ? processCategoriesFromTransactions(statementData.transactions)
-    : mockCategories;
-  
-  const transactions = useRealData && statementData?.transactions 
-    ? statementData.transactions 
-    : mockTransactions;
-  
-  const merchants = useRealData && statementData?.transactions
-    ? processMerchantsFromTransactions(statementData.transactions)
-    : processMerchantsFromTransactions(mockTransactions);
-    
-  const totalSpent = useRealData && statementData?.totalExpense 
-    ? statementData.totalExpense
-    : mockCategories.reduce((sum, category) => sum + category.amount, 0);
-
-  const chartData = categories.map(category => ({
-    name: category.name,
-    value: category.amount,
-    color: category.pieColor
-  }));
-
-  const CHART_CONFIG = {
-    expenses: {
-      label: "Expenses",
-      theme: {
-        light: "hsl(var(--chart-1))",
-        dark: "hsl(var(--chart-1))"
-      }
-    }
-  };
-
-  const generateAIInsights = async () => {
-    if (!statementData) {
-      toast({
-        variant: "destructive",
-        title: "No data available",
-        description: "Please upload a bank statement to generate insights."
-      });
-      return;
-    }
-    
+  const generateFinancialInsights = async () => {
+    if (!statementData) return;
     setIsGeneratingInsights(true);
-    
     try {
-      console.log('Starting insight generation with data:', 
-        `${statementData.transactions.length} transactions, income: ${statementData.totalIncome}, expenses: ${statementData.totalExpense}`);
-      const generatedInsights = await generateInsights(statementData);
-      setInsights(generatedInsights);
-      
-      toast({
-        title: "Insights Generated",
-        description: "AI analysis of your statement is complete!",
-      });
+      // For now, use the enhanced insights generator
+      const categories = processCategoriesFromTransactions(statementData.transactions);
+      const merchants = processMerchantsFromTransactions(statementData.transactions);
+      const enhanced = generateEnhancedInsights(statementData, categories, merchants, previousMonthData || { totalExpenses: 0, categoryPercentages: {} });
+      setInsights(enhanced.map(i => i.title));
     } catch (error) {
       console.error('Error generating insights:', error);
-      setInsights([
-        'Failed to generate AI insights. Please try again or check your connection.',
-        'Consider reviewing your largest transactions for savings opportunities.',
-        'Try categorizing your transactions to better understand spending patterns.'
-      ]);
-      
       toast({
-        variant: "destructive",
         title: "Error",
-        description: "Failed to generate insights: " + (error instanceof Error ? error.message : "Unknown error"),
+        description: "Failed to generate insights",
+        variant: "destructive"
       });
     } finally {
       setIsGeneratingInsights(false);
     }
   };
 
-  const handleNoDataRedirect = () => {
-    toast({
-      title: "No Statement Data",
-      description: "Please upload a bank statement first.",
-    });
-    navigate('/dashboard/upload');
-  };
-
-  const onPieEnter = (_: any, index: number) => {
-    setActiveIndex(index);
-  };
-
-  const handlePrintPDF = async () => {
-    if (!printRef.current) return;
-    
-    toast({
-      title: "Generating PDF",
-      description: "Please wait while we prepare your report...",
-    });
-    
+  const handleExport = async () => {
+    if (!statementData) return;
+    setIsExporting(true);
     try {
-      const content = printRef.current;
-      const canvas = await html2canvas(content, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: "#ffffff"
-      });
-      
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
-      });
-      
-      const imgWidth = 210;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      
-      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
-      pdf.save('financial-analysis.pdf');
-      
+      const element = document.getElementById('export-report');
+      if (!element) throw new Error('Export element not found');
+
+      if (exportFormat === 'image') {
+        const canvas = await html2canvas(element);
+        const dataUrl = canvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        link.href = dataUrl;
+        link.download = 'financial_analysis.png';
+        link.click();
+      } else if (exportFormat === 'pdf') {
+        const canvas = await html2canvas(element);
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF();
+        const imgProps = pdf.getImageProperties(imgData);
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        pdf.save('financial_analysis.pdf');
+      }
       toast({
-        title: "PDF Generated",
-        description: "Your financial analysis has been downloaded successfully!",
+        title: "Success",
+        description: "Export completed successfully",
+        variant: "default"
       });
     } catch (error) {
-      console.error('Error generating PDF:', error);
+      console.error('Error exporting report:', error);
       toast({
-        variant: "destructive",
         title: "Error",
-        description: "Failed to generate PDF. Please try again.",
+        description: "Failed to export report",
+        variant: "destructive"
       });
+    } finally {
+      setIsExporting(false);
     }
   };
 
-  const handleExportPDF = async () => {
-    if (!exportRef.current) return;
-    
-    toast({
-      title: "Generating Export Report",
-      description: "Please wait while we prepare your report...",
-    });
-    
-    try {
-      const content = exportRef.current;
-      const canvas = await html2canvas(content, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: "#ffffff"
-      });
-      
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
-      });
-      
-      const imgWidth = 210;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      
-      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
-      pdf.save('expense-report.pdf');
-      
-      toast({
-        title: "Export Completed",
-        description: "Your expense report has been downloaded successfully!",
-      });
-    } catch (error) {
-      console.error('Error generating export report:', error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to generate export. Please try again.",
-      });
-    }
-  };
-
-  if (showExportView && statementData) {
+  if (!statementData) {
     return (
-      <div className="max-w-md mx-auto py-8 px-4">
-        <div className="mb-6 flex justify-between items-center">
-          <h1 className="text-2xl font-bold">Expense Report</h1>
-          <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => setShowExportView(false)}
-            >
-              Back to Analysis
-            </Button>
-            <Button 
-              size="sm" 
-              onClick={handleExportPDF}
-              className="gap-2"
-            >
-              <Download className="h-4 w-4" />
-              Export PDF
-            </Button>
-          </div>
-        </div>
-        
-        <div ref={exportRef}>
-          <ExportReport 
-            statement={statementData} 
-            previousMonthData={{
-              totalExpenses: totalSpent * 0.88, // Assuming 12% increase from last month
-              categoryPercentages: {
-                'Shopping': 28,
-                'Housing': 40,
-                'Transportation': 10
-              }
-            }}
-            insights={insights}
-          />
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <FileText className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">No Statement Data</h2>
+          <p className="text-gray-600 mb-4">Please upload a bank statement first to view the analysis.</p>
+          <Button onClick={() => navigate('/dashboard/upload')}>
+            Upload Statement
+          </Button>
         </div>
       </div>
     );
   }
 
+  const categories = processCategoriesFromTransactions(statementData.transactions);
+  const merchants = processMerchantsFromTransactions(statementData.transactions);
+  const topCategory = categories[0] || {
+    name: 'Shopping',
+    amount: 1240,
+    percentage: 28,
+    icon: TrendingUp,
+    color: 'bg-blue-500'
+  };
+  const topMerchant = merchants[0] || {
+    name: 'Rent',
+    amount: 1800,
+    count: 1
+  };
+
   return (
-    <div className="max-w-6xl mx-auto pt-20 px-6 pb-20">
-      <div className="flex flex-col md:flex-row md:items-center justify-between mb-10 animate-slide-down">
+    <div className="container mx-auto px-4 py-8 space-y-8">
+      {/* Header Section */}
+      <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-3xl md:text-4xl font-bold mb-2">Spending Analysis</h1>
-          <p className="text-muted-foreground">
-            {useRealData 
-              ? `Analysis of your uploaded statement with ${statementData?.transactions.length} transactions`
-              : 'Example data shown. Please upload a statement for real insights.'}
-          </p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Financial Analysis</h1>
+          <p className="text-gray-600">Detailed breakdown of your financial statement</p>
         </div>
-        <div className="mt-4 md:mt-0 flex gap-2">
-          {!useRealData && (
-            <Button 
-              variant="default" 
-              className="gap-2 text-sm"
-              onClick={handleNoDataRedirect}
-            >
-              <DollarSign className="w-4 h-4" />
-              Upload Statement
-            </Button>
-          )}
-          {useRealData && (
-            <Button variant="outline" className="gap-2 text-sm">
-              <DollarSign className="w-4 h-4" />
-              Your Statement
-            </Button>
-          )}
+        <div className="flex gap-2">
           <Button
             variant="outline"
-            className="gap-2 text-sm"
-            onClick={() => setShowExportView(true)}
+            onClick={() => setIsSaveDialogOpen(true)}
+            className="flex items-center gap-2"
           >
-            <FileText className="w-4 h-4" />
-            View Report
+            <Bookmark className="h-4 w-4" />
+            Save Analysis
           </Button>
           <Button
             variant="outline"
-            className="gap-2 text-sm"
-            onClick={handlePrintPDF}
+            onClick={handleExport}
+            disabled={isExporting}
+            className="flex items-center gap-2"
           >
-            <Printer className="w-4 h-4" />
-            Print Analysis
+            <Download className="h-4 w-4" />
+            {isExporting ? 'Exporting...' : 'Export'}
           </Button>
         </div>
       </div>
-      
-      {!loaded ? (
-        <div className="space-y-6 animate-pulse">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {[1, 2, 3].map((i) => (
-              <Card key={i} className="h-28">
-                <CardContent className="p-6">
-                  <div className="h-5 w-24 bg-muted/50 rounded-md mb-4"></div>
-                  <div className="h-6 w-16 bg-muted/50 rounded-md"></div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-          <Card className="h-96">
-            <CardContent className="p-6">
-              <div className="h-full w-full flex flex-col items-center justify-center">
-                <div className="w-20 h-20 rounded-full bg-muted/50 mb-4"></div>
-                <div className="h-4 w-32 bg-muted/50 rounded-md"></div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      ) : (
-        <div className="space-y-6" ref={printRef}>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-slide-up">
-            <StatCard
-              title="Total Expenses"
-              value={`$${totalSpent.toLocaleString()}`}
-              icon={<DollarSign className="w-4 h-4 text-primary" />}
-              trend="up"
-              trendValue={statementData ? `${statementData.transactions.length} items` : "+12%"}
-            />
-            <StatCard
-              title="Top Category"
-              value={categories[0]?.name || "N/A"}
-              icon={categories[0]?.icon ? React.createElement(categories[0].icon, { className: "w-4 h-4 text-green-500" }) : <Tag className="w-4 h-4 text-green-500" />}
-              trend="neutral"
-              trendValue={categories[0] ? `${categories[0].percentage}%` : "0%"}
-            />
-            <StatCard
-              title="Top Merchant"
-              value={merchants[0]?.name || "N/A"}
-              icon={<Store className="w-4 h-4 text-amber-500" />}
-              trend="neutral"
-              trendValue={merchants[0] ? `$${merchants[0].amount.toFixed(2)}` : "$0.00"}
-            />
-          </div>
-          
-          <Tabs defaultValue="categories" className="animate-blur-in" style={{ animationDelay: '200ms' }}>
-            <TabsList className="mb-6">
-              <TabsTrigger value="categories">Categories</TabsTrigger>
-              <TabsTrigger value="merchants">Merchants</TabsTrigger>
-              <TabsTrigger value="transactions">Transactions</TabsTrigger>
-              <TabsTrigger value="insights">AI Insights</TabsTrigger>
-              <TabsTrigger value="merchant-insights">Merchant Analysis</TabsTrigger>
-              <TabsTrigger value="analytics">Analytics</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="categories">
-              <Card>
-                <CardContent className="p-6">
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div>
-                      <h3 className="text-lg font-medium mb-4">Spending by Category</h3>
-                      
-                      <div className="space-y-4 mt-6">
-                        {categories.map((category, index) => (
-                          <div key={index} className={cn(
-                            "animate-fade-in",
-                            index === activeIndex ? "scale-105 transition-transform" : ""
-                          )} style={{ animationDelay: `${index * 100}ms` }}>
-                            <div className="flex items-center justify-between mb-1">
-                              <div className="flex items-center">
-                                <div className={cn("p-1.5 rounded-md mr-2", category.color)}>
-                                  {React.createElement(category.icon, { className: "w-3.5 h-3.5 text-white" })}
-                                </div>
-                                <span className="text-sm font-medium">{category.name}</span>
-                              </div>
-                              <span className="text-sm font-medium">${category.amount.toFixed(2)}</span>
-                            </div>
-                            <div className="w-full h-2 bg-muted/50 rounded-full overflow-hidden">
-                              <div 
-                                className={cn("h-full rounded-full", category.color)}
-                                style={{ width: `${category.percentage}%`, transition: "width 1s ease-in-out" }}
-                              ></div>
-                            </div>
-                            <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                              <span>{category.percentage}%</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center justify-center">
-                      <div className="h-64 w-full max-w-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <PieChart>
-                            <Pie
-                              data={chartData}
-                              cx="50%"
-                              cy="50%"
-                              innerRadius={60}
-                              outerRadius={80}
-                              paddingAngle={5}
-                              dataKey="value"
-                              labelLine={false}
-                              label={renderCustomizedLabel}
-                              animationBegin={0}
-                              animationDuration={1500}
-                              animationEasing="ease-out"
-                              onMouseEnter={onPieEnter}
-                            >
-                              {chartData.map((entry, index) => (
-                                <Cell 
-                                  key={`cell-${index}`} 
-                                  fill={entry.color} 
-                                  className={cn(
-                                    "transition-opacity duration-300",
-                                    index === activeIndex ? "filter drop-shadow(0 0 8px rgba(0, 0, 0, 0.3))" : "opacity-70"
-                                  )}
-                                  stroke={index === activeIndex ? "#fff" : "none"}
-                                  strokeWidth={index === activeIndex ? 2 : 0}
-                                />
-                              ))}
-                            </Pie>
-                            <Tooltip 
-                              content={({ active, payload }) => {
-                                if (active && payload && payload.length) {
-                                  const data = payload[0].payload;
-                                  return (
-                                    <div className="bg-background border border-border p-2 rounded-md shadow-md">
-                                      <p className="font-medium">{data.name}</p>
-                                      <p className="text-sm">${data.value.toFixed(2)}</p>
-                                    </div>
-                                  );
-                                }
-                                return null;
-                              }}
-                            />
-                            <Legend 
-                              layout="horizontal" 
-                              verticalAlign="bottom" 
-                              align="center"
-                              wrapperStyle={{ paddingTop: "20px" }}
-                            />
-                          </PieChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="merchants">
-              <Card>
-                <CardContent className="p-6">
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div>
-                      <h3 className="text-lg font-medium mb-4">Top Merchants</h3>
-                      
-                      <div className="space-y-4 mt-6">
-                        {merchants.map((merchant, index) => (
-                          <div key={index} className="animate-fade-in" style={{ animationDelay: `${index * 100}ms` }}>
-                            <div className="flex items-center justify-between mb-1">
-                              <div className="flex items-center">
-                                <div className={cn("p-1.5 rounded-md mr-2", `bg-${COLORS[index % COLORS.length].replace('#', '')}-500`)}
-                                style={{ backgroundColor: COLORS[index % COLORS.length] }}>
-                                  <Store className="w-3.5 h-3.5 text-white" />
-                                </div>
-                                <span className="text-sm font-medium">{merchant.name}</span>
-                              </div>
-                              <span className="text-sm font-medium">${merchant.amount.toFixed(2)}</span>
-                            </div>
-                            <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                              <span>{merchant.count} transactions</span>
-                              <span>Avg: ${(merchant.amount / merchant.count).toFixed(2)}</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center justify-center">
-                      <div className="h-80 w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart
-                            data={merchants.slice(0, 8)}
-                            margin={{ top: 20, right: 30, left: 20, bottom: 50 }}
-                          >
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="name" angle={-45} textAnchor="end" height={70} />
-                            <YAxis />
-                            <Tooltip
-                              content={({ active, payload }) => {
-                                if (active && payload && payload.length) {
-                                  const data = payload[0].payload;
-                                  return (
-                                    <div className="bg-background border border-border p-2 rounded-md shadow-md">
-                                      <p className="font-medium">{data.name}</p>
-                                      <p className="text-sm">${data.amount.toFixed(2)}</p>
-                                      <p className="text-sm">{data.count} transactions</p>
-                                    </div>
-                                  );
-                                }
-                                return null;
-                              }}
-                            />
-                            <Bar dataKey="amount" fill="#8884d8">
-                              {merchants.slice(0, 8).map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                              ))}
-                            </Bar>
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="transactions">
-              <Card>
-                <CardContent className="p-6">
-                  <h3 className="text-lg font-medium mb-4">Recent Transactions</h3>
-                  
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b">
-                          <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Date</th>
-                          <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Description</th>
-                          <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Category</th>
-                          <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Amount</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {transactions.map((transaction, index) => (
-                          <tr 
-                            key={transaction.id || index}
-                            className={cn(
-                              "border-b border-border/50 hover:bg-muted/20 transition-colors",
-                              "animate-fade-in"
-                            )}
-                            style={{ animationDelay: `${index * 50}ms` }}
-                          >
-                            <td className="py-3 px-4 text-sm">
-                              {transaction.date}
-                            </td>
-                            <td className="py-3 px-4 text-sm font-medium">{transaction.description}</td>
-                            <td className="py-3 px-4 text-sm">
-                              <span className="px-2 py-1 rounded-full text-xs bg-muted/50">
-                                {transaction.category || "Uncategorized"}
-                              </span>
-                            </td>
-                            <td className="py-3 px-4 text-sm text-right font-medium">
-                              ${transaction.amount.toFixed(2)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="insights">
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
-                    <h3 className="text-lg font-medium">AI-Powered Insights</h3>
-                    <div className="mt-2 md:mt-0 flex gap-2">
-                      <Button 
-                        onClick={generateAIInsights} 
-                        disabled={isGeneratingInsights}
-                        className="gap-2"
-                      >
-                        <SparkleIcon className="w-4 h-4" />
-                        {isGeneratingInsights ? 'Generating...' : 'Generate Insights'}
-                      </Button>
-                      <Button 
-                        variant="outline"
-                        onClick={handlePrintPDF}
-                        className="gap-2"
-                      >
-                        <Download className="w-4 h-4" />
-                        Download PDF
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  {insights.length > 0 ? (
-                    <div className="space-y-6">
-                      <div className="p-4 rounded-md bg-primary/5 border border-primary/20 animate-slide-up">
-                        <h4 className="font-medium flex items-center gap-2 mb-2">
-                          <ArrowDown className="w-4 h-4 text-green-500" />
-                          {insights[0] ? 'Spending Opportunity' : 'No Insights Available'}
-                        </h4>
-                        <p className="text-muted-foreground">
-                          {insights[0] || 'Generate insights to see recommendations based on your spending patterns.'}
-                        </p>
-                      </div>
-                      
-                      {insights[1] && (
-                        <div className="p-4 rounded-md bg-amber-500/5 border border-amber-500/20 animate-slide-up" style={{ animationDelay: '100ms' }}>
-                          <h4 className="font-medium flex items-center gap-2 mb-2">
-                            <PieChartIcon className="w-4 h-4 text-amber-500" />
-                            Category Analysis
-                          </h4>
-                          <p className="text-muted-foreground">{insights[1]}</p>
-                        </div>
-                      )}
-                      
-                      {insights[2] && (
-                        <div className="p-4 rounded-md bg-green-500/5 border border-green-500/20 animate-slide-up" style={{ animationDelay: '200ms' }}>
-                          <h4 className="font-medium flex items-center gap-2 mb-2">
-                            <ArrowUp className="w-4 h-4 text-green-500" />
-                            Savings Recommendation
-                          </h4>
-                          <p className="text-muted-foreground">{insights[2]}</p>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-8 text-center">
-                      <div className="bg-muted/30 p-4 rounded-full mb-4">
-                        <SparkleIcon className="w-8 h-8 text-primary/50" />
-                      </div>
-                      <h4 className="text-lg font-medium mb-2">No insights generated yet</h4>
-                      <p className="text-muted-foreground max-w-md mb-6">
-                        Click the "Generate Insights" button to get AI-powered recommendations based on your financial data.
-                      </p>
-                      {!hasGeminiApiKey() && (
-                        <div className="mt-2 p-3 bg-amber-100 dark:bg-amber-900/20 text-amber-800 dark:text-amber-300 rounded-md text-sm max-w-md">
-                          <p className="font-medium mb-1">API Key Required</p>
-                          <p>Please set your Gemini API key in the settings to enable AI insights.</p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="merchant-insights">
-              <Card>
-                <CardContent className="p-6">
-                  <h3 className="text-lg font-medium mb-4">Top Merchants Analysis</h3>
-                  
-                  <div className="overflow-x-auto rounded-md border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="bg-muted/50">
-                          <TableHeader className="font-medium">Merchant</TableHeader>
-                          <TableHeader className="font-medium">Category</TableHeader>
-                          <TableHeader className="font-medium text-right">Total Spent</TableHeader>
-                          <TableHeader className="font-medium text-right">Frequency</TableHeader>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {merchants.map((merchant, i) => (
-                          <TableRow key={i} className={cn(
-                            "animate-fade-in",
-                            i % 2 === 0 ? "bg-background" : "bg-muted/20"
-                          )} style={{ animationDelay: `${i * 50}ms` }}>
-                            <TableCell className="font-medium">{merchant.name}</TableCell>
-                            <TableCell>
-                              {getMerchantCategory(merchant.name, transactions) || "Other"}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              ${merchant.amount.toLocaleString()}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {merchant.count}x
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="analytics">
-              <Card>
-                <CardContent className="p-6">
-                  <h3 className="text-lg font-medium mb-4">Financial Analytics</h3>
-                  
-                  <div className="space-y-4">
-                    {insights.length > 0 ? (
-                      enhancedInsights(insights, statementData, categories, merchants, previousMonthData || null).map((insight, index) => (
-                        <Alert key={index} 
-                          className={cn(
-                            "mb-4",
-                            insight.type === "warning" ? "border-amber-500/50 bg-amber-500/10" : 
-                            insight.type === "success" ? "border-green-500/50 bg-green-500/10" : 
-                            "border-blue-500/50 bg-blue-500/10"
-                          )}
-                        >
-                          <div className="flex gap-2 items-start">
-                            {insight.type === "warning" && <AlertCircle className="h-5 w-5 text-amber-500" />}
-                            {insight.type === "success" && <CheckCircle className="h-5 w-5 text-green-500" />}
-                            {insight.type === "info" && <Info className="h-5 w-5 text-blue-500" />}
-                            <div>
-                              <AlertTitle className="text-base font-semibold mb-1">
-                                {insight.title}
-                              </AlertTitle>
-                              <AlertDescription className="text-sm">
-                                {insight.description}
-                              </AlertDescription>
-                              {insight.action && (
-                                <p className="text-sm font-medium mt-2">
-                                  {insight.type === "warning" ? "Recommendation: " : "Action: "}
-                                  {insight.action}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        </Alert>
-                      ))
-                    ) : (
-                      <div className="flex flex-col items-center justify-center py-8 text-center">
-                        <BarChart className="w-12 h-12 text-muted-foreground mb-4" />
-                        <p className="text-muted-foreground">No analytics available yet. Generate insights to see analytics.</p>
-                        <Button 
-                          onClick={generateAIInsights} 
-                          disabled={isGeneratingInsights}
-                          className="mt-4 gap-2"
-                        >
-                          <SparkleIcon className="w-4 h-4" />
-                          {isGeneratingInsights ? 'Generating...' : 'Generate Insights'}
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </div>
-      )}
+
+      {/* Export Report Section */}
+      <div id="export-report">
+        <ExportReport 
+          statement={statementData} 
+          previousMonthData={previousMonthData ? {
+            totalExpenses: previousMonthData.totalExpense,
+            categoryPercentages: previousMonthData.categoryPercentages
+          } : undefined}
+          insights={insights}
+        />
+      </div>
+
+      {/* Save Analysis Dialog */}
+      <SaveAnalysisDialog
+        open={isSaveDialogOpen}
+        onOpenChange={setIsSaveDialogOpen}
+        statementData={statementData}
+        insights={insights}
+        categories={categories}
+      />
     </div>
   );
 };
