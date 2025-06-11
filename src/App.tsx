@@ -13,7 +13,6 @@ import Upload from "./pages/Upload";
 import Analyze from "./pages/Analyze";
 import SavedAnalyses from "./pages/SavedAnalyses";
 import NotFound from "./pages/NotFound";
-import ProtectedRoute from "./components/ProtectedRoute";
 import Navbar from "./components/Navbar";
 import PageTransition from "./components/PageTransition";
 
@@ -33,10 +32,10 @@ const App = () => (
                 <Routes>
                   <Route path="/" element={<Index />} />
                   <Route path="/auth" element={<Auth />} />
-                  <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-                  <Route path="/dashboard/upload" element={<ProtectedRoute><Upload /></ProtectedRoute>} />
-                  <Route path="/dashboard/analyze" element={<ProtectedRoute><Analyze /></ProtectedRoute>} />
-                  <Route path="/dashboard/saved-analyses" element={<ProtectedRoute><SavedAnalyses /></ProtectedRoute>} />
+                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/dashboard/upload" element={<Upload />} />
+                  <Route path="/dashboard/analyze" element={<Analyze />} />
+                  <Route path="/dashboard/saved-analyses" element={<SavedAnalyses />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </PageTransition>

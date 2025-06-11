@@ -58,7 +58,15 @@ const SavedAnalyses = () => {
 
       if (error) throw error;
 
-      setAnalyses(data || []);
+      // Transform the data to match our interface
+      const transformedData = (data || []).map(item => ({
+        ...item,
+        transactions: Array.isArray(item.transactions) ? item.transactions : [],
+        categories: Array.isArray(item.categories) ? item.categories : [],
+        insights: Array.isArray(item.insights) ? item.insights : []
+      }));
+
+      setAnalyses(transformedData);
     } catch (error) {
       console.error('Error fetching saved analyses:', error);
       toast({
@@ -166,7 +174,6 @@ const SavedAnalyses = () => {
                     size="sm"
                     className="flex-1"
                     onClick={() => {
-                      // TODO: Navigate to view analysis page
                       toast({
                         title: "Coming Soon",
                         description: "View analysis feature will be available soon",
