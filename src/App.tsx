@@ -1,50 +1,55 @@
 
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "@/contexts/AuthContext";
-import { StatementProvider } from "@/contexts/StatementContext";
-import Index from "./pages/Index";
-import Auth from "./pages/Auth";
-import Dashboard from "./pages/Dashboard";
-import Upload from "./pages/Upload";
-import Analyze from "./pages/Analyze";
-import SavedAnalyses from "./pages/SavedAnalyses";
-import NotFound from "./pages/NotFound";
-import Navbar from "./components/Navbar";
-import PageTransition from "./components/PageTransition";
+import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
+import { Toaster } from '@/components/ui/toaster';
+import PageTransition from './components/PageTransition';
+import Index from './pages/Index';
+import Auth from './pages/Auth';
+import Upload from './pages/Upload';
+import Analyze from './pages/Analyze';
+import Dashboard from './pages/Dashboard';
+import DashboardHome from './pages/DashboardHome';
+import NotFound from './pages/NotFound';
+import ProtectedRoute from './components/ProtectedRoute';
+import { StatementProvider } from './contexts/StatementContext';
+import { AuthProvider } from './contexts/AuthContext';
+import './App.css';
 
-const queryClient = new QueryClient();
+// Wrap the Routes with appropriate transition components
+const AnimatedRoutes = () => {
+  const location = useLocation();
+  
+  return (
+    <Routes location={location} key={location.pathname}>
+      <Route path="/" element={<PageTransition><Index /></PageTransition>} />
+      <Route path="/auth" element={<PageTransition><Auth /></PageTransition>} />
+      
+      {/* Protected dashboard routes */}
+      <Route path="/dashboard" element={<ProtectedRoute />}>
+        <Route index element={<PageTransition><DashboardHome /></PageTransition>} />
+        <Route path="upload" element={<PageTransition><Upload /></PageTransition>} />
+        <Route path="analyze" element={<PageTransition><Analyze /></PageTransition>} />
+      </Route>
+      
+      {/* Redirect old paths to dashboard */}
+      <Route path="/upload" element={<Navigate to="/dashboard/upload" replace />} />
+      <Route path="/analyze" element={<Navigate to="/dashboard/analyze" replace />} />
+      
+      <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
+    </Routes>
+  );
+};
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
+function App() {
+  return (
     <AuthProvider>
       <StatementProvider>
-        <TooltipProvider>
+        <Router>
+          <AnimatedRoutes />
           <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <div className="min-h-screen bg-gray-50">
-              <Navbar />
-              <PageTransition>
-                <Routes>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/auth" element={<Auth />} />
-                  <Route path="/dashboard" element={<Dashboard />} />
-                  <Route path="/dashboard/upload" element={<Upload />} />
-                  <Route path="/dashboard/analyze" element={<Analyze />} />
-                  <Route path="/dashboard/saved-analyses" element={<SavedAnalyses />} />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </PageTransition>
-            </div>
-          </BrowserRouter>
-        </TooltipProvider>
+        </Router>
       </StatementProvider>
     </AuthProvider>
-  </QueryClientProvider>
-);
+  );
+}
 
 export default App;
