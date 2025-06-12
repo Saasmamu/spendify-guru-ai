@@ -16,7 +16,7 @@ interface Analysis {
   date: string;
   total_income: number;
   total_expense: number;
-  transactions: any[];
+  transactions: any;
   categories: any;
   insights: string[];
   created_at: string;
@@ -48,7 +48,19 @@ const History = () => {
         .order('created_at', { ascending: false });
 
       if (data && !error) {
-        setAnalyses(data);
+        // Transform the data to match our Analysis interface
+        const transformedData = data.map(item => ({
+          id: item.id,
+          name: item.name,
+          date: item.date,
+          total_income: item.total_income,
+          total_expense: item.total_expense,
+          transactions: item.transactions,
+          categories: item.categories,
+          insights: Array.isArray(item.insights) ? item.insights : [],
+          created_at: item.created_at
+        }));
+        setAnalyses(transformedData);
       } else {
         // Mock data for demo
         const mockAnalyses: Analysis[] = [
