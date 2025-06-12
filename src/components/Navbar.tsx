@@ -1,8 +1,7 @@
-
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { Receipt, Upload, PieChart, LogIn, LogOut, Menu, X, Wallet, Flag } from 'lucide-react';
+import { Receipt, Upload, PieChart, LogIn, LogOut, Menu, X, Wallet, Flag, History } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -66,6 +65,7 @@ const Navbar = () => {
                 <NavLink to="/dashboard" label="Dashboard" icon={Receipt} />
                 <NavLink to="/dashboard/upload" label="Upload" icon={Upload} />
                 <NavLink to="/dashboard/analyze" label="Analyze" icon={PieChart} />
+                <NavLink to="/dashboard/history" label="History" icon={History} />
                 <NavLink to="/dashboard/budgets" label="Budgets" icon={Wallet} />
                 <NavLink to="/dashboard/goals" label="Goals" icon={Flag} />
                 <div 
@@ -106,6 +106,7 @@ const Navbar = () => {
               <NavLink to="/dashboard" label="Dashboard" icon={Receipt} />
               <NavLink to="/dashboard/upload" label="Upload" icon={Upload} />
               <NavLink to="/dashboard/analyze" label="Analyze" icon={PieChart} />
+              <NavLink to="/dashboard/history" label="History" icon={History} />
               <NavLink to="/dashboard/budgets" label="Budgets" icon={Wallet} />
               <NavLink to="/dashboard/goals" label="Goals" icon={Flag} />
               <Button

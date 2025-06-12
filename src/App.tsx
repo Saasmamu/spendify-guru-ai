@@ -1,4 +1,3 @@
-
 import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { Toaster } from '@/components/ui/toaster';
 import PageTransition from './components/PageTransition';
@@ -14,6 +13,7 @@ import BudgetDetails from './pages/BudgetDetails';
 import Goals from './pages/Goals';
 import GoalCreate from './pages/GoalCreate';
 import GoalDetails from './pages/GoalDetails';
+import History from './pages/History';
 import NotFound from './pages/NotFound';
 import ProtectedRoute from './components/ProtectedRoute';
 import { StatementProvider } from './contexts/StatementContext';
@@ -34,6 +34,7 @@ const AnimatedRoutes = () => {
         <Route index element={<PageTransition><DashboardHome /></PageTransition>} />
         <Route path="upload" element={<PageTransition><Upload /></PageTransition>} />
         <Route path="analyze" element={<PageTransition><Analyze /></PageTransition>} />
+        <Route path="history" element={<PageTransition><History /></PageTransition>} />
         <Route path="budgets" element={<PageTransition><Budgets /></PageTransition>} />
         <Route path="budgets/create" element={<PageTransition><BudgetCreate /></PageTransition>} />
         <Route path="budgets/:id" element={<PageTransition><BudgetDetails /></PageTransition>} />
