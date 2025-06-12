@@ -8,6 +8,12 @@ import Upload from './pages/Upload';
 import Analyze from './pages/Analyze';
 import Dashboard from './pages/Dashboard';
 import DashboardHome from './pages/DashboardHome';
+import Budgets from './pages/Budgets';
+import BudgetCreate from './pages/BudgetCreate';
+import BudgetDetails from './pages/BudgetDetails';
+import Goals from './pages/Goals';
+import GoalCreate from './pages/GoalCreate';
+import GoalDetails from './pages/GoalDetails';
 import NotFound from './pages/NotFound';
 import ProtectedRoute from './components/ProtectedRoute';
 import { StatementProvider } from './contexts/StatementContext';
@@ -28,6 +34,12 @@ const AnimatedRoutes = () => {
         <Route index element={<PageTransition><DashboardHome /></PageTransition>} />
         <Route path="upload" element={<PageTransition><Upload /></PageTransition>} />
         <Route path="analyze" element={<PageTransition><Analyze /></PageTransition>} />
+        <Route path="budgets" element={<PageTransition><Budgets /></PageTransition>} />
+        <Route path="budgets/create" element={<PageTransition><BudgetCreate /></PageTransition>} />
+        <Route path="budgets/:id" element={<PageTransition><BudgetDetails /></PageTransition>} />
+        <Route path="goals" element={<PageTransition><Goals /></PageTransition>} />
+        <Route path="goals/create" element={<PageTransition><GoalCreate /></PageTransition>} />
+        <Route path="goals/:id" element={<PageTransition><GoalDetails /></PageTransition>} />
       </Route>
       
       {/* Redirect old paths to dashboard */}
