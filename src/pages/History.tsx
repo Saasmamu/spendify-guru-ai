@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -57,7 +56,9 @@ const History = () => {
           total_expense: item.total_expense,
           transactions: item.transactions,
           categories: item.categories,
-          insights: Array.isArray(item.insights) ? item.insights : [],
+          insights: Array.isArray(item.insights) 
+            ? item.insights.filter((insight): insight is string => typeof insight === 'string')
+            : [],
           created_at: item.created_at
         }));
         setAnalyses(transformedData);
