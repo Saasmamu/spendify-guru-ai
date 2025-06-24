@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import StatCard from '@/components/StatCard';
-import { PieChart as PieChartIcon, ArrowDown, ArrowUp, DollarSign, ShoppingBag, Home, Car, Coffee, Tag, SparkleIcon, Save } from 'lucide-react';
+import { PieChart as PieChartIcon, ArrowDown, ArrowUp, DollarSign, ShoppingBag, Home, Car, Coffee, Tag, SparkleIcon, Save, TrendingUp } from 'lucide-react';
 import { useStatement } from '@/contexts/StatementContext';
 import ApiKeyInput from '@/components/ApiKeyInput';
 import { generateInsights, hasGeminiApiKey } from '@/services/insightService';
@@ -238,7 +238,7 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
   );
 };
 
-const Analyze = () => {
+export default function Analyze() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { statementData } = useStatement();
@@ -490,7 +490,7 @@ const Analyze = () => {
 
   // Modify the categories display section to show all categories
   return (
-    <div className="min-h-screen">
+    <div className="container mx-auto p-6">
       <Navbar />
       <div className="max-w-6xl mx-auto pt-32 px-6 pb-20">
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-10 animate-slide-down">
@@ -916,7 +916,6 @@ const Analyze = () => {
       </div>
     </div>
   );
-};
+}
 
 export default Analyze;
-

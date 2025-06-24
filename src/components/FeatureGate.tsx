@@ -21,6 +21,9 @@ export function FeatureGate({ children, feature }: FeatureGateProps) {
     return <>{children}</>;
   }
 
+  // Convert camelCase feature name to readable text
+  const featureDisplayName = String(feature).replace(/([A-Z])/g, ' $1').toLowerCase();
+
   // If the feature is not available, show upgrade dialog
   return (
     <>
@@ -30,7 +33,7 @@ export function FeatureGate({ children, feature }: FeatureGateProps) {
             <DialogTitle>Upgrade Required</DialogTitle>
             <DialogDescription>
               This feature is not available on your current plan ({activePlan?.name || 'Free'}). 
-              Upgrade to access {String(feature).replace(/([A-Z])/g, ' $1').toLowerCase()}.
+              Upgrade to access {featureDisplayName}.
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end space-x-4 mt-4">

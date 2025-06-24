@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { FeatureGate } from '@/components/FeatureGate';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -216,7 +217,7 @@ export default function AdvancedAnalytics() {
   };
 
   return (
-    <FeatureGate feature="hasAdvancedAnalytics">
+    <FeatureGate feature="advancedAnalytics">
       <div className="container mx-auto p-6">
         <h1 className="text-3xl font-bold mb-8">Advanced Analytics</h1>
 

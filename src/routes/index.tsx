@@ -1,4 +1,3 @@
-
 import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
@@ -62,6 +61,9 @@ const Blog = lazy(() => import('@/pages/Blog'));
 const Contact = lazy(() => import('@/pages/Contact'));
 const ThankYou = lazy(() => import('@/pages/ThankYou'));
 const FAQ = lazy(() => import('@/pages/FAQ'));
+
+// Add lazy loading for the new page
+const AdvancedFinancialAnalysis = lazy(() => import('@/pages/AdvancedFinancialAnalysis'));
 
 // Root wrapper component that provides all contexts
 const RootWrapper = ({ children }: { children: React.ReactNode }) => (
@@ -143,6 +145,10 @@ const router = createBrowserRouter([
             element: <Suspense fallback={<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>}><Analyze /></Suspense>
           },
           {
+            path: 'advanced-analysis',
+            element: <Suspense fallback={<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>}><AdvancedFinancialAnalysis /></Suspense>
+          },
+          {
             path: 'saved',
             element: <Suspense fallback={<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>}><SavedAnalyses /></Suspense>
           },
@@ -157,10 +163,6 @@ const router = createBrowserRouter([
           {
             path: 'advanced-analytics',
             element: <Suspense fallback={<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>}><AdvancedAnalytics /></Suspense>
-          },
-          {
-            path: 'advanced-analysis',
-            element: <Suspense fallback={<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>}><AdvancedAnalysis /></Suspense>
           },
           {
             path: 'financial-goals',

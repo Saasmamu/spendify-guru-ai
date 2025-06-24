@@ -1,300 +1,169 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
-import { SubscriptionLimits } from '@/types/subscription';
-import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/components/ui/use-toast';
+import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { SubscriptionLimits, SubscriptionPlan } from '@/types/subscription';
 
 interface SubscriptionContextType {
+  activePlan: SubscriptionPlan | null;
   limits: SubscriptionLimits;
-  activePlan: string | null;
-  trialEndsAt: Date | null;
-  trialType: 'seven_day' | 'thirty_day' | null;
-  cardAdded: boolean;
-  loading: boolean;
-  updateSubscription: (planId: string, trialOptions?: { 
-    isTrialStart: boolean;
-    withCard?: boolean;
-  }) => Promise<void>;
-  addCardToTrial: (planId: string) => Promise<void>;
+  isLoading: boolean;
+  error: string | null;
+  upgradePlan: (planId: string) => Promise<void>;
+  cancelSubscription: () => Promise<void>;
 }
 
-export const defaultLimits: SubscriptionLimits = {
-  maxStatements: 5,
-  maxSavedAnalyses: 10,
-  hasAdvancedAnalytics: false,
-  advancedAnalysis: true, // Enabled for testing the new feature
-  canCompare: false,
-  hasFinancialGoals: false,
-  hasAIFinancialAdvisor: false,
+const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
+
+const defaultLimits: SubscriptionLimits = {
+  maxStatements: 1,
+  maxSavedAnalyses: 3,
+  aiAnalysis: false,
+  advancedCharts: false,
+  exportReports: false,
+  prioritySupport: false,
+  customCategories: false,
+  budgetTracking: false,
+  advancedAnalytics: false,
+  advancedAnalysis: false,
+  financialGoals: false,
+  aiAdvisor: false,
   budgetPlanner: false,
 };
 
-const getTrialEndDate = (withCard: boolean = false): Date => {
-  const date = new Date();
-  date.setDate(date.getDate() + (withCard ? 30 : 7));
-  return date;
-};
-
-export const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
-
-export function SubscriptionProvider({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
-  const { toast } = useToast();
+export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
+  const [activePlan, setActivePlan] = useState<SubscriptionPlan | null>(null);
   const [limits, setLimits] = useState<SubscriptionLimits>(defaultLimits);
-  const [activePlan, setActivePlan] = useState<string | null>(null);
-  const [trialEndsAt, setTrialEndsAt] = useState<Date | null>(null);
-  const [trialType, setTrialType] = useState<'seven_day' | 'thirty_day' | null>(null);
-  const [cardAdded, setCardAdded] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function fetchSubscription() {
-      if (!user) {
-        setLimits(defaultLimits);
-        setActivePlan(null);
-        setTrialEndsAt(null);
-        setLoading(false);
-        return;
-      }
-
-      setLoading(true);
-      try {
-        const { data, error } = await supabase
-          .from('subscriptions')
-          .select('*, trial_ends_at, trial_type, card_added')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (error && error.code !== 'PGRST116') {
-          throw error;
-        }
-
-        if (data) {
-          const trialEnd = data.trial_ends_at ? new Date(data.trial_ends_at) : null;
-          const isTrialActive = trialEnd && trialEnd > new Date();
-
-          if (isTrialActive) {
-            setActivePlan(data.plan);
-            setTrialEndsAt(trialEnd);
-            setTrialType(data.trial_type);
-            setCardAdded(data.card_added);
-            setLimits({
-              maxStatements: data.plan === 'pro' ? 20 : 5,
-              maxSavedAnalyses: data.plan === 'pro' ? 50 : 10,
-              hasAdvancedAnalytics: data.plan === 'pro',
-              advancedAnalysis: true, // Always enabled for testing
-              canCompare: data.plan === 'pro',
-              hasFinancialGoals: data.plan === 'pro',
-              hasAIFinancialAdvisor: data.plan === 'pro',
-              budgetPlanner: data.plan === 'pro',
-            });
-          } else {
-            setActivePlan(data.plan);
-            setTrialEndsAt(null);
-            setLimits({
-              maxStatements: data.plan === 'pro' ? 20 : 5,
-              maxSavedAnalyses: data.plan === 'pro' ? 50 : 10,
-              hasAdvancedAnalytics: data.plan === 'pro',
-              advancedAnalysis: true, // Always enabled for testing
-              canCompare: data.plan === 'pro' || data.plan === 'enterprise',
-              hasFinancialGoals: data.plan === 'pro' || data.plan === 'enterprise',
-              hasAIFinancialAdvisor: data.plan === 'pro' || data.plan === 'enterprise',
-              budgetPlanner: data.plan === 'pro' || data.plan === 'enterprise',
-            });
-            if (data.plan !== 'pro' && data.plan !== 'enterprise') {
-              setLimits(defaultLimits);
-            }
-          }
-        } else {
-          setLimits(defaultLimits);
-          setActivePlan(null);
-          setTrialEndsAt(null);
-        }
-      } catch (error) {
-        console.error('Error fetching subscription:', error);
-        setLimits(defaultLimits);
-        setActivePlan(null);
-        setTrialEndsAt(null);
-      } finally {
-        setLoading(false);
-      }
+    // Mock implementation: Fetch subscription data from local storage or API
+    const storedPlan = localStorage.getItem('activePlan');
+    if (storedPlan) {
+      setActivePlan(JSON.parse(storedPlan));
+      // Mock setting limits based on the plan
+      setLimits(getLimitsForPlan(JSON.parse(storedPlan).id));
+    } else {
+      // Default to free limits if no plan is active
+      setLimits(getLimitsForPlan(null));
     }
+  }, []);
 
-    fetchSubscription();
-  }, [user]);
-
-  const updateSubscription = async (planId: string, trialOptions?: { isTrialStart: boolean; withCard?: boolean }) => {
-    if (!user) {
-      throw new Error('User must be logged in to update subscription');
-    }
-
-    setLoading(true);
+  const upgradePlan = async (planId: string) => {
+    setIsLoading(true);
+    setError(null);
     try {
-      const isTrialStart = trialOptions?.isTrialStart ?? false;
-      const withCard = trialOptions?.withCard ?? false;
-      const now = new Date();
-      const trialEndDate = isTrialStart ? getTrialEndDate(withCard).toISOString() : null;
-
-      // Check if subscription exists first
-      const { data: existingSubscription, error: fetchError } = await supabase
-        .from('subscriptions')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (fetchError) {
-        console.error('Error fetching subscription:', fetchError);
-        throw fetchError;
-      }
-
-      // Always provide NOT NULL fields
-      const subscriptionData: any = {
-        user_id: user.id,
-        plan: planId,
-        updated_at: now.toISOString(),
-        status: 'active',
-        current_period_end: isTrialStart
-          ? trialEndDate // For trial, set to trial end
-          : new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString(), // For paid, 30 days from now
-        cancel_at_period_end: false,
-      };
-
-      if (isTrialStart) {
-        subscriptionData.trial_ends_at = trialEndDate;
-        subscriptionData.trial_type = withCard ? 'thirty_day' : 'seven_day';
-        subscriptionData.card_added = withCard;
-      } else {
-        subscriptionData.trial_ends_at = null;
-        subscriptionData.trial_type = null;
-        subscriptionData.card_added = false;
-      }
-
-      console.log('Updating subscription with:', subscriptionData);
-      
-      let error;
-      if (existingSubscription) {
-        // Update existing subscription
-        const { error: updateError } = await supabase
-          .from('subscriptions')
-          .update(subscriptionData)
-          .eq('user_id', user.id);
-        error = updateError;
-      } else {
-        // Insert new subscription
-        const { error: insertError } = await supabase
-          .from('subscriptions')
-          .insert(subscriptionData);
-        error = insertError;
-      }
-
-      if (error) {
-        console.error('Error in supabase operation:', error);
-        throw error;
-      }
-
-      setActivePlan(planId);
-      setTrialEndsAt(isTrialStart && trialEndDate ? new Date(trialEndDate) : null);
-      setLimits({
-        maxStatements: planId === 'enterprise' ? 100 : planId === 'pro' ? 20 : 5,
-        maxSavedAnalyses: planId === 'enterprise' ? 250 : planId === 'pro' ? 50 : 10,
-        hasAdvancedAnalytics: planId === 'enterprise' || planId === 'pro',
-        advancedAnalysis: true,
-        canCompare: planId === 'enterprise' || planId === 'pro',
-        hasFinancialGoals: planId === 'enterprise' || planId === 'pro',
-        hasAIFinancialAdvisor: planId === 'enterprise' || planId === 'pro',
-        budgetPlanner: planId === 'enterprise' || planId === 'pro',
+      // Mock API call to upgrade plan
+      const newPlan = await new Promise<SubscriptionPlan>((resolve) => {
+        setTimeout(() => {
+          const mockPlans = [
+            { id: 'basic', name: 'Basic', price: 10, interval: 'monthly', features: [], limits: getLimitsForPlan('basic') },
+            { id: 'premium', name: 'Premium', price: 20, interval: 'monthly', features: [], limits: getLimitsForPlan('premium') },
+          ];
+          const foundPlan = mockPlans.find(plan => plan.id === planId);
+          resolve(foundPlan || { id: 'free', name: 'Free', price: 0, interval: 'monthly', features: [], limits: getLimitsForPlan('free') });
+        }, 1000);
       });
-      if (planId !== 'pro' && planId !== 'enterprise' && !isTrialStart) {
-        setLimits(defaultLimits);
-      }
 
-      toast({
-        title: isTrialStart ? "Trial Started" : "Subscription Updated",
-        description: isTrialStart ? `Your ${withCard ? '30' : '7'}-day trial for the ${planId} plan has started.` : `Your subscription has been updated to the ${planId} plan.`,
-      });
-    } catch (error) {
-      console.error('Error updating subscription:', error);
-      // Log exact error details for debugging
-      if (typeof error === 'object' && error !== null) {
-        console.error('Full error object:', JSON.stringify(error));
-      }
-      toast({
-        title: "Subscription Update Failed",
-        description: error instanceof Error ? error.message : "Failed to update subscription. Please try again or contact support.",
-        variant: "destructive",
-      });
-      throw error;
+      setActivePlan(newPlan);
+      setLimits(getLimitsForPlan(newPlan.id));
+      localStorage.setItem('activePlan', JSON.stringify(newPlan));
+    } catch (err: any) {
+      setError(err.message || 'Failed to upgrade plan');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-    const addCardToTrial = async (planId: string) => {
-    if (!user) {
-      throw new Error('User must be logged in to add a card');
-    }
-
-    if (!trialEndsAt || trialType !== 'seven_day') {
-      throw new Error('Can only add card during a 7-day trial');
-    }
-
-    setLoading(true);
+  const cancelSubscription = async () => {
+    setIsLoading(true);
+    setError(null);
     try {
-      const newTrialEndDate = getTrialEndDate(true).toISOString();
-
-      const { error } = await supabase
-        .from('subscriptions')
-        .update({
-          trial_ends_at: newTrialEndDate,
-          trial_type: 'thirty_day',
-          card_added: true,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('user_id', user.id);
-
-      if (error) throw error;
-
-      setTrialEndsAt(new Date(newTrialEndDate));
-      setTrialType('thirty_day');
-      setCardAdded(true);
-
-      toast({
-        title: 'Trial Extended!',
-        description: 'Your trial has been extended to 30 days with card verification.',
+      // Mock API call to cancel subscription
+      await new Promise((resolve) => {
+        setTimeout(() => {
+          resolve(true);
+        }, 1000);
       });
-    } catch (error) {
-      console.error('Error adding card to trial:', error);
-      toast({
-        title: 'Failed to Add Card',
-        description: error instanceof Error ? error.message : 'Failed to add card to trial',
-        variant: 'destructive',
-      });
-      throw error;
+
+      setActivePlan(null);
+      setLimits(getLimitsForPlan(null));
+      localStorage.removeItem('activePlan');
+    } catch (err: any) {
+      setError(err.message || 'Failed to cancel subscription');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
+    }
+  };
+
+  const getLimitsForPlan = (planId: string | null): SubscriptionLimits => {
+    const freeLimits: SubscriptionLimits = {
+      maxStatements: 1,
+      maxSavedAnalyses: 3,
+      aiAnalysis: false,
+      advancedCharts: false,
+      exportReports: false,
+      prioritySupport: false,
+      customCategories: false,
+      budgetTracking: false,
+      advancedAnalytics: false,
+      advancedAnalysis: false,
+      financialGoals: false,
+      aiAdvisor: false,
+      budgetPlanner: false,
+    };
+
+    const basicLimits: SubscriptionLimits = {
+      maxStatements: 5,
+      maxSavedAnalyses: 10,
+      aiAnalysis: true,
+      advancedCharts: true,
+      exportReports: false,
+      prioritySupport: false,
+      customCategories: true,
+      budgetTracking: true,
+      advancedAnalytics: false,
+      advancedAnalysis: false,
+      financialGoals: true,
+      aiAdvisor: false,
+      budgetPlanner: true,
+    };
+
+    const premiumLimits: SubscriptionLimits = {
+      maxStatements: -1, // unlimited
+      maxSavedAnalyses: -1, // unlimited
+      aiAnalysis: true,
+      advancedCharts: true,
+      exportReports: true,
+      prioritySupport: true,
+      customCategories: true,
+      budgetTracking: true,
+      advancedAnalytics: true,
+      advancedAnalysis: true,
+      financialGoals: true,
+      aiAdvisor: true,
+      budgetPlanner: true,
+    };
+
+    switch (planId) {
+      case 'basic':
+        return basicLimits;
+      case 'premium':
+        return premiumLimits;
+      default:
+        return freeLimits;
     }
   };
 
   return (
-    <SubscriptionContext.Provider value={{ 
-      limits, 
-      activePlan, 
-      trialEndsAt, 
-      trialType,
-      cardAdded,
-      loading, 
-      updateSubscription,
-      addCardToTrial 
-    }}>
+    <SubscriptionContext.Provider value={{ activePlan, limits, isLoading, error, upgradePlan, cancelSubscription }}>
       {children}
     </SubscriptionContext.Provider>
   );
-}
+};
 
-export function useSubscription() {
+export const useSubscription = (): SubscriptionContextType => {
   const context = useContext(SubscriptionContext);
   if (!context) {
     throw new Error('useSubscription must be used within a SubscriptionProvider');
   }
   return context;
-}
+};
