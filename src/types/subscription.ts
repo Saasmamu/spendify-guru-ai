@@ -8,6 +8,11 @@ export interface SubscriptionLimits {
   prioritySupport: boolean;
   customCategories: boolean;
   budgetTracking: boolean;
+  advancedAnalytics: boolean;
+  advancedAnalysis: boolean;
+  financialGoals: boolean;
+  aiAdvisor: boolean;
+  budgetPlanner: boolean;
 }
 
 export interface SubscriptionPlan {

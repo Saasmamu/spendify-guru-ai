@@ -1,3 +1,4 @@
+
 import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
@@ -62,63 +63,71 @@ const Contact = lazy(() => import('@/pages/Contact'));
 const ThankYou = lazy(() => import('@/pages/ThankYou'));
 const FAQ = lazy(() => import('@/pages/FAQ'));
 
+// Root wrapper component that provides all contexts
+const RootWrapper = ({ children }: { children: React.ReactNode }) => (
+  <AuthProvider>
+    <AdminProvider>
+      <SubscriptionProvider>
+        <StatementProvider>
+          {children}
+          <Toaster />
+        </StatementProvider>
+      </SubscriptionProvider>
+    </AdminProvider>
+  </AuthProvider>
+);
+
 const router = createBrowserRouter([
   {
+    path: '/',
     element: (
-      <AuthProvider>
-        <AdminProvider>
-          <SubscriptionProvider>
-            <StatementProvider>
-              <Layout />
-              <Toaster />
-            </StatementProvider>
-          </SubscriptionProvider>
-        </AdminProvider>
-      </AuthProvider>
+      <RootWrapper>
+        <Layout />
+      </RootWrapper>
     ),
     children: [
       {
-        path: '/',
+        index: true,
         element: <Index />
       },
       {
-        path: '/features',
+        path: 'features',
         element: <Suspense fallback={null}><Features /></Suspense>
       },
       {
-        path: '/about',
+        path: 'about',
         element: <Suspense fallback={null}><About /></Suspense>
       },
       {
-        path: '/blog',
+        path: 'blog',
         element: <Suspense fallback={null}><Blog /></Suspense>
       },
       {
-        path: '/contact',
+        path: 'contact',
         element: <Suspense fallback={null}><Contact /></Suspense>
       },
       {
-        path: '/thankyou',
+        path: 'thankyou',
         element: <Suspense fallback={null}><ThankYou /></Suspense>
       },
       {
-        path: '/faq',
+        path: 'faq',
         element: <Suspense fallback={null}><FAQ /></Suspense>
       },
       {
-        path: '/auth',
+        path: 'auth',
         element: <Auth />
       },
       {
-        path: '/pricing',
+        path: 'pricing',
         element: <Pricing />
       },
       {
-        path: '/billing',
+        path: 'billing',
         element: <ProtectedRoute><BillingPage /></ProtectedRoute>
       },
       {
-        path: '/dashboard',
+        path: 'dashboard',
         element: <ProtectedRoute><Outlet /></ProtectedRoute>,
         children: [
           {
@@ -176,11 +185,11 @@ const router = createBrowserRouter([
         ]
       },
       {
-        path: '/paystack-test',
+        path: 'paystack-test',
         element: <PaystackTest />
       },
       {
-        path: '/expense-tracker',
+        path: 'expense-tracker',
         element: <ProtectedRoute><ExpenseTracker /></ProtectedRoute>
       },
       {
@@ -190,20 +199,13 @@ const router = createBrowserRouter([
     ]
   },
 
-  // Admin routes
+  // Admin routes - separate router branch
   {
     path: '/admin',
     element: (
-      <AuthProvider>
-        <AdminProvider>
-          <SubscriptionProvider>
-            <StatementProvider>
-              <AdminRoot />
-              <Toaster />
-            </StatementProvider>
-          </SubscriptionProvider>
-        </AdminProvider>
-      </AuthProvider>
+      <RootWrapper>
+        <AdminRoot />
+      </RootWrapper>
     ),
     children: [
       {

@@ -48,4 +48,4 @@ export function FeatureGate({ children, feature }: FeatureGateProps) {
       </div>
     </>
   );
-} 
+}
