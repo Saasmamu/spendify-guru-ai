@@ -77,16 +77,22 @@ export const generateInsights = async (
     console.log('Using Gemini 1.5-flash model');
     const model = genAI!.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
-    // Prepare the prompt with transaction data
+    // --- Add checks for potentially undefined numeric values ---
+    const safeTotalIncome = typeof statement.totalIncome === 'number' ? statement.totalIncome : 0;
+    const safeTotalExpense = typeof statement.totalExpense === 'number' ? statement.totalExpense : 0;
+    const safeBalance = typeof statement.balance === 'number' ? statement.balance : 0;
+    // --- End of added checks ---
+
+    // Prepare the prompt with transaction data using the safe values
     const prompt = `
       Please analyze this financial data from a bank statement and provide 3 concise, actionable insights for the user.
       Focus on spending patterns, potential savings opportunities, and budget recommendations.
       Keep each insight to 1-2 sentences. Format each insight as a separate response.
 
       Here is the transaction data:
-      Total Income: $${statement.totalIncome.toFixed(2)}
-      Total Expenses: $${statement.totalExpense.toFixed(2)}
-      Current Balance: $${statement.balance !== undefined ? statement.balance.toFixed(2) : (statement.totalIncome - statement.totalExpense).toFixed(2)}
+      Total Income: $${safeTotalIncome.toFixed(2)} 
+      Total Expenses: $${safeTotalExpense.toFixed(2)}
+      Current Balance: $${safeBalance.toFixed(2)} 
       
       Transactions by Category:
       ${getCategoryBreakdown(statement)}
@@ -95,8 +101,9 @@ export const generateInsights = async (
       ${getTopTransactions(statement)}
     `;
 
+    // Use safe values in logging as well
     console.log('Sending prompt to Gemini with data summary:', 
-      `Income: $${statement.totalIncome.toFixed(2)}, Expenses: $${statement.totalExpense.toFixed(2)}, Categories: ${Object.keys(getCategoryCounts(statement)).length}`);
+      `Income: $${safeTotalIncome.toFixed(2)}, Expenses: $${safeTotalExpense.toFixed(2)}, Categories: ${Object.keys(getCategoryCounts(statement)).length}`);
     
     try {
       // Generate the response with timeout handling
@@ -169,13 +176,15 @@ const getCategoryBreakdown = (statement: ProcessedStatement): string => {
   const categories = new Map<string, number>();
   
   statement.transactions.forEach(transaction => {
+    // Ensure transaction.amount is treated as a number
+    const amount = typeof transaction.amount === 'number' ? transaction.amount : 0; 
     const category = transaction.category || 'Uncategorized';
     const currentAmount = categories.get(category) || 0;
-    categories.set(category, currentAmount + transaction.amount);
+    categories.set(category, currentAmount + amount); // Use the safe amount
   });
   
   return Array.from(categories.entries())
-    .map(([category, amount]) => `${category}: $${amount.toFixed(2)}`)
+    .map(([category, amount]) => `${category}: $${amount.toFixed(2)}`) // .toFixed(2) is safe here as amount is guaranteed to be a number
     .join('\n');
 };
 
@@ -198,8 +207,71 @@ const getCategoryCounts = (statement: ProcessedStatement): Record<string, number
  */
 const getTopTransactions = (statement: ProcessedStatement): string => {
   return statement.transactions
-    .sort((a, b) => b.amount - a.amount)
+    // Ensure sorting handles non-numeric amounts
+    .sort((a, b) => (typeof b.amount === 'number' ? b.amount : 0) - (typeof a.amount === 'number' ? a.amount : 0)) 
     .slice(0, 5)
-    .map(t => `${t.description}: $${t.amount.toFixed(2)} (${t.category || 'Uncategorized'})`)
+    .map(t => {
+      // Ensure amount is safe before calling .toFixed
+      const safeAmount = typeof t.amount === 'number' ? t.amount : 0; 
+      return `${t.description}: $${safeAmount.toFixed(2)} (${t.category || 'Uncategorized'})`;
+    })
     .join('\n');
+};
+
+export const generateGeminiResponse = async (prompt: string): Promise<string> => {
+  const apiKey = getGeminiApiKey();
+  
+  if (!apiKey) {
+    throw new Error('Gemini API key not found');
+  }
+
+  try {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{
+            text: prompt
+          }]
+        }],
+        generationConfig: {
+          temperature: 0.7,
+          topK: 40,
+          topP: 0.95,
+          maxOutputTokens: 1024,
+        },
+        safetySettings: [
+          {
+            category: "HARM_CATEGORY_HARASSMENT",
+            threshold: "BLOCK_MEDIUM_AND_ABOVE"
+          },
+          {
+            category: "HARM_CATEGORY_HATE_SPEECH",
+            threshold: "BLOCK_MEDIUM_AND_ABOVE"
+          },
+          {
+            category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+            threshold: "BLOCK_MEDIUM_AND_ABOVE"
+          },
+          {
+            category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+            threshold: "BLOCK_MEDIUM_AND_ABOVE"
+          }
+        ]
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.candidates[0].content.parts[0].text;
+  } catch (error) {
+    console.error('Error calling Gemini API:', error);
+    throw error;
+  }
 };

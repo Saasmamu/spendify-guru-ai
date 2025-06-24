@@ -1,14 +1,17 @@
-
 import { Outlet } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import { Toaster } from '@/components/ui/toaster';
 
-const Dashboard = () => {
+interface DashboardProps {
+  children?: React.ReactNode;
+}
+
+const Dashboard = ({ children }: DashboardProps) => {
   return (
     <div className="min-h-screen">
       <Navbar />
       <div className="container mx-auto pt-8">
-        <Outlet />
+        {children || <Outlet />}
       </div>
       <Toaster />
     </div>

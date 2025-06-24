@@ -1,28 +1,30 @@
-
-import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2 } from 'lucide-react';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 
-const ProtectedRoute = () => {
-  const { user, isLoading } = useAuth();
+const featureRoutes = {
+  '/dashboard/compare': 'canCompare',
+  '/dashboard/advanced-analytics': 'hasAdvancedAnalytics',
+  '/dashboard/financial-goals': 'hasFinancialGoals',
+  '/dashboard/ai-advisor': 'hasAIFinancialAdvisor',
+  // Add other feature-gated routes here
+} as const;
+
+export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  const { limits } = useSubscription();
   const location = useLocation();
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-primary animate-spin" />
-        <span className="ml-2 text-lg">Loading...</span>
-      </div>
-    );
-  }
-
+  // Check if user is authenticated
   if (!user) {
-    // Redirect to login page but save the location they were trying to access
-    return <Navigate to="/auth" state={{ from: location }} replace />;
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // User is authenticated, render the protected route content
-  return <Outlet />;
-};
+  // Check feature access
+  const requiredFeature = featureRoutes[location.pathname as keyof typeof featureRoutes];
+  if (requiredFeature && !limits[requiredFeature]) {
+    return <Navigate to="/pricing" state={{ from: location }} replace />;
+  }
 
-export default ProtectedRoute;
+  return <>{children}</>;
+}
