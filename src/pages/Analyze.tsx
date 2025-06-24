@@ -407,7 +407,7 @@ export default function Analyze() {
       });
       return;
     }
-    navigate('/dashboard/advanced-analysis');
+    navigate('/dashboard/advanced-financial-analysis');
   };
 
   return (
@@ -462,6 +462,25 @@ export default function Analyze() {
               </>
             )}
           </div>
+        </div>
+        
+        {/* Add data source indicator */}
+        <div className="mb-6">
+          {useRealData ? (
+            <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+              <CheckCircle className="w-4 h-4 text-green-600" />
+              <span className="text-sm text-green-700 dark:text-green-300">
+                Showing real data from your uploaded bank statement
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+              <AlertTriangle className="w-4 h-4 text-amber-600" />
+              <span className="text-sm text-amber-700 dark:text-amber-300">
+                Showing sample data for demonstration. Upload your statement to see real insights.
+              </span>
+            </div>
+          )}
         </div>
         
         {!loaded ? (
