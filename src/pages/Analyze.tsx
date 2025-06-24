@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -21,133 +21,94 @@ import { MerchantAnalytics } from '@/components/MerchantAnalytics';
 
 const processCategoriesFromTransactions = (transactions: BankTransaction[]) => {
   const categoryMap = new Map();
-  // Calculate total amount only for expense-like transactions if applicable,
-  // or adjust logic based on how 'Transfer from'/'Transfer to' should affect totals.
-  // For simplicity, let's assume totalAmount includes all for percentage calculation for now.
-  const totalAmount = transactions.reduce((sum, t) => sum + Math.abs(t.amount), 0); // Use absolute amount for total if transfers affect it differently
+  const totalAmount = transactions.reduce((sum, t) => sum + Math.abs(t.amount), 0);
 
   transactions.forEach(t => {
     let finalCategory = t.category || 'Miscellaneous';
     const descriptionLower = t.description.toLowerCase();
 
-    // Refined logic: Check description keywords robustly
-    // Prioritize if category is already specific
     if (finalCategory === 'Transfer from' || finalCategory === 'Transfer to') {
       // Keep the specific category
     } 
-    // Check description if category is generic 'Transfers' or if description indicates a transfer
     else if (finalCategory.toLowerCase().includes('transfer') || descriptionLower.includes('transfer from') || descriptionLower.includes('transfer to')) {
       if (descriptionLower.includes('transfer from')) {
         finalCategory = 'Transfer from';
       } else if (descriptionLower.includes('transfer to')) {
         finalCategory = 'Transfer to';
       } else {
-        // If it's a transfer but direction unclear, or original category was generic 'Transfers'
-        // Keep it as 'Transfers' only if the original category suggested it, otherwise 'Miscellaneous'
         if (!t.category?.toLowerCase().includes('transfer')) {
              finalCategory = 'Miscellaneous';
         } else {
-             // Keep original 'Transfers' or similar if direction unknown
              finalCategory = t.category || 'Miscellaneous';
         }
       }
     }
-    // else: keep the original finalCategory if it's not transfer-related
 
     const currentAmount = categoryMap.get(finalCategory)?.amount || 0;
-    // Ensure amounts are handled correctly (e.g., maybe absolute values for transfers?)
     categoryMap.set(finalCategory, {
-      amount: currentAmount + t.amount, // Or Math.abs(t.amount) depending on desired calculation
+      amount: currentAmount + t.amount,
     });
   });
 
-  // --- Remove categoryIcons definition from here ---
-  // const categoryIcons: Record<string, any> = { ... }; // REMOVED
-
-  // Define icons needed just for this function's return value if necessary,
-  // OR better yet, define categoryIcons once outside or inside the main component
-  // and pass it where needed. For now, let's assume icons/colors are added later
-  // based on the name. We'll fetch them inside the Analyze component.
-
   return Array.from(categoryMap.entries()).map(([name, data]: [string, any]) => {
     const amount = data.amount;
-    // Percentage calculation might need adjustment based on totalAmount definition
-    // const percentage = Math.round((amount / totalAmount) * 100);
-
     return {
       name,
       amount,
-      // percentage, // Calculate percentage inside Analyze component if needed
-      // icon, color, pieColor will be added later in Analyze component
     };
   }).sort((a, b) => b.amount - a.amount);
 };
 
-// New function to process merchants from transactions
 const processMerchantsFromTransactions = (transactions: BankTransaction[], categoryIcons: Record<string, any>) => {
   const merchantMap = new Map<string, { amount: number; count: number; categories: Set<string> }>();
 
   transactions.forEach(t => {
-    // Ensure amount is a number before processing
     const amount = typeof t.amount === 'number' ? t.amount : 0;
-    if (amount === 0) return; // Skip transactions with zero amount if desired
+    if (amount === 0) return;
 
-    // Basic merchant extraction logic (you might need a more sophisticated approach)
     let merchantName = t.description;
-    const separators = [' - ', ' / ', ' AT ', ' TO ', ' FROM ']; // Added more separators
+    const separators = [' - ', ' / ', ' AT ', ' TO ', ' FROM '];
     for (const sep of separators) {
         if (t.description.toUpperCase().includes(sep)) {
-            // Split and take the part that's likely the merchant
-            // This logic might need refinement based on patterns
             const parts = t.description.split(new RegExp(sep, 'i'));
-            // Heuristic: often the merchant is the first part, or the part after 'TO'/'FROM'
             if (sep === ' TO ' || sep === ' FROM ') {
                 merchantName = parts[1]?.trim() || parts[0]?.trim();
             } else {
                 merchantName = parts[0]?.trim();
             }
-            // Avoid using generic terms like 'Transfer' as merchant name
             if (merchantName.toLowerCase().includes('transfer')) {
-                merchantName = t.description; // Revert if extraction seems wrong
+                merchantName = t.description;
             } else {
-                 break; // Found a potential merchant name
+                 break;
             }
         }
     }
 
-    // Fallback to a cleaned-up description if no specific merchant pattern is found
-    // Remove potential transaction codes or dates at the end
-    merchantName = merchantName.replace(/[\d\/\s-]{6,}$/, '').trim(); // Remove trailing date-like patterns
-    merchantName = merchantName || t.description; // Use original if empty after cleaning
+    merchantName = merchantName.replace(/[\d\/\s-]{6,}$/, '').trim();
+    merchantName = merchantName || t.description;
 
-    // Normalize merchant name
     const normalizedMerchant = merchantName.toLowerCase().replace(/\s+/g, ' ').trim();
 
-    // Filter out generic or unclear names
     const ignoreList = ['transfer', 'payment', 'deposit', 'withdrawal', 'reversal', 'charge', 'fee'];
     if (!normalizedMerchant || ignoreList.some(term => normalizedMerchant.includes(term))) {
-        return; // Skip if the name seems too generic or is empty
+        return;
     }
 
     const current = merchantMap.get(normalizedMerchant) || { amount: 0, count: 0, categories: new Set<string>() };
-    // Aggregate absolute amounts for spending analysis
     current.amount += Math.abs(amount);
     current.count += 1;
-    if (t.category && t.category !== 'Miscellaneous') { // Prioritize specific categories
+    if (t.category && t.category !== 'Miscellaneous') {
         current.categories.add(t.category);
     }
     merchantMap.set(normalizedMerchant, current);
   });
 
   return Array.from(merchantMap.entries()).map(([name, data]) => {
-    // Determine primary category more robustly
     const primaryCategory = data.categories.size > 0 ? [...data.categories][0] : 'Miscellaneous';
-    // Capitalize merchant name for display
     const displayName = name.split(' ')
                             .map(word => word.charAt(0).toUpperCase() + word.slice(1))
                             .join(' ');
 
-    // Get icon and color from categoryIcons based on primaryCategory
     const { icon, color, pieColor } = categoryIcons[primaryCategory] || categoryIcons['Miscellaneous'];
 
     return {
@@ -155,14 +116,13 @@ const processMerchantsFromTransactions = (transactions: BankTransaction[], categ
       category: primaryCategory,
       totalSpent: data.amount,
       frequency: data.count,
-      averageSpent: data.amount / data.count, // Calculate average
-      icon: icon, // Add icon
-      color: color, // Add color class
-      pieColor: pieColor // Add hex color for chart
+      averageSpent: data.amount / data.count,
+      icon: icon,
+      color: color,
+      pieColor: pieColor
     };
-  }).sort((a, b) => b.totalSpent - a.totalSpent); // Sort by total spent
+  }).sort((a, b) => b.totalSpent - a.totalSpent);
 };
-
 
 const mockCategories = [
   { name: 'Shopping', amount: 1240, percentage: 20, icon: ShoppingBag, color: 'bg-blue-500', pieColor: '#4285F4' },
@@ -184,36 +144,11 @@ const mockCategories = [
 ];
 
 const mockTransactions = [
-  { id: 1, date: '2023-06-15', description: 'Whole Foods Market', amount: 78.35, category: 'Food & Dining' },
-  { id: 2, date: '2023-06-14', description: 'Amazon.com', amount: 124.99, category: 'Shopping' },
-  { id: 3, date: '2023-06-13', description: 'Uber', amount: 24.50, category: 'Transportation' },
-  { id: 4, date: '2023-06-10', description: 'Rent Payment', amount: 1500, category: 'Housing' },
-  { id: 5, date: '2023-06-08', description: 'Starbucks', amount: 5.65, category: 'Food & Dining' },
-  { id: 6, date: '2023-06-06', description: 'Target', amount: 95.47, category: 'Shopping' },
-  { id: 7, date: '2023-06-05', description: 'Gas Station', amount: 45.23, category: 'Transportation' },
-  { id: 8, date: '2023-06-03', description: 'Grocery Store', amount: 112.34, category: 'Food & Dining' },
-  { id: 9, date: '2023-06-02', description: 'Mobile Network', amount: 250, category: 'Airtime' },
-  { id: 10, date: '2023-06-01', description: 'Electric Company', amount: 320, category: 'Electricity' },
-  { id: 11, date: '2023-05-30', description: 'Netflix Subscription', amount: 150, category: 'TV' },
-  { id: 12, date: '2023-05-28', description: 'Online Store', amount: 280, category: 'Online Payment' },
-  { id: 13, date: '2023-05-25', description: 'Cable TV', amount: 100, category: 'TV' },
-  { id: 14, date: '2023-05-24', description: 'Bank Deposit', amount: 180, category: 'Bank Deposit' },
-  { id: 15, date: '2023-05-23', description: 'Transfer from John', amount: 220, category: 'Transfer from' },
-  { id: 16, date: '2023-05-22', description: 'Transfer to Savings', amount: 190, category: 'Transfer to' },
-  { id: 17, date: '2023-05-21', description: 'Sports Betting', amount: 150, category: 'Betting' },
-  { id: 18, date: '2023-05-20', description: 'Data Bundle Purchase', amount: 120, category: 'Mobile Data' },
-  { id: 19, date: '2023-05-19', description: 'ATM Withdrawal', amount: 200, category: 'Cash Withdraw' },
-  { id: 20, date: '2023-05-18', description: 'Savings Target', amount: 170, category: 'Targets' },
-  { id: 21, date: '2023-05-17', description: 'USSD Banking Fee', amount: 100, category: 'USSD Charge' },
-  { id: 22, date: '2023-05-16', description: 'Cash Deposit at Branch', amount: 250, category: 'Cash Deposit' },
-  { id: 23, date: '2023-05-15', description: 'OWealth Investment', amount: 300, category: 'OWealth' },
-  { id: 24, date: '2023-05-14', description: 'Add Money to Wallet', amount: 200, category: 'Add Money' },
-  { id: 25, date: '2023-05-13', description: 'OPay Card Purchase', amount: 150, category: 'OPay Card Payment' },
-  { id: 26, date: '2023-05-12', description: 'Failed Transaction Reversal', amount: 50, category: 'Reversal' },
-  { id: 27, date: '2023-05-11', description: 'Fixed Deposit', amount: 500, category: 'Fixed' },
-  { id: 28, date: '2023-05-10', description: 'Spend & Save Transaction', amount: 120, category: 'Spend & Save' },
-  { id: 29, date: '2023-05-09', description: 'SafeBox Deposit', amount: 200, category: 'SafeBox' },
-  { id: 30, date: '2023-05-08', description: 'SMS Alert Subscription', amount: 50, category: 'SMS Subscription' }
+  { id: 1, date: '2023-06-15', description: 'Whole Foods Market', amount: 78.35, category: 'Food & Dining', type: 'expense' as const },
+  { id: 2, date: '2023-06-14', description: 'Amazon.com', amount: 124.99, category: 'Shopping', type: 'expense' as const },
+  { id: 3, date: '2023-06-13', description: 'Uber', amount: 24.50, category: 'Transportation', type: 'expense' as const },
+  { id: 4, date: '2023-06-10', description: 'Rent Payment', amount: 1500, category: 'Housing', type: 'expense' as const },
+  { id: 5, date: '2023-06-08', description: 'Starbucks', amount: 5.65, category: 'Food & Dining', type: 'expense' as const }
 ];
 
 const COLORS = ['#8e44ad', '#00C49F', '#FFBB28', '#FF8042', '#4285F4', '#EA4335', '#34A853', '#F97316', '#6366F1', '#10B981', '#DC2626', '#EAB308', '#9333EA', '#06B6D4', '#D97706', '#64748B'];
@@ -287,7 +222,6 @@ export default function Analyze() {
     return () => clearInterval(intervalId);
   }, [statementData, useRealData]);
 
-  // --- Define categoryIcons ONCE here inside the component ---
   const categoryIcons: Record<string, any> = {
     'Shopping': { icon: ShoppingBag, color: 'bg-blue-500', pieColor: '#4285F4' },
     'Housing': { icon: Home, color: 'bg-green-500', pieColor: '#34A853' },
@@ -303,7 +237,7 @@ export default function Analyze() {
     'Cash Withdraw': { icon: ArrowUp, color: 'bg-red-600', pieColor: '#DC2626' },
     'Targets': { icon: DollarSign, color: 'bg-amber-600', pieColor: '#D97706' },
     'USSD Charge': { icon: Tag, color: 'bg-slate-500', pieColor: '#64748B' }
-};
+  };
 
   const processedCategoriesData = useRealData && statementData?.transactions
     ? processCategoriesFromTransactions(statementData.transactions)
@@ -329,28 +263,24 @@ export default function Analyze() {
     ? statementData.transactions
     : mockTransactions;
 
-  // --- Pass categoryIcons to processMerchantsFromTransactions ---
-  const merchants = processMerchantsFromTransactions(transactions, categoryIcons); // Pass categoryIcons here
+  const merchants = processMerchantsFromTransactions(transactions, categoryIcons);
 
   const totalSpent = useRealData && statementData?.totalExpense
     ? statementData.totalExpense
-    // Adjust mock total calculation if needed based on mockCategories structure
-    : mockCategories.reduce((sum, category) => sum + (category.amount > 0 ? category.amount : 0), 0); // Sum only positive amounts for expense total
+    : mockCategories.reduce((sum, category) => sum + (category.amount > 0 ? category.amount : 0), 0);
 
-  // Filter chartData to only include expense categories (amount > 0 or specific logic)
   const expenseCategoriesChartData = categories
-    .filter(category => category.amount > 0 && category.name !== 'Income' && !category.name.includes('Transfer from') && !category.name.includes('Deposit')) // Example filter for expenses
+    .filter(category => category.amount > 0 && category.name !== 'Income' && !category.name.includes('Transfer from') && !category.name.includes('Deposit'))
     .map(category => ({
       name: category.name,
-      value: category.amount, // Use positive amount for chart value
+      value: category.amount,
       color: category.pieColor
   }));
 
-  // Prepare data for merchant bar chart (top N merchants)
   const topMerchantsChartData = merchants.slice(0, 8).map((m, idx) => ({
     name: m.name,
     totalSpent: m.totalSpent,
-    fill: COLORS[idx % COLORS.length] // Assign a unique color from the palette
+    fill: COLORS[idx % COLORS.length]
   }));
 
   const chartData = categories.map(category => ({
@@ -370,12 +300,10 @@ export default function Analyze() {
   };
 
   const generateAIInsights = async () => {
-    // Add stricter check for statementData and transactions
     if (!statementData || !statementData.transactions || statementData.transactions.length === 0) {
       toast({
         variant: "destructive",
         title: "No data available",
-        // Updated description for clarity
         description: "Please upload a bank statement with valid transactions to generate insights."
       });
       return;
@@ -384,42 +312,31 @@ export default function Analyze() {
     setIsGeneratingInsights(true);
 
     try {
-      // Log the raw data structure for debugging comparison (PDF vs Image)
       console.log('Attempting to generate insights with raw statementData:', JSON.stringify(statementData, null, 2));
 
-      // Basic Data Sanitization: Ensure critical fields have correct types/defaults
       const sanitizedTransactions = statementData.transactions.map(t => ({
         ...t,
-        // Ensure amount is a number, handle potential null/undefined/string values
         amount: typeof t.amount === 'string'
-                  ? parseFloat(t.amount.replace(/[^0-9.-]+/g,"")) // Remove non-numeric chars (except dot/minus)
-                  : (typeof t.amount === 'number' ? t.amount : 0), // Use number if already is, else default to 0
-        // Ensure category is a non-empty string
+                  ? parseFloat(t.amount.replace(/[^0-9.-]+/g,""))
+                  : (typeof t.amount === 'number' ? t.amount : 0),
         category: typeof t.category === 'string' && t.category.trim() !== '' ? t.category : 'Miscellaneous',
-        // Ensure description is a string
         description: typeof t.description === 'string' ? t.description : '',
-        // Ensure date is a string
         date: typeof t.date === 'string' ? t.date : '',
-      })).filter(t => !isNaN(t.amount)); // Filter out any transactions where amount parsing failed
+      })).filter(t => !isNaN(t.amount));
 
-      // Check if any valid transactions remain after sanitization
       if (sanitizedTransactions.length === 0) {
          throw new Error("No valid transactions found after sanitization. Check data quality.");
       }
 
-      // Prepare the data payload for the insight service
       const dataToSend = {
         ...statementData,
         transactions: sanitizedTransactions,
-        // Ensure totals are numbers, default to 0 if missing/invalid
         totalIncome: typeof statementData.totalIncome === 'number' ? statementData.totalIncome : 0,
         totalExpense: typeof statementData.totalExpense === 'number' ? statementData.totalExpense : 0,
       };
 
-      // Log the sanitized data being sent
       console.log('Sending sanitized data to generateInsights:', JSON.stringify(dataToSend, null, 2));
 
-      // Call the insight service with the sanitized data
       const generatedInsights = await generateInsights(dataToSend);
       setInsights(generatedInsights);
 
@@ -429,11 +346,9 @@ export default function Analyze() {
       });
     } catch (error) {
       console.error('Error generating insights:', error);
-      // Log the specific error message for easier debugging
       const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
       console.error('Error details:', errorMessage);
 
-      // Update fallback insights to include the error message
       setInsights([
         `Failed to generate AI insights. Error: ${errorMessage}`,
         'Consider reviewing your largest transactions for savings opportunities.',
@@ -442,8 +357,7 @@ export default function Analyze() {
 
       toast({
         variant: "destructive",
-        title: "Error Generating Insights", // More specific title
-        // Provide more detail in the toast description
+        title: "Error Generating Insights",
         description: `Failed: ${errorMessage}. Please check console logs for details.`,
       });
     } finally {
@@ -465,22 +379,18 @@ export default function Analyze() {
 
   const handleLoadAnalysis = async (analysis: any) => {
     if (statementData) {
-      // Ensure transactions have the correct type
       const typedTransactions = analysis.transactions.map((t: any) => ({
         ...t,
         type: t.type || (t.amount < 0 ? 'expense' : 'income')
       }));
 
-      // Update the statement data in the context
       statementData.transactions = typedTransactions;
       statementData.totalIncome = analysis.totalIncome;
       statementData.totalExpense = analysis.totalExpense;
       
-      // Update local state
       setInsights(analysis.insights || []);
       setUseRealData(true);
       
-      // Show success message
       toast({
         title: "Analysis Loaded",
         description: "Your saved analysis has been loaded successfully.",
@@ -488,7 +398,18 @@ export default function Analyze() {
     }
   };
 
-  // Modify the categories display section to show all categories
+  const handleViewAdvancedAnalysis = () => {
+    if (!useRealData || !statementData) {
+      toast({
+        title: "No Statement Data",
+        description: "Please upload a bank statement first to view advanced analysis.",
+        variant: "destructive"
+      });
+      return;
+    }
+    navigate('/dashboard/advanced-analysis');
+  };
+
   return (
     <div className="container mx-auto p-6">
       <Navbar />
@@ -502,7 +423,7 @@ export default function Analyze() {
                 : 'Example data shown. Please upload a statement for real insights.'}
             </p>
           </div>
-          <div className="mt-4 md:mt-0">
+          <div className="mt-4 md:mt-0 flex gap-2">
             {!useRealData && (
               <Button 
                 variant="default" 
@@ -517,7 +438,7 @@ export default function Analyze() {
               <>
                 <Button 
                   variant="outline" 
-                  className="gap-2 text-sm mr-2"
+                  className="gap-2 text-sm"
                 >
                   <DollarSign className="w-4 h-4" />
                   Your Statement
@@ -529,6 +450,14 @@ export default function Analyze() {
                 >
                   <Save className="w-4 h-4" />
                   Save Analysis
+                </Button>
+                <Button 
+                  variant="default" 
+                  className="gap-2 text-sm bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                  onClick={handleViewAdvancedAnalysis}
+                >
+                  <TrendingUp className="w-4 h-4" />
+                  View Advanced Analysis
                 </Button>
               </>
             )}
@@ -587,7 +516,6 @@ export default function Analyze() {
                 <TabsTrigger value="categories">Categories</TabsTrigger>
                 <TabsTrigger value="transactions">Transactions</TabsTrigger>
                 <TabsTrigger value="merchants">Merchants</TabsTrigger>
-                {/* Add Merchant Analytics Tab Trigger */}
                 <TabsTrigger value="merchant-analytics">Merchant Analytics</TabsTrigger>
                 <TabsTrigger value="insights">AI Insights</TabsTrigger>
                 <TabsTrigger value="saved">Saved Analyses</TabsTrigger>
@@ -716,7 +644,6 @@ export default function Analyze() {
                               } else if (description.includes('to')) {
                                 displayCategory = 'Transfer to';
                               }
-                              // Keep 'Transfers' if neither 'from' nor 'to' is found
                             }
 
                             return (
@@ -734,7 +661,6 @@ export default function Analyze() {
                                 <td className="py-3 px-4 text-sm font-medium">{transaction.description}</td>
                                 <td className="py-3 px-4 text-sm">
                                   <span className="px-2 py-1 rounded-full text-xs bg-muted/50">
-                                    {/* Use the determined displayCategory */}
                                     {displayCategory}
                                   </span>
                                 </td>
@@ -751,7 +677,6 @@ export default function Analyze() {
                 </Card>
               </TabsContent>
               
-              {/* Add Merchants Tab Content */}
               <TabsContent value="merchants">
                 <Card>
                   <CardContent className="p-6">
@@ -917,5 +842,3 @@ export default function Analyze() {
     </div>
   );
 }
-
-export default Analyze;
