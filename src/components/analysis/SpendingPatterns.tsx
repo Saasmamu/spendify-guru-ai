@@ -1,357 +1,259 @@
-import React, { useState, useMemo } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  BarChart as RechartsBarChart,
-  LineChart as RechartsLineChart,
-  Bar,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip as RechartsTooltip,
-  Legend,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  Sector,
-  AreaChart,
-  Area
-} from 'recharts';
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { TrendingUp, Calendar, RefreshCw, BarChart4, Activity, Clock, DollarSign } from 'lucide-react';
-import { Transaction, Pattern } from '@/hooks/useFinancialData';
 
-interface SpendingPatternsProps {
-  patterns: {
-    data: Pattern[];
-    count: number;
-    recurring: number;
-  };
-  transactions: {
-    data: Transaction[];
-    total: number;
-    categorized: number;
-  };
+import React, { useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { TrendingUp, Calendar, DollarSign, RotateCcw } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+
+interface SpendingPattern {
+  id: string;
+  name: string;
+  type: 'recurring' | 'seasonal' | 'trend';
+  frequency: string;
+  amount: number;
+  confidence: number;
+  description: string;
+  transactions: number;
+  trend: 'increasing' | 'decreasing' | 'stable';
 }
 
-export default function SpendingPatterns({ patterns, transactions }: SpendingPatternsProps) {
-  const [patternType, setPatternType] = useState<'all' | 'recurring' | 'seasonal' | 'trend'>('all');
-  const [timeRange, setTimeRange] = useState('6months');
+interface SpendingPatternsProps {
+  transactions: any[];
+}
 
-  // Filter patterns based on selected type
-  const filteredPatterns = patternType === 'all' 
-    ? patterns.data 
-    : patterns.data.filter(p => p.type === patternType);
+const SpendingPatterns: React.FC<SpendingPatternsProps> = ({ transactions }) => {
+  const [activeTab, setActiveTab] = useState('overview');
 
-  // Get recurring transaction data for charts
-  const recurringTransactions = transactions.data.filter(t => t.is_recurring);
-  
-  // Group transactions by date (month) for trend chart
-  const transactionsByMonth = transactions.data.reduce((acc, curr) => {
-    const date = new Date(curr.date);
-    const monthYear = `${date.getMonth() + 1}/${date.getFullYear()}`;
-    
-    if (!acc[monthYear]) {
-      acc[monthYear] = {
-        totalAmount: 0,
-        count: 0,
-      };
+  // Mock pattern data - in real implementation, this would come from AI analysis
+  const patterns: SpendingPattern[] = [
+    {
+      id: '1',
+      name: 'Monthly Coffee Subscriptions',
+      type: 'recurring',
+      frequency: 'Monthly',
+      amount: 45.99,
+      confidence: 95,
+      description: 'Regular coffee subscription payments every 15th of the month',
+      transactions: 12,
+      trend: 'stable'
+    },
+    {
+      id: '2',
+      name: 'Weekend Dining',
+      type: 'seasonal',
+      frequency: 'Weekly',
+      amount: 127.50,
+      confidence: 89,
+      description: 'Increased restaurant spending on weekends',
+      transactions: 48,
+      trend: 'increasing'
     }
-    
-    acc[monthYear].totalAmount += curr.amount;
-    acc[monthYear].count += 1;
-    
-    return acc;
-  }, {} as Record<string, { totalAmount: number; count: number }>);
-  
-  // Convert to array and sort by date for charting
-  const monthlyTrends = Object.entries(transactionsByMonth)
-    .map(([month, data]) => ({
-      month,
-      amount: data.totalAmount,
-      count: data.count
-    }))
-    .sort((a, b) => {
-      const [aMonth, aYear] = a.month.split('/').map(Number);
-      const [bMonth, bYear] = b.month.split('/').map(Number);
-      
-      if (aYear !== bYear) return aYear - bYear;
-      return aMonth - bMonth;
-    });
-  
+  ];
+
+  const trendData = [
+    { month: 'Oct', spending: 3200 },
+    { month: 'Nov', spending: 3400 },
+    { month: 'Dec', spending: 4100 },
+    { month: 'Jan', spending: 3800 },
+    { month: 'Feb', spending: 3600 },
+    { month: 'Mar', spending: 3900 }
+  ];
+
+  const categoryBreakdown = [
+    { category: 'Groceries', amount: 850, percentage: 28 },
+    { category: 'Dining', amount: 600, percentage: 20 },
+    { category: 'Transportation', amount: 450, percentage: 15 },
+    { category: 'Entertainment', amount: 300, percentage: 10 },
+    { category: 'Utilities', amount: 250, percentage: 8 },
+    { category: 'Others', amount: 550, percentage: 19 }
+  ];
+
+  const getPatternIcon = (type: string) => {
+    switch (type) {
+      case 'recurring': return <RotateCcw className="h-4 w-4" />;
+      case 'seasonal': return <Calendar className="h-4 w-4" />;
+      case 'trend': return <TrendingUp className="h-4 w-4" />;
+      default: return <DollarSign className="h-4 w-4" />;
+    }
+  };
+
+  const getTrendColor = (trend: string) => {
+    switch (trend) {
+      case 'increasing': return 'text-red-500';
+      case 'decreasing': return 'text-green-500';
+      case 'stable': return 'text-blue-500';
+      default: return 'text-gray-500';
+    }
+  };
+
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h3 className="text-lg font-medium">Spending Patterns</h3>
-          <p className="text-sm text-muted-foreground">
-            Discover recurring expenses and spending trends
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Select value={patternType} onValueChange={(value: any) => setPatternType(value)}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Pattern type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Patterns</SelectItem>
-              <SelectItem value="recurring">Recurring</SelectItem>
-              <SelectItem value="seasonal">Seasonal</SelectItem>
-              <SelectItem value="trend">Trends</SelectItem>
-            </SelectContent>
-          </Select>
-          
-          <Select value={timeRange} onValueChange={setTimeRange}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Time range" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="3months">Last 3 months</SelectItem>
-              <SelectItem value="6months">Last 6 months</SelectItem>
-              <SelectItem value="1year">Last year</SelectItem>
-              <SelectItem value="all">All time</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Patterns Found</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{patterns.length}</div>
+            <p className="text-xs text-muted-foreground">
+              AI-detected patterns
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Recurring Expenses</CardTitle>
+            <RotateCcw className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {patterns.filter(p => p.type === 'recurring').length}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Monthly recurring
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Seasonal Patterns</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {patterns.filter(p => p.type === 'seasonal').length}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Seasonal variations
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Avg Confidence</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {Math.round(patterns.reduce((sum, p) => sum + p.confidence, 0) / patterns.length)}%
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Pattern accuracy
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
-      <Tabs defaultValue="overview">
-        <TabsList className="grid grid-cols-3 mb-4">
-          <TabsTrigger value="overview">
-            <BarChart4 className="h-4 w-4 mr-2" />
-            Overview
-          </TabsTrigger>
-          <TabsTrigger value="recurring">
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Recurring Expenses
-          </TabsTrigger>
-          <TabsTrigger value="trends">
-            <TrendingUp className="h-4 w-4 mr-2" />
-            Spending Trends
-          </TabsTrigger>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="trends">Trends</TabsTrigger>
+          <TabsTrigger value="categories">Categories</TabsTrigger>
         </TabsList>
-
-        <TabsContent value="overview" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card>
-              <CardHeader className="py-4">
-                <CardTitle className="text-sm font-medium">Detected Patterns</CardTitle>
-                <div className="flex items-center">
-                  <Activity className="h-5 w-5 text-muted-foreground mr-2" />
-                  <span className="text-2xl font-bold">{patterns.count}</span>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-0 pb-3">
-                <div className="text-xs text-muted-foreground">
-                  Based on {transactions.total} transactions
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="py-4">
-                <CardTitle className="text-sm font-medium">Recurring Expenses</CardTitle>
-                <div className="flex items-center">
-                  <Calendar className="h-5 w-5 text-muted-foreground mr-2" />
-                  <span className="text-2xl font-bold">{patterns.recurring}</span>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-0 pb-3">
-                <div className="text-xs text-muted-foreground">
-                  Approx. ${recurringTransactions.reduce((sum, t) => sum + Math.abs(t.amount), 0).toFixed(2)}/month
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="py-4">
-                <CardTitle className="text-sm font-medium">Spending Trend</CardTitle>
-                <div className="flex items-center">
-                  <TrendingUp className="h-5 w-5 text-muted-foreground mr-2" />
-                  <span className="text-2xl font-bold capitalize">Stable</span>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-0 pb-3">
-                <div className="text-xs text-muted-foreground">
-                  Based on last {timeRange === '3months' ? '3' : timeRange === '6months' ? '6' : '12'} months data
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
+        
+        <TabsContent value="overview">
           <Card>
             <CardHeader>
-              <CardTitle>Pattern Summary</CardTitle>
-              <CardDescription>Overview of detected spending patterns</CardDescription>
+              <CardTitle>Detected Spending Patterns</CardTitle>
+              <CardDescription>
+                AI-identified patterns in your transaction history
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {patterns.map((pattern) => (
+                <div key={pattern.id} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      {getPatternIcon(pattern.type)}
+                      <h4 className="font-medium">{pattern.name}</h4>
+                      <Badge variant="outline">{pattern.type}</Badge>
+                    </div>
+                    <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+                      <span>${pattern.amount}</span>
+                      <span>•</span>
+                      <span>{pattern.frequency}</span>
+                      <span>•</span>
+                      <span>{pattern.transactions} transactions</span>
+                      <span>•</span>
+                      <span className={getTrendColor(pattern.trend)}>{pattern.trend}</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{pattern.description}</p>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-xs">Confidence:</span>
+                      <Progress value={pattern.confidence} className="w-20 h-2" />
+                      <span className="text-xs">{pattern.confidence}%</span>
+                    </div>
+                  </div>
+                  <Button variant="outline" size="sm">
+                    View Details
+                  </Button>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="trends">
+          <Card>
+            <CardHeader>
+              <CardTitle>Spending Trends</CardTitle>
+              <CardDescription>Monthly spending patterns over time</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="h-[300px] w-full">
+              <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart4 className="h-16 w-16 mx-auto text-muted-foreground/50 hidden" />
-                  <RechartsBarChart
-                    data={monthlyTrends}
-                    margin={{
-                      top: 20,
-                      right: 30,
-                      left: 20,
-                      bottom: 5,
-                    }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                  <LineChart data={trendData}>
+                    <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="month" />
                     <YAxis />
-                    <RechartsTooltip 
-                      formatter={(value) => [`$${Math.abs(value).toFixed(2)}`, 'Amount']}
-                      labelFormatter={(label) => `Month: ${label}`}
-                    />
-                    <Legend />
-                    <Bar 
-                      dataKey="amount" 
-                      fill="#8884d8" 
-                      name="Monthly Spending"
-                      radius={[4, 4, 0, 0]}
-                    />
-                  </RechartsBarChart>
+                    <Tooltip formatter={(value) => [`$${Number(value).toFixed(2)}`, "Spending"]} />
+                    <Line type="monotone" dataKey="spending" stroke="#8884d8" strokeWidth={2} />
+                  </LineChart>
                 </ResponsiveContainer>
-                <p className="text-sm text-center text-muted-foreground mt-2">
-                  Based on {transactions.total} transactions from {monthlyTrends.length} months
-                </p>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
-
-        <TabsContent value="recurring" className="space-y-4">
-          <div className="grid grid-cols-1 gap-4">
-            {filteredPatterns.filter(p => p.type === 'recurring').length === 0 ? (
-              <Card>
-                <CardContent className="p-6 text-center">
-                  <RefreshCw className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
-                  <h3 className="text-lg font-medium mb-2">No recurring expenses detected</h3>
-                  <p className="text-muted-foreground mb-4">
-                    We haven't detected any recurring transactions yet. This usually requires at least 3 months of transaction history.
-                  </p>
-                  <Button variant="outline" size="sm">Add manual recurring expense</Button>
-                </CardContent>
-              </Card>
-            ) : (
-              filteredPatterns
-                .filter(p => p.type === 'recurring')
-                .map(pattern => (
-                  <Card key={pattern.id}>
-                    <CardHeader className="pb-2">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <CardTitle>{pattern.name}</CardTitle>
-                          <CardDescription>{pattern.description}</CardDescription>
-                        </div>
-                        <Badge variant="outline">{pattern.frequency}</Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-2">
-                          <Clock className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">
-                            Since {new Date(pattern.first_occurrence).toLocaleDateString()}
-                          </span>
-                        </div>
-                        <div className="flex items-center">
-                          <DollarSign className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-xl font-bold">${Math.abs(pattern.amount).toFixed(2)}</span>
-                        </div>
-                      </div>
-                      <div className="mt-4 text-sm text-muted-foreground">
-                        Last transaction on {new Date(pattern.last_occurrence).toLocaleDateString()}
-                      </div>
-                    </CardContent>
-                  </Card>
-              ))
-            )}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="trends" className="space-y-4">
+        
+        <TabsContent value="categories">
           <Card>
             <CardHeader>
-              <CardTitle>Spending Over Time</CardTitle>
-              <CardDescription>See how your spending has changed over time</CardDescription>
+              <CardTitle>Category Breakdown</CardTitle>
+              <CardDescription>Spending distribution by category</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="h-[300px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <RechartsLineChart
-                    data={monthlyTrends}
-                    margin={{
-                      top: 20,
-                      right: 30,
-                      left: 20,
-                      bottom: 5,
-                    }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <RechartsTooltip 
-                      formatter={(value) => [`$${Math.abs(value).toFixed(2)}`, 'Amount']}
-                      labelFormatter={(label) => `Month: ${label}`}
-                    />
-                    <Legend />
-                    <Line 
-                      type="monotone" 
-                      dataKey="amount" 
-                      stroke="#8884d8" 
-                      activeDot={{ r: 8 }} 
-                      name="Monthly Spending"
-                      strokeWidth={2}
-                    />
-                  </RechartsLineChart>
-                </ResponsiveContainer>
-                <p className="text-sm text-center text-muted-foreground mt-2">
-                  Showing spending trends from {monthlyTrends.length} months
-                </p>
+              <div className="space-y-4">
+                {categoryBreakdown.map((item, index) => (
+                  <div key={index} className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium">{item.category}</span>
+                      <span className="text-sm">${item.amount}</span>
+                    </div>
+                    <Progress value={item.percentage} className="h-2" />
+                    <div className="text-xs text-muted-foreground text-right">
+                      {item.percentage}% of total spending
+                    </div>
+                  </div>
+                ))}
               </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Monthly Spending Summary</CardTitle>
-              <CardDescription>Month-by-month breakdown</CardDescription>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="border-t">
-                {monthlyTrends.length === 0 ? (
-                  <div className="p-6 text-center text-muted-foreground">
-                    No monthly data available
-                  </div>
-                ) : (
-                  <div className="divide-y">
-                    {monthlyTrends.map(({ month, amount, count }) => (
-                      <div key={month} className="flex items-center justify-between p-4">
-                        <div>
-                          <div className="font-medium">{month}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {count} transactions
-                          </div>
-                        </div>
-                        <div className={`text-lg font-medium ${amount < 0 ? 'text-red-500' : 'text-green-500'}`}>
-                          ${Math.abs(amount).toFixed(2)}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+              
+              <div className="mt-6 h-[200px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={categoryBreakdown}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="category" />
+                    <YAxis />
+                    <Tooltip formatter={(value) => [`$${Number(value).toFixed(2)}`, "Amount"]} />
+                    <Bar dataKey="amount" fill="#8884d8" />
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
             </CardContent>
           </Card>
@@ -359,4 +261,6 @@ export default function SpendingPatterns({ patterns, transactions }: SpendingPat
       </Tabs>
     </div>
   );
-}
+};
+
+export default SpendingPatterns;

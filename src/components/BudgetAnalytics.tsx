@@ -1,9 +1,10 @@
+
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { budgetService, BudgetWithCategories } from '@/services/budgetService';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatCurrency } from '@/lib/utils';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 
 interface BudgetAnalyticsProps {
   userId: string;
@@ -129,13 +130,6 @@ export function BudgetAnalytics({ userId }: BudgetAnalyticsProps) {
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="categories">Categories</TabsTrigger>
             <TabsTrigger value="comparison">Budget vs Actual</TabsTrigger>
-            <TabsList className="mb-6">
-              <TabsTrigger value="categories">Categories</TabsTrigger>
-              <TabsTrigger value="transactions">Transactions</TabsTrigger>
-              <TabsTrigger value="insights">AI Insights</TabsTrigger>
-              <TabsTrigger value="statement">Statement Analysis</TabsTrigger>
-              <TabsTrigger value="saved">Saved Analyses</TabsTrigger>
-            </TabsList>
           </TabsList>
           
           <TabsContent value="overview">
@@ -238,50 +232,6 @@ export function BudgetAnalytics({ userId }: BudgetAnalyticsProps) {
                 </BarChart>
               </ResponsiveContainer>
             </div>
-          </TabsContent>
-
-          <TabsContent value="statement">
-            <Card>
-              <CardContent className="p-6">
-                <h3 className="text-lg font-medium mb-4">Statement Analysis</h3>
-                <div className="h-[400px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={transactions.map(t => ({
-                        name: t.description,
-                        amount: t.amount
-                      }))}
-                      margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis 
-                        dataKey="name" 
-                        angle={-45}
-                        textAnchor="end"
-                        height={80}
-                        interval={0}
-                        tick={{fontSize: 12}}
-                      />
-                      <YAxis 
-                        tickFormatter={(value) => `$${value}`}
-                      />
-                      <Tooltip 
-                        formatter={(value) => [`$${Number(value).toFixed(2)}`, "Amount"]}
-                        contentStyle={{
-                          backgroundColor: 'var(--background)',
-                          border: '1px solid var(--border)'
-                        }}
-                      />
-                      <Bar 
-                        dataKey="amount" 
-                        fill="var(--primary)" 
-                        radius={[4, 4, 0, 0]}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
           </TabsContent>
         </Tabs>
       </CardContent>

@@ -1,17 +1,42 @@
-import React, { useEffect, useState } from 'react';
-import { Card, Form, Input, InputNumber, DatePicker, Select, Button, List, Progress, Typography, message } from 'antd';
-import { PlusOutlined, BulbOutlined } from '@ant-design/icons';
-import { financialGoalsService } from '../services/financialGoalsService';
-import { FinancialGoal } from '../types/financial';
 
-const { Title, Text } = Typography;
-const { Option } = Select;
+import React, { useEffect, useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { Progress } from '@/components/ui/progress';
+import { Plus, Lightbulb } from 'lucide-react';
+import { financialGoalsService } from '@/services/financialGoalsService';
+
+interface FinancialGoal {
+  id?: string;
+  user_id?: string;
+  name: string;
+  target_amount: number;
+  current_amount: number;
+  deadline: string;
+  type: string;
+  category: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
 
 const FinancialGoals: React.FC = () => {
-  const [form] = Form.useForm();
   const [goals, setGoals] = useState<FinancialGoal[]>([]);
   const [suggestions, setSuggestions] = useState<FinancialGoal[]>([]);
   const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    targetAmount: '',
+    currentAmount: '',
+    deadline: '',
+    type: '',
+    category: '',
+    notes: ''
+  });
 
   useEffect(() => {
     fetchGoals();
@@ -24,212 +49,222 @@ const FinancialGoals: React.FC = () => {
       setGoals(data);
     } catch (error) {
       console.error('Error fetching goals:', error);
-      message.error('Failed to fetch goals');
     }
   };
 
   const fetchSuggestions = async () => {
     try {
-      const data = await financialGoalsService.getSuggestions();
+      const data = await financialGoalsService.getGoalSuggestions();
       setSuggestions(data);
     } catch (error) {
       console.error('Error fetching suggestions:', error);
-      message.error('Failed to fetch suggestions');
     }
   };
 
-  const handleSubmit = async (values: any) => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setLoading(true);
     try {
       const newGoal: FinancialGoal = {
-        name: values.name,
-        target_amount: values.targetAmount,
-        current_amount: values.currentAmount || 0,
-        deadline: values.deadline.toISOString(),
-        type: values.type,
-        category: values.category,
-        notes: values.notes,
+        name: formData.name,
+        target_amount: parseFloat(formData.targetAmount),
+        current_amount: parseFloat(formData.currentAmount) || 0,
+        deadline: formData.deadline,
+        type: formData.type,
+        category: formData.category,
+        notes: formData.notes,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
 
       await financialGoalsService.addGoal(newGoal);
-      message.success('Goal added successfully');
-      form.resetFields();
+      setFormData({
+        name: '',
+        targetAmount: '',
+        currentAmount: '',
+        deadline: '',
+        type: '',
+        category: '',
+        notes: ''
+      });
       fetchGoals();
     } catch (error) {
       console.error('Error adding goal:', error);
-      message.error('Failed to add goal');
     } finally {
       setLoading(false);
     }
   };
 
   const handleSuggestionClick = (suggestion: FinancialGoal) => {
-    form.setFieldsValue({
+    setFormData({
       name: suggestion.name,
-      targetAmount: suggestion.target_amount,
-      currentAmount: suggestion.current_amount,
-      deadline: new Date(suggestion.deadline),
+      targetAmount: suggestion.target_amount.toString(),
+      currentAmount: suggestion.current_amount.toString(),
+      deadline: suggestion.deadline,
       type: suggestion.type,
       category: suggestion.category,
-      notes: suggestion.notes
+      notes: suggestion.notes || ''
     });
   };
 
   return (
-    <div className="p-6">
-      <Title level={2}>Financial Goals</Title>
+    <div className="container mx-auto p-6 space-y-6">
+      <h1 className="text-3xl font-bold">Financial Goals</h1>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card title="Add New Goal" className="shadow-md">
-          <Form
-            form={form}
-            layout="vertical"
-            onFinish={handleSubmit}
-          >
-            <Form.Item
-              name="name"
-              label="Goal Name"
-              rules={[{ required: true, message: 'Please enter a goal name' }]}
-            >
-              <Input placeholder="e.g., Emergency Fund" />
-            </Form.Item>
+        <Card>
+          <CardHeader>
+            <CardTitle>Add New Goal</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <Label htmlFor="name">Goal Name</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  placeholder="e.g., Emergency Fund"
+                  required
+                />
+              </div>
 
-            <Form.Item
-              name="targetAmount"
-              label="Target Amount"
-              rules={[{ required: true, message: 'Please enter a target amount' }]}
-            >
-              <InputNumber
-                style={{ width: '100%' }}
-                formatter={value => `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                parser={value => value!.replace(/\$\s?|(,*)/g, '')}
-                placeholder="Enter target amount"
-              />
-            </Form.Item>
+              <div>
+                <Label htmlFor="targetAmount">Target Amount</Label>
+                <Input
+                  id="targetAmount"
+                  type="number"
+                  value={formData.targetAmount}
+                  onChange={(e) => setFormData({...formData, targetAmount: e.target.value})}
+                  placeholder="Enter target amount"
+                  required
+                />
+              </div>
 
-            <Form.Item
-              name="currentAmount"
-              label="Current Amount"
-            >
-              <InputNumber
-                style={{ width: '100%' }}
-                formatter={value => `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                parser={value => value!.replace(/\$\s?|(,*)/g, '')}
-                placeholder="Enter current amount"
-              />
-            </Form.Item>
+              <div>
+                <Label htmlFor="currentAmount">Current Amount</Label>
+                <Input
+                  id="currentAmount"
+                  type="number"
+                  value={formData.currentAmount}
+                  onChange={(e) => setFormData({...formData, currentAmount: e.target.value})}
+                  placeholder="Enter current amount"
+                />
+              </div>
 
-            <Form.Item
-              name="deadline"
-              label="Deadline"
-              rules={[{ required: true, message: 'Please select a deadline' }]}
-            >
-              <DatePicker style={{ width: '100%' }} />
-            </Form.Item>
+              <div>
+                <Label htmlFor="deadline">Deadline</Label>
+                <Input
+                  id="deadline"
+                  type="date"
+                  value={formData.deadline}
+                  onChange={(e) => setFormData({...formData, deadline: e.target.value})}
+                  required
+                />
+              </div>
 
-            <Form.Item
-              name="type"
-              label="Goal Type"
-              rules={[{ required: true, message: 'Please select a goal type' }]}
-            >
-              <Select placeholder="Select goal type">
-                <Option value="savings">Savings</Option>
-                <Option value="investment">Investment</Option>
-                <Option value="debt">Debt Repayment</Option>
-                <Option value="purchase">Major Purchase</Option>
-              </Select>
-            </Form.Item>
+              <div>
+                <Label htmlFor="type">Goal Type</Label>
+                <Select value={formData.type} onValueChange={(value) => setFormData({...formData, type: value})}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select goal type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="savings">Savings</SelectItem>
+                    <SelectItem value="investment">Investment</SelectItem>
+                    <SelectItem value="debt">Debt Repayment</SelectItem>
+                    <SelectItem value="purchase">Major Purchase</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <Form.Item
-              name="category"
-              label="Category"
-              rules={[{ required: true, message: 'Please select a category' }]}
-            >
-              <Select placeholder="Select category">
-                <Option value="emergency">Emergency Fund</Option>
-                <Option value="retirement">Retirement</Option>
-                <Option value="education">Education</Option>
-                <Option value="home">Home</Option>
-                <Option value="travel">Travel</Option>
-                <Option value="other">Other</Option>
-              </Select>
-            </Form.Item>
+              <div>
+                <Label htmlFor="category">Category</Label>
+                <Select value={formData.category} onValueChange={(value) => setFormData({...formData, category: value})}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="emergency">Emergency Fund</SelectItem>
+                    <SelectItem value="retirement">Retirement</SelectItem>
+                    <SelectItem value="education">Education</SelectItem>
+                    <SelectItem value="home">Home</SelectItem>
+                    <SelectItem value="travel">Travel</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <Form.Item
-              name="notes"
-              label="Notes"
-            >
-              <Input.TextArea rows={4} placeholder="Add any additional notes" />
-            </Form.Item>
+              <div>
+                <Label htmlFor="notes">Notes</Label>
+                <Textarea
+                  id="notes"
+                  value={formData.notes}
+                  onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                  placeholder="Add any additional notes"
+                  rows={4}
+                />
+              </div>
 
-            <Form.Item>
-              <Button type="primary" htmlType="submit" loading={loading} icon={<PlusOutlined />}>
+              <Button type="submit" disabled={loading} className="w-full">
+                <Plus className="w-4 h-4 mr-2" />
                 Add Goal
               </Button>
-            </Form.Item>
-          </Form>
+            </form>
+          </CardContent>
         </Card>
 
-        <Card title="Goal Suggestions" className="shadow-md">
-          <List
-            dataSource={suggestions}
-            renderItem={suggestion => (
-              <List.Item
-                className="cursor-pointer hover:bg-gray-50 p-2 rounded"
-                onClick={() => handleSuggestionClick(suggestion)}
-              >
-                <div className="w-full">
-                  <div className="flex items-center justify-between">
-                    <Text strong>{suggestion.name}</Text>
-                    <Text type="secondary">{suggestion.type}</Text>
+        <Card>
+          <CardHeader>
+            <CardTitle>Goal Suggestions</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {suggestions.map((suggestion, index) => (
+                <div
+                  key={index}
+                  className="p-4 border rounded-lg cursor-pointer hover:bg-gray-50"
+                  onClick={() => handleSuggestionClick(suggestion)}
+                >
+                  <div className="flex justify-between items-center mb-2">
+                    <h4 className="font-medium">{suggestion.name}</h4>
+                    <span className="text-sm text-gray-500">{suggestion.type}</span>
                   </div>
-                  <Progress
-                    percent={Math.round((suggestion.current_amount / suggestion.target_amount) * 100)}
-                    status="active"
-                  />
-                  <Text type="secondary">
+                  <Progress value={(suggestion.current_amount / suggestion.target_amount) * 100} className="mb-2" />
+                  <p className="text-sm text-gray-600">
                     Target: ${suggestion.target_amount.toLocaleString()}
-                  </Text>
+                  </p>
                 </div>
-              </List.Item>
-            )}
-          />
+              ))}
+            </div>
+          </CardContent>
         </Card>
       </div>
 
-      <Card title="Your Goals" className="mt-6 shadow-md">
-        <List
-          dataSource={goals}
-          renderItem={goal => (
-            <List.Item>
-              <div className="w-full">
-                <div className="flex items-center justify-between">
-                  <Text strong>{goal.name}</Text>
-                  <Text type="secondary">{goal.type}</Text>
+      <Card>
+        <CardHeader>
+          <CardTitle>Your Goals</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {goals.map((goal) => (
+              <div key={goal.id} className="p-4 border rounded-lg">
+                <div className="flex justify-between items-center mb-2">
+                  <h4 className="font-medium">{goal.name}</h4>
+                  <span className="text-sm text-gray-500">{goal.type}</span>
                 </div>
-                <Progress
-                  percent={Math.round((goal.current_amount / goal.target_amount) * 100)}
-                  status="active"
-                />
-                <div className="flex justify-between mt-2">
-                  <Text type="secondary">
-                    Current: ${goal.current_amount.toLocaleString()}
-                  </Text>
-                  <Text type="secondary">
-                    Target: ${goal.target_amount.toLocaleString()}
-                  </Text>
+                <Progress value={(goal.current_amount / goal.target_amount) * 100} className="mb-2" />
+                <div className="flex justify-between text-sm text-gray-600 mt-2">
+                  <span>Current: ${goal.current_amount.toLocaleString()}</span>
+                  <span>Target: ${goal.target_amount.toLocaleString()}</span>
                 </div>
                 {goal.notes && (
-                  <Text type="secondary" className="block mt-2">
-                    {goal.notes}
-                  </Text>
+                  <p className="text-sm text-gray-600 mt-2">{goal.notes}</p>
                 )}
               </div>
-            </List.Item>
-          )}
-        />
+            ))}
+          </div>
+        </CardContent>
       </Card>
     </div>
   );

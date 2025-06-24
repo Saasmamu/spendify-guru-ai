@@ -1,10 +1,30 @@
+
 export interface SubscriptionLimits {
   maxStatements: number;
   maxSavedAnalyses: number;
-  hasAdvancedAnalytics: boolean;
-  advancedAnalysis: boolean;
-  canCompare: boolean;
-  hasFinancialGoals: boolean;
-  hasAIFinancialAdvisor: boolean;
-  budgetPlanner: boolean;
+  aiAnalysis: boolean;
+  advancedCharts: boolean;
+  exportReports: boolean;
+  prioritySupport: boolean;
+  customCategories: boolean;
+  budgetTracking: boolean;
+}
+
+export interface SubscriptionPlan {
+  id: string;
+  name: string;
+  price: number;
+  interval: 'monthly' | 'yearly';
+  features: string[];
+  limits: SubscriptionLimits;
+  isPopular?: boolean;
+}
+
+export interface SubscriptionContextType {
+  activePlan: SubscriptionPlan | null;
+  limits: SubscriptionLimits;
+  isLoading: boolean;
+  error: string | null;
+  upgradePlan: (planId: string) => Promise<void>;
+  cancelSubscription: () => Promise<void>;
 }

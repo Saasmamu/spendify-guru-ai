@@ -1,9 +1,11 @@
+
 import { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useState } from 'react';
+import { SubscriptionLimits } from '@/types/subscription';
 
 interface FeatureGateProps {
   children: ReactNode;
@@ -28,7 +30,7 @@ export function FeatureGate({ children, feature }: FeatureGateProps) {
             <DialogTitle>Upgrade Required</DialogTitle>
             <DialogDescription>
               This feature is not available on your current plan ({activePlan?.name || 'Free'}). 
-              Upgrade to access {feature.replace(/([A-Z])/g, ' $1').toLowerCase()}.
+              Upgrade to access {String(feature).replace(/([A-Z])/g, ' $1').toLowerCase()}.
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end space-x-4 mt-4">

@@ -1,389 +1,191 @@
-import React, { useState, useMemo } from 'react';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+
+import React, { useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { 
-  ScatterChart, 
-  Scatter, 
-  XAxis, 
-  YAxis, 
-  ZAxis,
-  CartesianGrid, 
-  Tooltip, 
-  Legend, 
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  RadarChart,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
-  Radar
-} from 'recharts';
-import { 
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { AlertTriangle, Shield, ThumbsUp, ThumbsDown, Filter, ExternalLink } from 'lucide-react';
-import { Transaction, Anomaly } from '@/hooks/useFinancialData';
-import { useFinancialData } from '@/hooks/useFinancialData';
-import { useToast } from '@/hooks/useToast';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AlertTriangle, CheckCircle, XCircle, Filter } from 'lucide-react';
+
+interface Anomaly {
+  id: string;
+  transaction_id: string;
+  amount: number;
+  description: string;
+  date: string;
+  type: 'unusual_amount' | 'duplicate' | 'timing' | 'merchant';
+  severity: 'low' | 'medium' | 'high';
+  confidence: number;
+  reason: string;
+}
 
 interface AnomalyDetectionProps {
-  anomalies: {
-    data: Anomaly[];
-    count: number;
-    highSeverity: number;
-  };
-  transactions: {
-    data: Transaction[];
-    total: number;
-    categorized: number;
-  };
+  transactions: any[];
 }
 
-export default function AnomalyDetection({ anomalies, transactions }: AnomalyDetectionProps) {
-  const { updateAnomalyStatus } = useFinancialData();
-  const { toast } = useToast();
-  const [statusFilter, setStatusFilter] = useState<'all' | 'new' | 'reviewed' | 'false_positive'>('all');
-  const [severityFilter, setSeverityFilter] = useState<'all' | 'high' | 'medium' | 'low'>('all');
+const AnomalyDetection: React.FC<AnomalyDetectionProps> = ({ transactions }) => {
+  const [selectedSeverity, setSelectedSeverity] = useState<string>('all');
+  
+  // Mock anomaly data - in real implementation, this would come from AI analysis
+  const anomalies: Anomaly[] = [
+    {
+      id: '1',
+      transaction_id: 'txn_001',
+      amount: 2500.00,
+      description: 'LUXURY STORE PURCHASE',
+      date: '2024-01-15',
+      type: 'unusual_amount',
+      severity: 'high',
+      confidence: 95,
+      reason: 'Amount is 400% higher than typical spending for this category'
+    },
+    {
+      id: '2',
+      transaction_id: 'txn_002',
+      amount: 45.99,
+      description: 'SUBSCRIPTION SERVICE',
+      date: '2024-01-12',
+      type: 'duplicate',
+      severity: 'medium',
+      confidence: 87,
+      reason: 'Similar transaction found within 24 hours'
+    }
+  ];
 
-  // Filter anomalies based on selected filters
-  const filteredAnomalies = anomalies.data
-    .filter(anomaly => statusFilter === 'all' || anomaly.status === statusFilter)
-    .filter(anomaly => severityFilter === 'all' || anomaly.severity === severityFilter);
-
-  // Get transaction details for an anomaly
-  const getTransactionDetails = (transactionId: string) => {
-    return transactions.data.find(t => t.id === transactionId);
-  };
-
-  // Handle marking anomaly as reviewed
-  const handleMarkAsReviewed = async (anomalyId: string) => {
-    await updateAnomalyStatus(anomalyId, 'reviewed');
-    toast({
-      title: "Anomaly marked as reviewed",
-      description: "This anomaly has been marked as reviewed and will be used to improve detection",
-    });
-  };
-
-  // Handle marking anomaly as false positive
-  const handleMarkAsFalsePositive = async (anomalyId: string) => {
-    await updateAnomalyStatus(anomalyId, 'false_positive');
-    toast({
-      title: "Marked as false positive",
-      description: "This transaction will no longer be flagged as an anomaly",
-    });
-  };
-
-  // Get badge color for severity
-  const getSeverityBadge = (severity: 'high' | 'medium' | 'low') => {
-    switch(severity) {
-      case 'high':
-        return <Badge variant="destructive">{severity}</Badge>;
-      case 'medium':
-        return <Badge variant="warning">{severity}</Badge>;
-      case 'low':
-        return <Badge variant="outline">{severity}</Badge>;
-      default:
-        return <Badge variant="outline">{severity}</Badge>;
+  const getSeverityIcon = (severity: string) => {
+    switch (severity) {
+      case 'high': return <XCircle className="h-4 w-4 text-red-500" />;
+      case 'medium': return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
+      case 'low': return <CheckCircle className="h-4 w-4 text-blue-500" />;
+      default: return <AlertTriangle className="h-4 w-4" />;
     }
   };
 
-  // Get status badge
-  const getStatusBadge = (status: 'new' | 'reviewed' | 'false_positive') => {
-    switch(status) {
-      case 'new':
-        return <Badge variant="secondary">New</Badge>;
-      case 'reviewed':
-        return <Badge variant="success">Reviewed</Badge>;
-      case 'false_positive':
-        return <Badge variant="outline">False Positive</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
+  const getSeverityColor = (severity: string) => {
+    switch (severity) {
+      case 'high': return 'destructive';
+      case 'medium': return 'secondary';
+      case 'low': return 'outline';
+      default: return 'secondary';
     }
   };
+
+  const filteredAnomalies = selectedSeverity === 'all' 
+    ? anomalies 
+    : anomalies.filter(anomaly => anomaly.severity === selectedSeverity);
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h3 className="text-lg font-medium">Anomaly Detection</h3>
-          <p className="text-sm text-muted-foreground">
-            We've identified {anomalies.count} potential anomalies in your transactions
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Select value={statusFilter} onValueChange={(value: any) => setStatusFilter(value)}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="new">New</SelectItem>
-              <SelectItem value="reviewed">Reviewed</SelectItem>
-              <SelectItem value="false_positive">False Positive</SelectItem>
-            </SelectContent>
-          </Select>
-          
-          <Select value={severityFilter} onValueChange={(value: any) => setSeverityFilter(value)}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Severity" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Severity</SelectItem>
-              <SelectItem value="high">High</SelectItem>
-              <SelectItem value="medium">Medium</SelectItem>
-              <SelectItem value="low">Low</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Anomalies by Severity</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Anomalies</CardTitle>
+            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="h-[150px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={[
-                      { name: 'High', value: anomalies.data.filter(a => a.severity === 'high').length, color: '#ef4444' },
-                      { name: 'Medium', value: anomalies.data.filter(a => a.severity === 'medium').length, color: '#f97316' },
-                      { name: 'Low', value: anomalies.data.filter(a => a.severity === 'low').length, color: '#a3a3a3' }
-                    ]}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={40}
-                    outerRadius={60}
-                    paddingAngle={2}
-                    dataKey="value"
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    labelLine={false}
-                  >
-                    {[
-                      { name: 'High', value: anomalies.data.filter(a => a.severity === 'high').length, color: '#ef4444' },
-                      { name: 'Medium', value: anomalies.data.filter(a => a.severity === 'medium').length, color: '#f97316' },
-                      { name: 'Low', value: anomalies.data.filter(a => a.severity === 'low').length, color: '#a3a3a3' }
-                    ].map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    formatter={(value) => [value, 'Count']} 
-                    labelFormatter={(name) => `${name} Severity`}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="mt-2 text-sm text-center text-muted-foreground">
-              Total: {anomalies.count} anomalies
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Anomaly Types</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[150px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <RadarChart cx="50%" cy="50%" outerRadius={60} data={[
-                  { subject: 'Unusual Amount', A: anomalies.data.filter(a => a.type === 'unusual_amount').length },
-                  { subject: 'Unusual Merchant', A: anomalies.data.filter(a => a.type === 'unusual_merchant').length },
-                  { subject: 'Unusual Timing', A: anomalies.data.filter(a => a.type === 'unusual_timing').length },
-                  { subject: 'Potential Fraud', A: anomalies.data.filter(a => a.type === 'potential_fraud').length }
-                ]}>
-                  <PolarGrid />
-                  <PolarAngleAxis dataKey="subject" tick={{ fill: '#888888', fontSize: 10 }} />
-                  <PolarRadiusAxis angle={30} domain={[0, 'auto']} />
-                  <Radar name="Anomalies" dataKey="A" stroke="#8884d8" fill="#8884d8" fillOpacity={0.6} />
-                  <Tooltip />
-                </RadarChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="mt-2 text-sm text-center text-muted-foreground">
-              High severity: {anomalies.highSeverity}
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Security Status</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <Shield className="h-5 w-5 text-green-500" />
-                <span className="text-lg font-medium">Protected</span>
-              </div>
-              <Badge variant={anomalies.highSeverity > 0 ? "destructive" : "outline"} className="ml-auto">
-                {anomalies.highSeverity > 0 ? `${anomalies.highSeverity} alerts` : 'No alerts'}
-              </Badge>
-            </div>
-            <div className="space-y-1 text-sm">
-              <div className="flex justify-between">
-                <span>Fraud detection</span>
-                <span className="font-medium text-green-500">Active</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Last scan</span>
-                <span className="font-medium">{new Date().toLocaleDateString()}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Monitoring status</span>
-                <span className="font-medium text-green-500">Real-time</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {filteredAnomalies.length === 0 ? (
-        <Card>
-          <CardContent className="p-6 text-center">
-            <Shield className="h-12 w-12 mx-auto text-green-500/50 mb-3" />
-            <h3 className="text-lg font-medium mb-2">No anomalies found with current filters</h3>
-            <p className="text-muted-foreground mb-4">
-              {anomalies.count > 0 
-                ? "Try adjusting your filters to see anomalies"
-                : "We haven't detected any unusual activity in your transactions"
-              }
+            <div className="text-2xl font-bold">{anomalies.length}</div>
+            <p className="text-xs text-muted-foreground">
+              Detected this month
             </p>
-            <Button variant="outline" size="sm" onClick={() => {
-              setStatusFilter('all');
-              setSeverityFilter('all');
-            }}>
-              <Filter className="h-4 w-4 mr-2" />
-              Reset Filters
-            </Button>
           </CardContent>
         </Card>
-      ) : (
-        <div className="space-y-4">
-          {filteredAnomalies.map(anomaly => {
-            const transaction = getTransactionDetails(anomaly.transaction_id);
-            if (!transaction) return null;
-
-            return (
-              <Card key={anomaly.id} className={anomaly.severity === 'high' ? 'border-red-200' : ''}>
-                <CardHeader className="pb-2">
-                  <div className="flex justify-between items-start">
-                    <div className="space-y-1">
-                      <CardTitle>{transaction.description}</CardTitle>
-                      <CardDescription>
-                        Transaction on {new Date(transaction.date).toLocaleDateString()}
-                      </CardDescription>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {getSeverityBadge(anomaly.severity)}
-                      {getStatusBadge(anomaly.status)}
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center gap-2 text-sm">
-                    <AlertTriangle className="h-4 w-4 text-amber-500" />
-                    <span>
-                      {anomaly.description}
-                    </span>
-                  </div>
-                  <div className="mt-3 flex items-center justify-between">
-                    <div className="text-sm text-muted-foreground">
-                      Detected on {new Date(anomaly.detected_at).toLocaleString()}
-                    </div>
-                    <span className={`font-bold ${transaction.amount < 0 ? 'text-red-500' : 'text-green-500'}`}>
-                      ${Math.abs(transaction.amount).toFixed(2)}
-                    </span>
-                  </div>
-                </CardContent>
-                <CardFooter className="pt-0 flex justify-between items-center">
-                  <div className="text-sm text-muted-foreground">
-                    {anomaly.type === 'potential_fraud' ? (
-                      <span className="text-red-500 font-medium">Potential fraud - review immediately</span>
-                    ) : (
-                      <span>Type: {anomaly.type.replace('_', ' ')}</span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {anomaly.status === 'new' && (
-                      <>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => handleMarkAsFalsePositive(anomaly.id)}
-                        >
-                          <ThumbsDown className="h-4 w-4 mr-1" />
-                          False
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => handleMarkAsReviewed(anomaly.id)}
-                        >
-                          <ThumbsUp className="h-4 w-4 mr-1" />
-                          Reviewed
-                        </Button>
-                      </>
-                    )}
-                    {anomaly.type === 'potential_fraud' && (
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="destructive" size="sm">
-                            Report Fraud
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Report Fraud</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This will mark the transaction as fraudulent and notify your bank. Would you like to proceed?
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction>Contact Bank</AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    )}
-                  </div>
-                </CardFooter>
-              </Card>
-            );
-          })}
-        </div>
-      )}
-      
-      <div className="flex justify-between items-center mt-6">
-        <p className="text-sm text-muted-foreground">
-          Showing {filteredAnomalies.length} of {anomalies.count} anomalies
-        </p>
-        <Button variant="outline" size="sm">
-          <ExternalLink className="h-4 w-4 mr-2" />
-          Security Tips
-        </Button>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">High Severity</CardTitle>
+            <XCircle className="h-4 w-4 text-red-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-500">
+              {anomalies.filter(a => a.severity === 'high').length}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Requires attention
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">AI Confidence</CardTitle>
+            <CheckCircle className="h-4 w-4 text-green-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-500">
+              {Math.round(anomalies.reduce((sum, a) => sum + a.confidence, 0) / anomalies.length)}%
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Average detection confidence
+            </p>
+          </CardContent>
+        </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle>Detected Anomalies</CardTitle>
+              <CardDescription>
+                AI-powered detection of unusual transaction patterns
+              </CardDescription>
+            </div>
+            <Select value={selectedSeverity} onValueChange={setSelectedSeverity}>
+              <SelectTrigger className="w-32">
+                <SelectValue placeholder="Filter" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="high">High</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="low">Low</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {filteredAnomalies.map((anomaly) => (
+            <Alert key={anomaly.id} className="border-l-4 border-l-orange-500">
+              <div className="flex items-start justify-between">
+                <div className="flex items-start space-x-3">
+                  {getSeverityIcon(anomaly.severity)}
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <AlertTitle className="text-sm font-medium">
+                        {anomaly.description}
+                      </AlertTitle>
+                      <Badge variant={getSeverityColor(anomaly.severity) as any}>
+                        {anomaly.severity.toUpperCase()}
+                      </Badge>
+                      <Badge variant="outline">
+                        {anomaly.confidence}% confidence
+                      </Badge>
+                    </div>
+                    <AlertDescription className="text-sm">
+                      <div className="space-y-1">
+                        <p><strong>Amount:</strong> ${anomaly.amount}</p>
+                        <p><strong>Date:</strong> {anomaly.date}</p>
+                        <p><strong>Type:</strong> {anomaly.type.replace('_', ' ')}</p>
+                        <p className="text-blue-600"><strong>Reason:</strong> {anomaly.reason}</p>
+                      </div>
+                    </AlertDescription>
+                  </div>
+                </div>
+                <div className="flex space-x-2">
+                  <Button variant="outline" size="sm">
+                    Mark Valid
+                  </Button>
+                  <Button variant="destructive" size="sm">
+                    Flag Fraud
+                  </Button>
+                </div>
+              </div>
+            </Alert>
+          ))}
+        </CardContent>
+      </Card>
     </div>
   );
-}
+};
+
+export default AnomalyDetection;
