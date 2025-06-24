@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -103,12 +104,13 @@ export default function AdvancedAnalysis() {
             className="gap-2"
           >
             {analyzingData ? (
-            <RefreshCw className="h-4 w-4 animate-spin" />
-          ) : (
-            <Zap className="h-4 w-4" />
-          )}
-          {analyzingData ? "Analyzing..." : "Refresh Analysis"}
-        </Button>
+              <RefreshCw className="h-4 w-4 animate-spin" />
+            ) : (
+              <Zap className="h-4 w-4" />
+            )}
+            {analyzingData ? "Analyzing..." : "Refresh Analysis"}
+          </Button>
+        </div>
       </div>
 
       {error && (
