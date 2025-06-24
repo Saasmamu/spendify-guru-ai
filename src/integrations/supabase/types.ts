@@ -9,6 +9,1089 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      admin_activity_logs: {
+        Row: {
+          action: string
+          admin_user_id: string | null
+          created_at: string | null
+          details: Json | null
+          id: string
+          ip_address: string | null
+          resource: string
+          resource_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          admin_user_id?: string | null
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          resource: string
+          resource_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          admin_user_id?: string | null
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          resource?: string
+          resource_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_activity_logs_admin_user_id_fkey"
+            columns: ["admin_user_id"]
+            isOneToOne: false
+            referencedRelation: "admin_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      admin_dashboard_settings: {
+        Row: {
+          admin_user_id: string | null
+          created_at: string | null
+          id: string
+          layout: Json | null
+          preferences: Json | null
+          updated_at: string | null
+          widgets: Json | null
+        }
+        Insert: {
+          admin_user_id?: string | null
+          created_at?: string | null
+          id?: string
+          layout?: Json | null
+          preferences?: Json | null
+          updated_at?: string | null
+          widgets?: Json | null
+        }
+        Update: {
+          admin_user_id?: string | null
+          created_at?: string | null
+          id?: string
+          layout?: Json | null
+          preferences?: Json | null
+          updated_at?: string | null
+          widgets?: Json | null
+        }
+        Relationships: []
+      }
+      admin_permissions: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      admin_roles: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      admin_users: {
+        Row: {
+          created_at: string | null
+          email: string
+          id: string
+          role_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          id?: string
+          role_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          id?: string
+          role_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_users_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "admin_roles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_users_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "admin_user_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      analytics_cohorts: {
+        Row: {
+          average_revenue: number | null
+          cohort_date: string
+          cohort_size: number
+          conversion_rate: number | null
+          created_at: string | null
+          id: string
+          retention_180d: number | null
+          retention_30d: number | null
+          retention_60d: number | null
+          retention_90d: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          average_revenue?: number | null
+          cohort_date: string
+          cohort_size: number
+          conversion_rate?: number | null
+          created_at?: string | null
+          id?: string
+          retention_180d?: number | null
+          retention_30d?: number | null
+          retention_60d?: number | null
+          retention_90d?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          average_revenue?: number | null
+          cohort_date?: string
+          cohort_size?: number
+          conversion_rate?: number | null
+          created_at?: string | null
+          id?: string
+          retention_180d?: number | null
+          retention_30d?: number | null
+          retention_60d?: number | null
+          retention_90d?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      analytics_daily_metrics: {
+        Row: {
+          active_users: number | null
+          average_processing_time: number | null
+          cancellations: number | null
+          churn_rate: number | null
+          created_at: string | null
+          date: string
+          documents_processed: number | null
+          id: string
+          new_users: number | null
+          plan_downgrades: number | null
+          plan_upgrades: number | null
+          retention_rate: number | null
+          total_revenue: number | null
+          trial_conversion_rate: number | null
+          trial_conversions: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          active_users?: number | null
+          average_processing_time?: number | null
+          cancellations?: number | null
+          churn_rate?: number | null
+          created_at?: string | null
+          date: string
+          documents_processed?: number | null
+          id?: string
+          new_users?: number | null
+          plan_downgrades?: number | null
+          plan_upgrades?: number | null
+          retention_rate?: number | null
+          total_revenue?: number | null
+          trial_conversion_rate?: number | null
+          trial_conversions?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          active_users?: number | null
+          average_processing_time?: number | null
+          cancellations?: number | null
+          churn_rate?: number | null
+          created_at?: string | null
+          date?: string
+          documents_processed?: number | null
+          id?: string
+          new_users?: number | null
+          plan_downgrades?: number | null
+          plan_upgrades?: number | null
+          retention_rate?: number | null
+          total_revenue?: number | null
+          trial_conversion_rate?: number | null
+          trial_conversions?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      analytics_document_metrics: {
+        Row: {
+          average_processing_time_ms: number | null
+          average_size_kb: number | null
+          count: number | null
+          created_at: string | null
+          date: string
+          document_type: string
+          id: string
+          success_rate: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          average_processing_time_ms?: number | null
+          average_size_kb?: number | null
+          count?: number | null
+          created_at?: string | null
+          date: string
+          document_type: string
+          id?: string
+          success_rate?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          average_processing_time_ms?: number | null
+          average_size_kb?: number | null
+          count?: number | null
+          created_at?: string | null
+          date?: string
+          document_type?: string
+          id?: string
+          success_rate?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      analytics_plan_revenue: {
+        Row: {
+          created_at: string | null
+          date: string
+          id: string
+          plan_id: string
+          plan_name: string
+          revenue: number | null
+          subscriber_count: number | null
+          trial_count: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          date: string
+          id?: string
+          plan_id: string
+          plan_name: string
+          revenue?: number | null
+          subscriber_count?: number | null
+          trial_count?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          date?: string
+          id?: string
+          plan_id?: string
+          plan_name?: string
+          revenue?: number | null
+          subscriber_count?: number | null
+          trial_count?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      api_requests: {
+        Row: {
+          created_at: string | null
+          endpoint: string
+          id: string
+          method: string
+          response_time_ms: number | null
+          status: number | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          endpoint: string
+          id?: string
+          method: string
+          response_time_ms?: number | null
+          status?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          endpoint?: string
+          id?: string
+          method?: string
+          response_time_ms?: number | null
+          status?: number | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "admin_user_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      budget_alerts: {
+        Row: {
+          budget_category_id: string
+          created_at: string | null
+          id: string
+          is_triggered: boolean | null
+          threshold_percentage: number
+        }
+        Insert: {
+          budget_category_id: string
+          created_at?: string | null
+          id?: string
+          is_triggered?: boolean | null
+          threshold_percentage: number
+        }
+        Update: {
+          budget_category_id?: string
+          created_at?: string | null
+          id?: string
+          is_triggered?: boolean | null
+          threshold_percentage?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "budget_alerts_budget_category_id_fkey"
+            columns: ["budget_category_id"]
+            isOneToOne: false
+            referencedRelation: "budget_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      budget_categories: {
+        Row: {
+          allocated_amount: number
+          budget_id: string
+          category: string
+          created_at: string | null
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          allocated_amount: number
+          budget_id: string
+          category: string
+          created_at?: string | null
+          id?: string
+          updated_at?: string | null
+        }
+        Update: {
+          allocated_amount?: number
+          budget_id?: string
+          category?: string
+          created_at?: string | null
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "budget_categories_budget_id_fkey"
+            columns: ["budget_id"]
+            isOneToOne: false
+            referencedRelation: "budgets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      budgets: {
+        Row: {
+          amount: number
+          created_at: string | null
+          end_date: string | null
+          id: string
+          name: string
+          period: string
+          start_date: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          end_date?: string | null
+          id?: string
+          name: string
+          period: string
+          start_date: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          end_date?: string | null
+          id?: string
+          name?: string
+          period?: string
+          start_date?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "budgets_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "admin_user_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      categories: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          id: string
+          name: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          id?: string
+          name: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          id?: string
+          name?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "categories_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "admin_user_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_analysis: {
+        Row: {
+          analysis_data: Json
+          analysis_type: string
+          created_at: string | null
+          document_id: string
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          analysis_data: Json
+          analysis_type: string
+          created_at?: string | null
+          document_id: string
+          id?: string
+          updated_at?: string | null
+        }
+        Update: {
+          analysis_data?: Json
+          analysis_type?: string
+          created_at?: string | null
+          document_id?: string
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_analysis_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      documents: {
+        Row: {
+          created_at: string | null
+          file_name: string
+          file_size: number
+          file_type: string
+          id: string
+          processed_data: Json | null
+          status: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          file_name: string
+          file_size: number
+          file_type: string
+          id?: string
+          processed_data?: Json | null
+          status: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          file_name?: string
+          file_size?: number
+          file_type?: string
+          id?: string
+          processed_data?: Json | null
+          status?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "admin_user_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      expenses: {
+        Row: {
+          amount: number
+          category_id: string | null
+          created_at: string | null
+          date: string
+          description: string
+          id: string
+          is_recurring: boolean | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          category_id?: string | null
+          created_at?: string | null
+          date: string
+          description: string
+          id?: string
+          is_recurring?: boolean | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          category_id?: string | null
+          created_at?: string | null
+          date?: string
+          description?: string
+          id?: string
+          is_recurring?: boolean | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expenses_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "admin_user_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financial_goals: {
+        Row: {
+          category: string | null
+          category_id: string | null
+          created_at: string
+          current_amount: number | null
+          deadline: string | null
+          id: string
+          last_updated_by: string | null
+          milestone_amounts: number[] | null
+          milestone_dates: string[] | null
+          name: string
+          notes: string | null
+          progress_percentage: number | null
+          status: string | null
+          target_amount: number
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          category_id?: string | null
+          created_at?: string
+          current_amount?: number | null
+          deadline?: string | null
+          id?: string
+          last_updated_by?: string | null
+          milestone_amounts?: number[] | null
+          milestone_dates?: string[] | null
+          name: string
+          notes?: string | null
+          progress_percentage?: number | null
+          status?: string | null
+          target_amount: number
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          category_id?: string | null
+          created_at?: string
+          current_amount?: number | null
+          deadline?: string | null
+          id?: string
+          last_updated_by?: string | null
+          milestone_amounts?: number[] | null
+          milestone_dates?: string[] | null
+          name?: string
+          notes?: string | null
+          progress_percentage?: number | null
+          status?: string | null
+          target_amount?: number
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_goals_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "goal_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_goals_last_updated_by_fkey"
+            columns: ["last_updated_by"]
+            isOneToOne: false
+            referencedRelation: "admin_user_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_goals_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "admin_user_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financial_predictions: {
+        Row: {
+          amount: number
+          category_id: string | null
+          confidence_score: number | null
+          date: string
+          description: string | null
+          factors: string[] | null
+          id: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          category_id?: string | null
+          confidence_score?: number | null
+          date: string
+          description?: string | null
+          factors?: string[] | null
+          id?: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          category_id?: string | null
+          confidence_score?: number | null
+          date?: string
+          description?: string | null
+          factors?: string[] | null
+          id?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_predictions_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_predictions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "admin_user_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      goal_categories: {
+        Row: {
+          color: string | null
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      goal_milestones: {
+        Row: {
+          achieved_date: string | null
+          amount: number
+          created_at: string
+          description: string | null
+          goal_id: string | null
+          id: string
+          target_date: string | null
+        }
+        Insert: {
+          achieved_date?: string | null
+          amount: number
+          created_at?: string
+          description?: string | null
+          goal_id?: string | null
+          id?: string
+          target_date?: string | null
+        }
+        Update: {
+          achieved_date?: string | null
+          amount?: number
+          created_at?: string
+          description?: string | null
+          goal_id?: string | null
+          id?: string
+          target_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goal_milestones_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "financial_goals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      goal_progress_history: {
+        Row: {
+          amount: number
+          goal_id: string | null
+          id: string
+          notes: string | null
+          recorded_at: string
+          recorded_by: string | null
+        }
+        Insert: {
+          amount: number
+          goal_id?: string | null
+          id?: string
+          notes?: string | null
+          recorded_at?: string
+          recorded_by?: string | null
+        }
+        Update: {
+          amount?: number
+          goal_id?: string | null
+          id?: string
+          notes?: string | null
+          recorded_at?: string
+          recorded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goal_progress_history_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "financial_goals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goal_progress_history_recorded_by_fkey"
+            columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "admin_user_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      goal_templates: {
+        Row: {
+          category_id: string | null
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          suggested_deadline_months: number | null
+          target_amount_range_max: number | null
+          target_amount_range_min: number | null
+          tips: string[] | null
+          type: string
+        }
+        Insert: {
+          category_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          suggested_deadline_months?: number | null
+          target_amount_range_max?: number | null
+          target_amount_range_min?: number | null
+          tips?: string[] | null
+          type: string
+        }
+        Update: {
+          category_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          suggested_deadline_months?: number | null
+          target_amount_range_max?: number | null
+          target_amount_range_min?: number | null
+          tips?: string[] | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goal_templates_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "goal_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      incomes: {
+        Row: {
+          amount: number
+          category_id: string | null
+          created_at: string | null
+          date: string
+          description: string
+          id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          category_id?: string | null
+          created_at?: string | null
+          date: string
+          description: string
+          id?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          category_id?: string | null
+          created_at?: string | null
+          date?: string
+          description?: string
+          id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "incomes_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "incomes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "admin_user_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      integrations: {
+        Row: {
+          access_token: string | null
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          provider: string
+          refresh_token: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          access_token?: string | null
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          provider: string
+          refresh_token?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          access_token?: string | null
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          provider?: string
+          refresh_token?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "integrations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "admin_user_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      money_tips: {
+        Row: {
+          context: Json | null
+          created_at: string | null
+          id: string
+          tip: string
+          user_id: string
+        }
+        Insert: {
+          context?: Json | null
+          created_at?: string | null
+          id?: string
+          tip: string
+          user_id: string
+        }
+        Update: {
+          context?: Json | null
+          created_at?: string | null
+          id?: string
+          tip?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "money_tips_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "admin_user_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_read: boolean | null
+          message: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          message: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          message?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "admin_user_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -31,64 +1114,733 @@ export type Database = {
           id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "admin_user_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recurring_transactions: {
+        Row: {
+          amount: number
+          category_id: string | null
+          created_at: string | null
+          description: string
+          end_date: string | null
+          frequency: string
+          id: string
+          is_active: boolean | null
+          next_occurrence: string
+          start_date: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          category_id?: string | null
+          created_at?: string | null
+          description: string
+          end_date?: string | null
+          frequency: string
+          id?: string
+          is_active?: boolean | null
+          next_occurrence: string
+          start_date: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          category_id?: string | null
+          created_at?: string | null
+          description?: string
+          end_date?: string | null
+          frequency?: string
+          id?: string
+          is_active?: boolean | null
+          next_occurrence?: string
+          start_date?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_transactions_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_transactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "admin_user_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reports: {
+        Row: {
+          file_url: string | null
+          filters: Json | null
+          generated_at: string | null
+          id: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          file_url?: string | null
+          filters?: Json | null
+          generated_at?: string | null
+          id?: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          file_url?: string | null
+          filters?: Json | null
+          generated_at?: string | null
+          id?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reports_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "admin_user_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      role_permissions: {
+        Row: {
+          created_at: string | null
+          permission_id: string
+          role_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          permission_id: string
+          role_id: string
+        }
+        Update: {
+          created_at?: string | null
+          permission_id?: string
+          role_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "role_permissions_permission_id_fkey"
+            columns: ["permission_id"]
+            isOneToOne: false
+            referencedRelation: "admin_permissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "role_permissions_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "admin_roles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       saved_analyses: {
         Row: {
-          id: string
-          user_id: string
-          name: string
-          date: string
-          transactions: Json
-          total_income: number
-          total_expense: number
           categories: Json
+          created_at: string
+          date: string
+          id: string
           insights: Json
-          created_at?: string
+          name: string
+          total_expense: number
+          total_income: number
+          transactions: Json
+          user_id: string
         }
         Insert: {
-          id: string
-          user_id: string
-          name: string
-          date: string
-          transactions: Json
-          total_income: number
-          total_expense: number
           categories: Json
-          insights: Json
           created_at?: string
+          date?: string
+          id: string
+          insights: Json
+          name: string
+          total_expense: number
+          total_income: number
+          transactions: Json
+          user_id: string
         }
         Update: {
-          id?: string
-          user_id?: string
-          name?: string
-          date?: string
-          transactions?: Json
-          total_income?: number
-          total_expense?: number
           categories?: Json
-          insights?: Json
           created_at?: string
+          date?: string
+          id?: string
+          insights?: Json
+          name?: string
+          total_expense?: number
+          total_income?: number
+          transactions?: Json
+          user_id?: string
         }
         Relationships: [
           {
             foreignKeyName: "saved_analyses_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: "profiles"
+            referencedRelation: "admin_user_view"
             referencedColumns: ["id"]
-          }
+          },
+        ]
+      }
+      spending_patterns: {
+        Row: {
+          amount: number
+          confidence_score: number | null
+          description: string | null
+          first_occurrence: string | null
+          frequency: string | null
+          id: string
+          last_occurrence: string | null
+          name: string
+          transactions: string[] | null
+          type: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          confidence_score?: number | null
+          description?: string | null
+          first_occurrence?: string | null
+          frequency?: string | null
+          id?: string
+          last_occurrence?: string | null
+          name: string
+          transactions?: string[] | null
+          type?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          confidence_score?: number | null
+          description?: string | null
+          first_occurrence?: string | null
+          frequency?: string | null
+          id?: string
+          last_occurrence?: string | null
+          name?: string
+          transactions?: string[] | null
+          type?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spending_patterns_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "admin_user_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subscription_plans: {
+        Row: {
+          created_at: string | null
+          id: string
+          interval: string
+          is_active: boolean | null
+          name: string
+          price: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          interval: string
+          is_active?: boolean | null
+          name: string
+          price: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          interval?: string
+          is_active?: boolean | null
+          name?: string
+          price?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      subscriptions: {
+        Row: {
+          cancel_at_period_end: boolean | null
+          card_added: boolean | null
+          created_at: string | null
+          current_period_end: string | null
+          id: string
+          plan: string | null
+          plan_id: string | null
+          status: string
+          trial_ends_at: string | null
+          trial_type: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          cancel_at_period_end?: boolean | null
+          card_added?: boolean | null
+          created_at?: string | null
+          current_period_end?: string | null
+          id?: string
+          plan?: string | null
+          plan_id?: string | null
+          status?: string
+          trial_ends_at?: string | null
+          trial_type?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          cancel_at_period_end?: boolean | null
+          card_added?: boolean | null
+          created_at?: string | null
+          current_period_end?: string | null
+          id?: string
+          plan?: string | null
+          plan_id?: string | null
+          status?: string
+          trial_ends_at?: string | null
+          trial_type?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "admin_user_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transaction_anomalies: {
+        Row: {
+          description: string | null
+          detected_at: string
+          id: string
+          severity: string | null
+          status: string | null
+          transaction_id: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          description?: string | null
+          detected_at?: string
+          id?: string
+          severity?: string | null
+          status?: string | null
+          transaction_id: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          description?: string | null
+          detected_at?: string
+          id?: string
+          severity?: string | null
+          status?: string | null
+          transaction_id?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transaction_anomalies_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transaction_anomalies_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "admin_user_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transactions: {
+        Row: {
+          amount: number
+          balance: number | null
+          category: string
+          channel: string | null
+          created_at: string
+          date: string
+          description: string
+          id: string
+          reference: string | null
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          balance?: number | null
+          category: string
+          channel?: string | null
+          created_at?: string
+          date: string
+          description: string
+          id?: string
+          reference?: string | null
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          balance?: number | null
+          category?: string
+          channel?: string | null
+          created_at?: string
+          date?: string
+          description?: string
+          id?: string
+          reference?: string | null
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "admin_user_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_preferences: {
+        Row: {
+          created_at: string | null
+          id: string
+          notification_settings: Json | null
+          ui_preferences: Json | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          notification_settings?: Json | null
+          ui_preferences?: Json | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          notification_settings?: Json | null
+          ui_preferences?: Json | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "admin_user_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_settings: {
+        Row: {
+          created_at: string | null
+          notification_preferences: Json | null
+          privacy_settings: Json | null
+          profile: Json | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          notification_preferences?: Json | null
+          privacy_settings?: Json | null
+          profile?: Json | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          notification_preferences?: Json | null
+          privacy_settings?: Json | null
+          profile?: Json | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_settings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "admin_user_view"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
     Views: {
-      [_ in never]: never
+      admin_activity_log_view: {
+        Row: {
+          action: string | null
+          admin_email: string | null
+          admin_user_id: string | null
+          created_at: string | null
+          details: Json | null
+          id: string | null
+          ip_address: string | null
+          resource: string | null
+          resource_id: string | null
+          role_id: string | null
+          role_name: string | null
+          user_agent: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_activity_logs_admin_user_id_fkey"
+            columns: ["admin_user_id"]
+            isOneToOne: false
+            referencedRelation: "admin_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_users_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "admin_roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      admin_subscription_view: {
+        Row: {
+          amount: number | null
+          billing_interval: string | null
+          cancel_at_period_end: boolean | null
+          card_added: boolean | null
+          created_at: string | null
+          current_period_end: string | null
+          id: string | null
+          plan_name: string | null
+          plan_price: number | null
+          status: string | null
+          trial_ends_at: string | null
+          trial_type: string | null
+          updated_at: string | null
+          user_email: string | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "admin_user_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      admin_user_view: {
+        Row: {
+          cancel_at_period_end: boolean | null
+          card_added: boolean | null
+          created_at: string | null
+          current_period_end: string | null
+          document_count: number | null
+          email: string | null
+          id: string | null
+          is_active: boolean | null
+          is_suspended: boolean | null
+          last_sign_in_at: string | null
+          plan_name: string | null
+          subscription_status: string | null
+          trial_ends_at: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
-      [_ in never]: never
+      activate_user: {
+        Args: { target_user_id: string }
+        Returns: undefined
+      }
+      add_financial_goal: {
+        Args: {
+          p_name: string
+          p_target_amount: number
+          p_current_amount?: number
+          p_deadline?: string
+          p_type?: string
+          p_category_id?: string
+          p_notes?: string
+          p_user_id?: string
+        }
+        Returns: {
+          category: string | null
+          category_id: string | null
+          created_at: string
+          current_amount: number | null
+          deadline: string | null
+          id: string
+          last_updated_by: string | null
+          milestone_amounts: number[] | null
+          milestone_dates: string[] | null
+          name: string
+          notes: string | null
+          progress_percentage: number | null
+          status: string | null
+          target_amount: number
+          type: string
+          updated_at: string
+          user_id: string
+        }
+      }
+      calculate_api_load: {
+        Args: { time_period?: string }
+        Returns: {
+          total_requests: number
+          avg_response_time: number
+          success_rate: number
+          top_endpoints: Json
+        }[]
+      }
+      check_admin_permission: {
+        Args: { user_id: string; required_permission: string }
+        Returns: boolean
+      }
+      get_api_load_history: {
+        Args: { p_interval?: unknown; p_points?: number }
+        Returns: {
+          load_percentage: number
+          request_count: number
+          error_count: number
+          avg_response_time: number
+        }[]
+      }
+      get_goal_suggestions: {
+        Args: { p_user_id: string; p_income?: number; p_expenses?: number }
+        Returns: {
+          template_id: string
+          name: string
+          description: string
+          suggested_amount: number
+          suggested_deadline: string
+          category_id: string
+          type: string
+          tips: string[]
+        }[]
+      }
+      get_recent_activity_logs: {
+        Args: { p_limit?: number; p_offset?: number }
+        Returns: {
+          id: string
+          admin_user_id: string
+          admin_email: string
+          role_name: string
+          action: string
+          resource: string
+          resource_id: string
+          details: Json
+          created_at: string
+        }[]
+      }
+      is_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      log_admin_activity: {
+        Args: {
+          admin_user_id: string
+          action: string
+          resource: string
+          resource_id: string
+          details: Json
+        }
+        Returns: string
+      }
+      suspend_user: {
+        Args: { target_user_id: string }
+        Returns: undefined
+      }
+      update_goal_progress: {
+        Args: { p_goal_id: string; p_amount: number; p_notes?: string }
+        Returns: {
+          category: string | null
+          category_id: string | null
+          created_at: string
+          current_amount: number | null
+          deadline: string | null
+          id: string
+          last_updated_by: string | null
+          milestone_amounts: number[] | null
+          milestone_dates: string[] | null
+          name: string
+          notes: string | null
+          progress_percentage: number | null
+          status: string | null
+          target_amount: number
+          type: string
+          updated_at: string
+          user_id: string
+        }
+      }
+      update_subscription_status: {
+        Args: {
+          subscription_id: string
+          new_status: string
+          admin_user_id: string
+        }
+        Returns: {
+          cancel_at_period_end: boolean | null
+          card_added: boolean | null
+          created_at: string | null
+          current_period_end: string | null
+          id: string
+          plan: string | null
+          plan_id: string | null
+          status: string
+          trial_ends_at: string | null
+          trial_type: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+      }
     }
     Enums: {
-      [_ in never]: never
+      goal_status: "in_progress" | "completed" | "off_track" | "failed"
+      goal_type: "savings" | "budget" | "debt_payment" | "custom"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -96,27 +1848,29 @@ export type Database = {
   }
 }
 
-type PublicSchema = Database[Extract<keyof Database, "public">]
+type DefaultSchema = Database[Extract<keyof Database, "public">]
 
 export type Tables<
-  PublicTableNameOrOptions extends
-    | keyof (PublicSchema["Tables"] & PublicSchema["Views"])
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof Database },
-  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
-    ? keyof (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
-        Database[PublicTableNameOrOptions["schema"]]["Views"])
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof Database
+  }
+    ? keyof (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
-> = PublicTableNameOrOptions extends { schema: keyof Database }
-  ? (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
-      Database[PublicTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
+  ? (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
     ? R
     : never
-  : PublicTableNameOrOptions extends keyof (PublicSchema["Tables"] &
-        PublicSchema["Views"])
-    ? (PublicSchema["Tables"] &
-        PublicSchema["Views"])[PublicTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
         Row: infer R
       }
       ? R
@@ -124,20 +1878,22 @@ export type Tables<
     : never
 
 export type TablesInsert<
-  PublicTableNameOrOptions extends
-    | keyof PublicSchema["Tables"]
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
     | { schema: keyof Database },
-  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
-    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof Database
+  }
+    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = PublicTableNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
+  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I
     }
     ? I
     : never
-  : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
-    ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
         Insert: infer I
       }
       ? I
@@ -145,20 +1901,22 @@ export type TablesInsert<
     : never
 
 export type TablesUpdate<
-  PublicTableNameOrOptions extends
-    | keyof PublicSchema["Tables"]
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
     | { schema: keyof Database },
-  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
-    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof Database
+  }
+    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = PublicTableNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
+  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U
     }
     ? U
     : never
-  : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
-    ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
         Update: infer U
       }
       ? U
@@ -166,21 +1924,23 @@ export type TablesUpdate<
     : never
 
 export type Enums<
-  PublicEnumNameOrOptions extends
-    | keyof PublicSchema["Enums"]
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
     | { schema: keyof Database },
-  EnumName extends PublicEnumNameOrOptions extends { schema: keyof Database }
-    ? keyof Database[PublicEnumNameOrOptions["schema"]]["Enums"]
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof Database
+  }
+    ? keyof Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
-> = PublicEnumNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicEnumNameOrOptions["schema"]]["Enums"][EnumName]
-  : PublicEnumNameOrOptions extends keyof PublicSchema["Enums"]
-    ? PublicSchema["Enums"][PublicEnumNameOrOptions]
+> = DefaultSchemaEnumNameOrOptions extends { schema: keyof Database }
+  ? Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-    | keyof PublicSchema["CompositeTypes"]
+    | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof Database },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof Database
@@ -189,6 +1949,15 @@ export type CompositeTypes<
     : never = never,
 > = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
   ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof PublicSchema["CompositeTypes"]
-    ? PublicSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
+
+export const Constants = {
+  public: {
+    Enums: {
+      goal_status: ["in_progress", "completed", "off_track", "failed"],
+      goal_type: ["savings", "budget", "debt_payment", "custom"],
+    },
+  },
+} as const
