@@ -7,6 +7,7 @@ import Upload from './pages/Upload';
 import Analyze from './pages/Analyze';
 import Dashboard from './pages/Dashboard';
 import DashboardHome from './pages/DashboardHome';
+import Features from './pages/Features'; // Import the Features page
 import Budgets from './pages/Budgets';
 import BudgetCreate from './pages/BudgetCreate';
 import BudgetDetails from './pages/BudgetDetails';
@@ -47,7 +48,8 @@ const AnimatedRoutes = () => {
       <Route path="/upload" element={<Navigate to="/dashboard/upload" replace />} />
       <Route path="/analyze" element={<Navigate to="/dashboard/analyze" replace />} />
       
-      <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
+<Route path="/features" element={<PageTransition><Features /></PageTransition>} />
+<Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
     </Routes>
   );
 };
