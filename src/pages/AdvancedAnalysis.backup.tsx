@@ -14,20 +14,31 @@ import {
   LineChart,
   Calendar,
   RefreshCw, 
-  Zap
+  Zap,
+  Shield,
+  RotateCcw,
+  Store,
+  Heart,
+  FileText
 } from 'lucide-react';
 import { useToast } from '@/hooks/useToast';
 import CategoryManager from '@/components/analysis/CategoryManager';
 import SpendingPatterns from '@/components/analysis/SpendingPatterns';
 import AnomalyDetection from '@/components/analysis/AnomalyDetection';
 import PredictiveAnalysis from '@/components/analysis/PredictiveAnalysis';
+import ScamAlertsTab from '@/components/analysis/ScamAlertsTab';
+import RecurringExpensesTab from '@/components/analysis/RecurringExpensesTab';
+import CashFlowAnalysisTab from '@/components/analysis/CashFlowAnalysisTab';
+import MerchantIntelligenceTab from '@/components/analysis/MerchantIntelligenceTab';
+import FinancialHealthScoreTab from '@/components/analysis/FinancialHealthScoreTab';
+import TaxExpenseCategorizationTab from '@/components/analysis/TaxExpenseCategorizationTab';
 import { useFinancialData } from '@/hooks/useFinancialData';
 import { useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function AdvancedAnalysis() {
-  const [activeTab, setActiveTab] = useState('categorization');
+  const [activeTab, setActiveTab] = useState('scam-alerts');
   const { toast } = useToast();
   const { user } = useAuth();
   const {
@@ -169,18 +180,45 @@ export default function AdvancedAnalysis() {
 
         <div className="col-span-full md:col-span-3">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid grid-cols-4 mb-4">
+            <TabsList className="grid grid-cols-5 mb-4">
+              <TabsTrigger value="scam-alerts">
+                <Shield className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Security</span>
+              </TabsTrigger>
+              <TabsTrigger value="recurring">
+                <RotateCcw className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Recurring</span>
+              </TabsTrigger>
+              <TabsTrigger value="cash-flow">
+                <TrendingUp className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Cash Flow</span>
+              </TabsTrigger>
+              <TabsTrigger value="merchants">
+                <Store className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Merchants</span>
+              </TabsTrigger>
+              <TabsTrigger value="health">
+                <Heart className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Health</span>
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsList className="grid grid-cols-5 mb-4">
+              <TabsTrigger value="tax">
+                <FileText className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Tax & Expenses</span>
+              </TabsTrigger>
               <TabsTrigger value="categorization">
                 <Tag className="h-4 w-4 mr-2" />
                 <span className="hidden sm:inline">Categorization</span>
               </TabsTrigger>
               <TabsTrigger value="patterns">
                 <TrendingUp className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">Spending Patterns</span>
+                <span className="hidden sm:inline">Patterns</span>
               </TabsTrigger>
               <TabsTrigger value="anomalies">
                 <Fingerprint className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">Anomaly Detection</span>
+                <span className="hidden sm:inline">Anomalies</span>
               </TabsTrigger>
               <TabsTrigger value="predictions">
                 <LineChart className="h-4 w-4 mr-2" />
@@ -188,6 +226,32 @@ export default function AdvancedAnalysis() {
               </TabsTrigger>
             </TabsList>
 
+            {/* New Tabs */}
+            <TabsContent value="scam-alerts" className="mt-0">
+              <ScamAlertsTab transactions={transactions?.data || []} />
+            </TabsContent>
+
+            <TabsContent value="recurring" className="mt-0">
+              <RecurringExpensesTab transactions={transactions?.data || []} />
+            </TabsContent>
+
+            <TabsContent value="cash-flow" className="mt-0">
+              <CashFlowAnalysisTab transactions={transactions?.data || []} />
+            </TabsContent>
+
+            <TabsContent value="merchants" className="mt-0">
+              <MerchantIntelligenceTab transactions={transactions?.data || []} />
+            </TabsContent>
+
+            <TabsContent value="health" className="mt-0">
+              <FinancialHealthScoreTab transactions={transactions?.data || []} />
+            </TabsContent>
+
+            <TabsContent value="tax" className="mt-0">
+              <TaxExpenseCategorizationTab transactions={transactions?.data || []} />
+            </TabsContent>
+
+            {/* Original Tabs */}
             <TabsContent value="categorization" className="mt-0">
               <CategoryManager 
                 transactions={transactions}
