@@ -59,3 +59,56 @@ export interface AdminActivityLog {
   admin_email?: string;
   role_name?: string;
 }
+
+export interface AdminContextType {
+  isAdmin: boolean;
+  isLoading: boolean;
+  user: any;
+  loadAdminData: () => Promise<void>;
+}
+
+export interface ApiIntegration {
+  id: string;
+  name: string;
+  key: string;
+  enabled: boolean;
+  description?: string;
+  credentials?: Record<string, any>;
+  last_used?: string;
+  usage_count?: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RetentionData {
+  period: string;
+  users_retained: number;
+  total_users: number;
+  retention_rate: number;
+  week_1_retention?: number;
+  month_1_retention?: number;
+  month_3_retention?: number;
+  avg_active_days_per_month?: number;
+  avg_features_used?: number;
+  avg_docs_processed_per_month?: number;
+}
+
+export interface DocumentProcessingData {
+  date: string;
+  documents_processed: number;
+  success_rate: number;
+  error_rate?: number;
+  avg_processing_time: number;
+  total_pages: number;
+}
+
+export interface Permission {
+  id: string;
+  name: string;
+  description: string;
+  category?: string;
+  resource: string;
+  action: string;
+  created_at: string;
+  updated_at: string;
+}

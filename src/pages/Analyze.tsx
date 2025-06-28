@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
@@ -7,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/useToast';
-import { Navbar } from '@/components/Navbar';
+import Navbar from '@/components/Navbar';
 import { useStatement } from '@/contexts/StatementContext';
 import { SaveAnalysisDialog } from '@/components/SaveAnalysisDialog';
 import { generateInsights } from '@/services/insightService';
@@ -260,7 +261,7 @@ export default function Analyze() {
       const sanitizedTransactions = statementData.transactions.map(t => ({
         ...t,
         amount: typeof t.amount === 'string'
-                  ? parseFloat(t.amount.replace(/[^0-9.-]+/g,""))
+                  ? parseFloat(t.amount.toString().replace(/[^0-9.-]+/g,""))
                   : (typeof t.amount === 'number' ? t.amount : 0),
         category: typeof t.category === 'string' && t.category.trim() !== '' ? t.category : 'Miscellaneous',
         description: typeof t.description === 'string' ? t.description : '',
@@ -608,7 +609,7 @@ export default function Analyze() {
           <SaveAnalysisDialog
             isOpen={showSaveDialog}
             onClose={() => setShowSaveDialog(false)}
-            analysisData={{
+            data={{
               transactions: transactions,
               totalIncome: statementData?.totalIncome || 0,
               totalExpense: statementData?.totalExpense || totalSpent,

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -205,16 +206,19 @@ export const useFinancialData = () => {
           })) || [];
 
           setCategories(convertedCategories);
+          
           setPatterns({
             data: analysis.patterns || [],
             count: analysis.patterns ? analysis.patterns.length : 0,
-            recurring: analysis.patterns ? analysis.patterns.filter(p => p.type === 'recurring').length : 0,
+            recurring: analysis.patterns ? analysis.patterns.filter((p: any) => p.type === 'recurring').length : 0,
           });
+          
           setAnomalies({
             data: analysis.anomalies || [],
             count: analysis.anomalies ? analysis.anomalies.length : 0,
-            highSeverity: analysis.anomalies ? analysis.anomalies.filter(a => a.severity === 'high').length : 0,
+            highSeverity: analysis.anomalies ? analysis.anomalies.filter((a: any) => a.severity === 'high').length : 0,
           });
+          
           setPredictions({
             data: analysis.predictions || [],
             spendingTrend: 'stable',
