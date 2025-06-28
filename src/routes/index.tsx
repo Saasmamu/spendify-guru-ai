@@ -1,3 +1,4 @@
+
 import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
@@ -32,6 +33,9 @@ const AIFinancialAdvisor = lazy(() => import('@/pages/AIFinancialAdvisor'));
 const Transactions = lazy(() => import('@/pages/Transactions'));
 const BudgetDashboard = lazy(() => import('@/pages/BudgetDashboard'));
 const BudgetForm = lazy(() => import('@/pages/BudgetForm'));
+
+// Add lazy loading for the advanced financial analysis page
+const AdvancedFinancialAnalysis = lazy(() => import('@/pages/AdvancedFinancialAnalysis'));
 
 // Lazy load admin pages
 const AdminDashboard = lazy(() => import('@/pages/admin/Dashboard'));
@@ -144,6 +148,10 @@ const router = createBrowserRouter([
           {
             path: 'advanced-analysis',
             element: <Suspense fallback={<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>}><AdvancedAnalysis /></Suspense>
+          },
+          {
+            path: 'advanced-financial-analysis',
+            element: <Suspense fallback={<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>}><AdvancedFinancialAnalysis /></Suspense>
           },
           {
             path: 'saved',
