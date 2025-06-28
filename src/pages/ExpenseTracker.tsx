@@ -1,16 +1,22 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { defaultCategories } from '../lib/defaultCategories';
-import SummaryCards from '../components/SummaryCards';
-import SpendingTrendsChart from '../components/SpendingTrendsChart';
-import CategoryBreakdownChart from '../components/CategoryBreakdownChart';
-import RecentTransactions from '../components/RecentTransactions';
-import ExpenseList from '../components/ExpenseList';
-import AddExpenseModal from '../components/AddExpenseModal';
-import CategoryManager from '../components/CategoryManager';
-import { v4 as uuidv4 } from 'uuid';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { PlusCircle, Search, Filter, TrendingUp, TrendingDown, Wallet, PieChart, Calendar, Receipt } from 'lucide-react';
+import ExpenseForm from '@/components/ExpenseForm';
+import ExpenseList from '@/components/ExpenseList';
+import ExpenseCharts from '@/components/ExpenseCharts';
+import ExpenseSummary from '@/components/ExpenseSummary';
+import CategoryManager from '@/components/CategoryManager';
+import { defaultCategories } from '@/lib/defaultCategories';
 
-// Expense and Category types
 interface Expense {
   id: string;
   user_id: string;
@@ -19,7 +25,10 @@ interface Expense {
   amount: number;
   date: string;
   receipt?: string;
+  created_at: string;
+  updated_at: string;
 }
+
 interface Category {
   id: string;
   user_id: string;
@@ -27,283 +36,406 @@ interface Category {
   color: string;
 }
 
+interface Budget {
+  id: string;
+  user_id: string;
+  category_id: string;
+  amount: number;
+  period: string;
+  start_date: string;
+  end_date: string;
+}
 
 const ExpenseTracker: React.FC = () => {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editExpense, setEditExpense] = useState<Expense | null>(null);
-  const [monthlyBudget, setMonthlyBudget] = useState<number>(0);
-  const [search, setSearch] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('');
+  const [budgets, setBudgets] = useState<Budget[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [isExpenseFormOpen, setIsExpenseFormOpen] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  
+  // Filter states
+  const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [dateFilter, setDateFilter] = useState('all');
+  const [activeTab, setActiveTab] = useState('overview');
 
-  // Fetch expenses, categories, and budget from Supabase
+  // Fetch data
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        // Get current user ID
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          setError('You must be logged in to view expenses');
-          setLoading(false);
-          return;
-        }
-        
-        // Fetch expenses
-        const { data: expensesData, error: expErr } = await supabase
-          .from('expenses')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('date', { ascending: false });
-        if (expErr) throw expErr;
-        setExpenses(expensesData || []);
+    if (user) {
+      fetchData();
+    }
+  }, [user]);
 
-        // Fetch categories
-        const { data: categoriesData, error: catErr } = await supabase
-          .from('categories')
-          .select('*')
-          .eq('user_id', user.id);
-        if (catErr) throw catErr;
-        
-        // If no categories found, create default ones
-        if (!categoriesData || categoriesData.length === 0) {
-          // Prepare categories with user_id
-          const categoriesToInsert = defaultCategories.map(cat => ({
-            ...cat,
-            user_id: user.id
-          }));
-          
-          // Insert default categories
-          const { data: newCategories, error: insertErr } = await supabase
-            .from('categories')
-            .insert(categoriesToInsert)
-            .select();
-            
-          if (insertErr) throw insertErr;
-          setCategories(newCategories || []);
-        } else {
-          setCategories(categoriesData);
-        }
-
-        // Fetch budgets (simple: sum all for now)
-        const { data: budgetsData, error: budErr } = await supabase
-          .from('budgets')
-          .select('*')
-          .eq('user_id', user.id);
-        if (budErr) throw budErr;
-        setMonthlyBudget(budgetsData && budgetsData.length > 0 ? budgetsData.reduce((acc, b) => acc + (b.amount || 0), 0) : 0);
-      } catch (err: any) {
-        setError(err.message || 'Failed to fetch data');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
-
-  // Calculate monthly spending
-  const monthlySpending = expenses.reduce((sum, exp) => sum + exp.amount, 0);
-
-  // Filtered expenses
-  const filteredExpenses = expenses.filter(exp => {
-    const matchesSearch = exp.description.toLowerCase().includes(search.toLowerCase());
-    const matchesCategory = categoryFilter ? exp.category === categoryFilter : true;
-    return matchesSearch && matchesCategory;
-  });
-
-  // Mock data for charts
-  const trendsData = [
-    { month: 'Jan', expenses: 1200, income: 2000 },
-    { month: 'Feb', expenses: 1500, income: 2100 },
-    { month: 'Mar', expenses: 1700, income: 2200 },
-    { month: 'Apr', expenses: 2000, income: 2300 },
-    { month: 'May', expenses: monthlySpending, income: 2400 },
-    { month: 'Jun', expenses: 0, income: 0 },
-  ];
-  const categoryData = categories.map((cat) => ({
-    category: cat.name,
-    amount: expenses.filter(e => e.category === cat.name).reduce((sum, e) => sum + e.amount, 0),
-    color: cat.color,
-  }));
-
-  const handleAddExpense = async (expense: { description: string; category: string; amount: number; date: string; receipt?: string }) => {
-    setLoading(true);
-    setError(null);
+  const fetchData = async () => {
+    if (!user) return;
+    
     try {
-      // Get current user ID
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        throw new Error('You must be logged in to add an expense');
+      setLoading(true);
+      
+      // Fetch expenses
+      const { data: expensesData, error: expensesError } = await supabase
+        .from('expenses')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('date', { ascending: false });
+      
+      if (expensesError) throw expensesError;
+      setExpenses(expensesData || []);
+
+      // Fetch categories
+      const { data: categoriesData, error: categoriesError } = await supabase
+        .from('categories')
+        .select('*')
+        .eq('user_id', user.id);
+      
+      if (categoriesError) throw categoriesError;
+      
+      // Initialize default categories if none exist
+      if (!categoriesData || categoriesData.length === 0) {
+        const defaultCategoriesWithUserId = defaultCategories.map(cat => ({
+          ...cat,
+          user_id: user.id
+        }));
+        
+        const { data: newCategories, error: insertError } = await supabase
+          .from('categories')
+          .insert(defaultCategoriesWithUserId)
+          .select();
+        
+        if (insertError) throw insertError;
+        setCategories(newCategories || []);
+      } else {
+        setCategories(categoriesData);
       }
 
-      const { data, error: insertErr } = await supabase
-        .from('expenses')
-        .insert([{ ...expense, user_id: user.id }])
-        .select();
-      if (insertErr) throw insertErr;
-      setExpenses([...(data || []), ...expenses]);
-    } catch (err: any) {
-      setError(err.message || 'Failed to add expense');
+      // Fetch budgets
+      const { data: budgetsData, error: budgetsError } = await supabase
+        .from('budgets')
+        .select('*')
+        .eq('user_id', user.id);
+      
+      if (budgetsError) throw budgetsError;
+      setBudgets(budgetsData || []);
+      
+    } catch (error: any) {
+      console.error('Error fetching data:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to load expense data. Please try again.",
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleStartEditExpense = (expense: Expense) => {
-    setEditExpense(expense);
-    setIsEditModalOpen(true);
+  const handleAddExpense = async (expenseData: Omit<Expense, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('expenses')
+        .insert([{ ...expenseData, user_id: user.id }])
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      setExpenses(prev => [data, ...prev]);
+      setIsExpenseFormOpen(false);
+      
+      toast({
+        title: "Success",
+        description: "Expense added successfully!",
+      });
+    } catch (error: any) {
+      console.error('Error adding expense:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to add expense. Please try again.",
+      });
+    }
   };
 
-  const handleSaveEditExpense = async (updated: Expense) => {
-    setLoading(true);
-    setError(null);
+  const handleEditExpense = async (expenseData: Expense) => {
     try {
-      const { data, error: updateErr } = await supabase
+      const { error } = await supabase
         .from('expenses')
-        .update(updated)
-        .eq('id', updated.id)
-        .select();
-      if (updateErr) throw updateErr;
-      setExpenses(expenses.map(e => e.id === updated.id ? (data ? data[0] : updated) : e));
-      setIsEditModalOpen(false);
-      setEditExpense(null);
-    } catch (err: any) {
-      setError(err.message || 'Failed to update expense');
-    } finally {
-      setLoading(false);
+        .update(expenseData)
+        .eq('id', expenseData.id);
+      
+      if (error) throw error;
+      
+      setExpenses(prev => prev.map(exp => exp.id === expenseData.id ? expenseData : exp));
+      setEditingExpense(null);
+      
+      toast({
+        title: "Success",
+        description: "Expense updated successfully!",
+      });
+    } catch (error: any) {
+      console.error('Error updating expense:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update expense. Please try again.",
+      });
     }
   };
 
   const handleDeleteExpense = async (id: string) => {
-    setLoading(true);
-    setError(null);
     try {
-      const { error: delErr } = await supabase
+      const { error } = await supabase
         .from('expenses')
         .delete()
         .eq('id', id);
-      if (delErr) throw delErr;
-      setExpenses(expenses.filter(e => e.id !== id));
-    } catch (err: any) {
-      setError(err.message || 'Failed to delete expense');
-    } finally {
-      setLoading(false);
+      
+      if (error) throw error;
+      
+      setExpenses(prev => prev.filter(exp => exp.id !== id));
+      
+      toast({
+        title: "Success",
+        description: "Expense deleted successfully!",
+      });
+    } catch (error: any) {
+      console.error('Error deleting expense:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to delete expense. Please try again.",
+      });
     }
   };
 
+  // Filter expenses based on search and filters
+  const filteredExpenses = expenses.filter(expense => {
+    const matchesSearch = expense.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = categoryFilter === 'all' || expense.category === categoryFilter;
+    
+    let matchesDate = true;
+    if (dateFilter !== 'all') {
+      const expenseDate = new Date(expense.date);
+      const now = new Date();
+      
+      switch (dateFilter) {
+        case 'today':
+          matchesDate = expenseDate.toDateString() === now.toDateString();
+          break;
+        case 'week':
+          const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          matchesDate = expenseDate >= weekAgo;
+          break;
+        case 'month':
+          matchesDate = expenseDate.getMonth() === now.getMonth() && expenseDate.getFullYear() === now.getFullYear();
+          break;
+      }
+    }
+    
+    return matchesSearch && matchesCategory && matchesDate;
+  });
+
+  // Calculate summary data
+  const totalExpenses = filteredExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+  const monthlyExpenses = expenses.filter(exp => {
+    const expenseDate = new Date(exp.date);
+    const now = new Date();
+    return expenseDate.getMonth() === now.getMonth() && expenseDate.getFullYear() === now.getFullYear();
+  }).reduce((sum, exp) => sum + exp.amount, 0);
+
+  const totalBudget = budgets.reduce((sum, budget) => sum + budget.amount, 0);
+  const budgetRemaining = totalBudget - monthlyExpenses;
+
+  if (loading) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Expense Tracker</h1>
-      <SummaryCards monthlySpending={monthlySpending} monthlyBudget={monthlyBudget} />
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        <SpendingTrendsChart data={[]} />
-        <CategoryBreakdownChart data={categoryData} />
+    <div className="container mx-auto p-6 space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Expense Tracker</h1>
+          <p className="text-gray-600 dark:text-gray-400">Track and manage your expenses efficiently</p>
+        </div>
+        <Button onClick={() => setIsExpenseFormOpen(true)} className="gap-2">
+          <PlusCircle className="h-4 w-4" />
+          Add Expense
+        </Button>
       </div>
-      <div className="flex gap-2 mb-4">
-        <input
-          className="border px-2 py-1 rounded w-48"
-          placeholder="Search expenses..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
-        <select
-          className="border px-2 py-1 rounded"
-          value={categoryFilter}
-          onChange={e => setCategoryFilter(e.target.value)}
-        >
-          <option value="">All Categories</option>
-          {categories.map(cat => (
-            <option key={cat.id} value={cat.name}>{cat.name}</option>
-          ))}
-        </select>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
+            <Wallet className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">${totalExpenses.toFixed(2)}</div>
+            <p className="text-xs text-muted-foreground">
+              {filteredExpenses.length} transactions
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">This Month</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">${monthlyExpenses.toFixed(2)}</div>
+            <p className="text-xs text-muted-foreground">
+              Current month spending
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Budget Remaining</CardTitle>
+            {budgetRemaining >= 0 ? (
+              <TrendingUp className="h-4 w-4 text-green-600" />
+            ) : (
+              <TrendingDown className="h-4 w-4 text-red-600" />
+            )}
+          </CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-bold ${budgetRemaining >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              ${Math.abs(budgetRemaining).toFixed(2)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {budgetRemaining >= 0 ? 'Under budget' : 'Over budget'}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Categories</CardTitle>
+            <PieChart className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{categories.length}</div>
+            <p className="text-xs text-muted-foreground">
+              Active categories
+            </p>
+          </CardContent>
+        </Card>
       </div>
-      {loading && <div className="text-center py-8">Loading...</div>}
-      {error && <div className="text-center text-red-500 py-2">{error}</div>}
-      {!loading && !error && (
-        <>
-          <RecentTransactions transactions={filteredExpenses as any} />
-          <ExpenseList expenses={filteredExpenses as any} onEdit={handleStartEditExpense} onDelete={handleDeleteExpense} />
-          <button className="bg-blue-600 text-white px-4 py-2 rounded" onClick={() => setIsModalOpen(true)}>Add Expense</button>
-          <AddExpenseModal
-            isOpen={isModalOpen}
-            onClose={() => setIsModalOpen(false)}
-            onSave={handleAddExpense}
-            categories={categories as any}
-          />
-          {isEditModalOpen && editExpense && (
-            <AddExpenseModal
-              isOpen={isEditModalOpen}
-              onClose={() => { setIsEditModalOpen(false); setEditExpense(null); }}
-              onSave={handleSaveEditExpense}
-              categories={categories as any}
-              initialData={editExpense}
-            />
-          )}
-          <CategoryManager
+
+      {/* Filters */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Filters</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search expenses..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+            </div>
+            
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger className="w-full sm:w-48">
+                <SelectValue placeholder="All Categories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                {categories.map(category => (
+                  <SelectItem key={category.id} value={category.name}>
+                    {category.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
+            <Select value={dateFilter} onValueChange={setDateFilter}>
+              <SelectTrigger className="w-full sm:w-48">
+                <SelectValue placeholder="All Time" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Time</SelectItem>
+                <SelectItem value="today">Today</SelectItem>
+                <SelectItem value="week">This Week</SelectItem>
+                <SelectItem value="month">This Month</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Main Content Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="expenses">Expenses</TabsTrigger>
+          <TabsTrigger value="charts">Analytics</TabsTrigger>
+          <TabsTrigger value="categories">Categories</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-6">
+          <ExpenseSummary 
+            expenses={filteredExpenses} 
             categories={categories}
-            onAdd={async cat => {
-              setLoading(true);
-              setError(null);
-              try {
-                // Get current user ID
-                const { data: { user } } = await supabase.auth.getUser();
-                if (!user) {
-                  throw new Error('You must be logged in to add a category');
-                }
-                
-                const { data, error: addErr } = await supabase
-                  .from('categories')
-                  .insert([{ ...cat, user_id: user.id }])
-                  .select();
-                if (addErr) throw addErr;
-                setCategories([...(categories || []), ...(data || [])]);
-              } catch (err: any) {
-                setError(err.message || 'Failed to add category');
-              } finally {
-                setLoading(false);
-              }
-            }}
-            onEdit={async cat => {
-              setLoading(true);
-              setError(null);
-              try {
-                const { data, error: editErr } = await supabase
-                  .from('categories')
-                  .update(cat)
-                  .eq('id', cat.id)
-                  .select();
-                if (editErr) throw editErr;
-                setCategories(categories.map(c => c.id === cat.id ? (data ? data[0] : cat) : c));
-              } catch (err: any) {
-                setError(err.message || 'Failed to update category');
-              } finally {
-                setLoading(false);
-              }
-            }}
-            onDelete={async id => {
-              setLoading(true);
-              setError(null);
-              try {
-                const { error: delErr } = await supabase
-                  .from('categories')
-                  .delete()
-                  .eq('id', id);
-                if (delErr) throw delErr;
-                setCategories(categories.filter(c => c.id !== id));
-              } catch (err: any) {
-                setError(err.message || 'Failed to delete category');
-              } finally {
-                setLoading(false);
-              }
-            }}
+            budgets={budgets}
           />
-        </>
-      )}
+        </TabsContent>
+
+        <TabsContent value="expenses" className="space-y-6">
+          <ExpenseList 
+            expenses={filteredExpenses}
+            categories={categories}
+            onEdit={setEditingExpense}
+            onDelete={handleDeleteExpense}
+          />
+        </TabsContent>
+
+        <TabsContent value="charts" className="space-y-6">
+          <ExpenseCharts 
+            expenses={filteredExpenses}
+            categories={categories}
+          />
+        </TabsContent>
+
+        <TabsContent value="categories" className="space-y-6">
+          <CategoryManager 
+            categories={categories}
+            onCategoriesChange={setCategories}
+          />
+        </TabsContent>
+      </Tabs>
+
+      {/* Expense Form Modal */}
+      <ExpenseForm
+        isOpen={isExpenseFormOpen || !!editingExpense}
+        onClose={() => {
+          setIsExpenseFormOpen(false);
+          setEditingExpense(null);
+        }}
+        onSave={editingExpense ? handleEditExpense : handleAddExpense}
+        categories={categories}
+        expense={editingExpense}
+      />
     </div>
   );
 };
