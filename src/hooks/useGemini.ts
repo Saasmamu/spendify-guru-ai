@@ -25,7 +25,7 @@ export const useGemini = () => {
   const [error, setError] = useState<string | null>(null);
   
   // Get Gemini API configuration from admin settings
-  const geminiIntegration = apiIntegrations.find(api => api.key === 'gemini');
+  const geminiIntegration = apiIntegrations.find(api => api.name === 'gemini');
   
   // Default options for Gemini API calls
   const defaultOptions: GeminiOptions = {
@@ -36,7 +36,7 @@ export const useGemini = () => {
 
   // Initialize the Gemini API client
   useEffect(() => {
-    if (geminiIntegration?.is_enabled) {
+    if (geminiIntegration?.enabled) {
       console.log('Gemini AI integration is enabled');
     }
   }, [geminiIntegration]);
@@ -53,7 +53,7 @@ export const useGemini = () => {
       };
     }
 
-    if (!geminiIntegration?.is_enabled) {
+    if (!geminiIntegration?.enabled) {
       return {
         success: false,
         error: 'Gemini AI integration is not enabled',

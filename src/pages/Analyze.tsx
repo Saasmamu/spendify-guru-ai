@@ -261,7 +261,7 @@ export default function Analyze() {
       const sanitizedTransactions = statementData.transactions.map(t => ({
         ...t,
         amount: typeof t.amount === 'string'
-                  ? parseFloat(t.amount.toString().replace(/[^0-9.-]+/g,""))
+                  ? parseFloat(String(t.amount).replace(/[^0-9.-]+/g,""))
                   : (typeof t.amount === 'number' ? t.amount : 0),
         category: typeof t.category === 'string' && t.category.trim() !== '' ? t.category : 'Miscellaneous',
         description: typeof t.description === 'string' ? t.description : '',

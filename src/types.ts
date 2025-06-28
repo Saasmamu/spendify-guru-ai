@@ -5,6 +5,7 @@ export interface SavedAnalysis {
   date: string;
   totalIncome: number;
   totalExpense: number;
+  balance?: number;
   categories: {
     category: string;
     amount: number;
@@ -47,4 +48,25 @@ export interface SavedAnalysis {
     confidence_score: number;
     factors: string[];
   }[];
+  insights?: string[];
 }
+
+// Add ProcessedStatement type to match usage
+export interface ProcessedStatement {
+  transactions: any[];
+  totalIncome: number;
+  totalExpense: number;
+  balance: number;
+  categories: any[];
+  insights: string[];
+}
+
+// Add AnalysisData type for charts
+export interface AnalysisData {
+  transactions: any[];
+  categories: any[];
+  totalIncome: number;
+  totalExpense: number;
+}
+
+export type RawAnalysisData = AnalysisData;

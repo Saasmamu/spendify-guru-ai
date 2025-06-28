@@ -76,6 +76,17 @@ export default function AdvancedAnalysis() {
     });
   };
 
+  const handleAnalysisComplete = (analysisData: any) => {
+    setTransactions(analysisData.data || []);
+    setCategories(analysisData.data || []);
+  };
+
+  const handleDocumentSelect = (documentId: string) => {
+    setSelectedDocumentId(documentId);
+    setTransactions([]);
+    setCategories([]);
+  };
+
   return (
     <div className="container mx-auto py-6 space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">

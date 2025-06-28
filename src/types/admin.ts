@@ -1,3 +1,4 @@
+
 export interface AdminUser {
   id: string;
   user_id: string;
@@ -70,7 +71,6 @@ export interface AdminContextType {
 export interface ApiIntegration {
   id: string;
   name: string;
-  key: string;
   enabled: boolean;
   description?: string;
   credentials?: Record<string, any>;

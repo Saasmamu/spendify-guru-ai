@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -11,21 +12,19 @@ import { Loader2 } from 'lucide-react';
 interface SaveAnalysisDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  transactions: BankTransaction[];
-  totalIncome: number;
-  totalExpense: number;
-  categories: any[];
-  insights: string[];
+  data: {
+    transactions: BankTransaction[];
+    totalIncome: number;
+    totalExpense: number;
+    categories: any[];
+    insights: string[];
+  };
 }
 
 export function SaveAnalysisDialog({
   isOpen,
   onClose,
-  transactions,
-  totalIncome,
-  totalExpense,
-  categories,
-  insights
+  data
 }: SaveAnalysisDialogProps) {
   const { toast } = useToast();
   const [analysisName, setAnalysisName] = useState('');
@@ -45,11 +44,11 @@ export function SaveAnalysisDialog({
       setIsSaving(true);
       await saveAnalysis(
         analysisName,
-        transactions,
-        totalIncome,
-        totalExpense,
-        categories,
-        insights
+        data.transactions,
+        data.totalIncome,
+        data.totalExpense,
+        data.categories,
+        data.insights
       );
       
       toast({
@@ -98,10 +97,10 @@ export function SaveAnalysisDialog({
               This will save:
             </div>
             <ul className="text-sm list-disc list-inside text-muted-foreground">
-              <li>{transactions.length} transactions</li>
+              <li>{data.transactions.length} transactions</li>
               <li>Category breakdown</li>
               <li>Income and expenses</li>
-              <li>{insights.length} AI insights</li>
+              <li>{data.insights.length} AI insights</li>
             </ul>
           </div>
         </div>
@@ -124,4 +123,4 @@ export function SaveAnalysisDialog({
       </DialogContent>
     </Dialog>
   );
-} 
+}
