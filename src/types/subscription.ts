@@ -29,7 +29,14 @@ export interface SubscriptionContextType {
   activePlan: SubscriptionPlan | null;
   limits: SubscriptionLimits;
   isLoading: boolean;
+  loading?: boolean;
   error: string | null;
+  planEndDate?: string;
+  trialEndsAt?: string;
+  trialType?: string;
+  isTrialActive?: boolean;
+  cardAdded?: boolean;
   upgradePlan: (planId: string) => Promise<void>;
+  updateSubscription?: (planId: string) => Promise<void>;
   cancelSubscription: () => Promise<void>;
 }

@@ -207,29 +207,38 @@ export const useFinancialData = () => {
 
           setCategories(convertedCategories);
           
-          // Handle optional patterns property
-          const analysisPatterns = analysis.patterns || [];
-          setPatterns({
-            data: analysisPatterns,
-            count: analysisPatterns.length,
-            recurring: analysisPatterns.filter((p: any) => p.type === 'recurring').length,
-          });
+          // Handle optional patterns property with proper type checking
+          if (analysis.patterns && Array.isArray(analysis.patterns)) {
+            setPatterns({
+              data: analysis.patterns,
+              count: analysis.patterns.length,
+              recurring: analysis.patterns.filter((p: any) => p.type === 'recurring').length,
+            });
+          } else {
+            setPatterns({ data: [], count: 0, recurring: 0 });
+          }
           
-          // Handle optional anomalies property
-          const analysisAnomalies = analysis.anomalies || [];
-          setAnomalies({
-            data: analysisAnomalies,
-            count: analysisAnomalies.length,
-            highSeverity: analysisAnomalies.filter((a: any) => a.severity === 'high').length,
-          });
+          // Handle optional anomalies property with proper type checking
+          if (analysis.anomalies && Array.isArray(analysis.anomalies)) {
+            setAnomalies({
+              data: analysis.anomalies,
+              count: analysis.anomalies.length,
+              highSeverity: analysis.anomalies.filter((a: any) => a.severity === 'high').length,
+            });
+          } else {
+            setAnomalies({ data: [], count: 0, highSeverity: 0 });
+          }
           
-          // Handle optional predictions property
-          const analysisPredictions = analysis.predictions || [];
-          setPredictions({
-            data: analysisPredictions,
-            spendingTrend: 'stable',
-            budgetStatus: 'on_track',
-          });
+          // Handle optional predictions property with proper type checking
+          if (analysis.predictions && Array.isArray(analysis.predictions)) {
+            setPredictions({
+              data: analysis.predictions,
+              spendingTrend: 'stable',
+              budgetStatus: 'on_track',
+            });
+          } else {
+            setPredictions({ data: [], spendingTrend: 'stable', budgetStatus: 'on_track' });
+          }
         }
       } catch (err) {
         console.error('Error loading analysis:', err);

@@ -5,7 +5,7 @@ export interface SavedAnalysis {
   date: string;
   totalIncome: number;
   totalExpense: number;
-  balance?: number;
+  balance: number;
   categories: {
     category: string;
     amount: number;
