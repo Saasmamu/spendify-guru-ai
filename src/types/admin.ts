@@ -64,8 +64,13 @@ export interface AdminActivityLog {
 export interface AdminContextType {
   isAdmin: boolean;
   isLoading: boolean;
+  loading: boolean;
   user: any;
+  adminUser: AdminUser | null;
   loadAdminData: () => Promise<void>;
+  hasPermission: (permission: string) => boolean;
+  logActivity: (action: string, resource: string, details?: any) => Promise<void>;
+  setAdminUser: (user: AdminUser | null) => void;
 }
 
 export interface ApiIntegration {
@@ -78,6 +83,8 @@ export interface ApiIntegration {
   usage_count?: number;
   created_at: string;
   updated_at: string;
+  api_key?: string;
+  key?: string;
 }
 
 export interface RetentionData {

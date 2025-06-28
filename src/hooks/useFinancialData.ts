@@ -207,20 +207,26 @@ export const useFinancialData = () => {
 
           setCategories(convertedCategories);
           
+          // Handle optional patterns property
+          const analysisPatterns = analysis.patterns || [];
           setPatterns({
-            data: analysis.patterns || [],
-            count: analysis.patterns ? analysis.patterns.length : 0,
-            recurring: analysis.patterns ? analysis.patterns.filter((p: any) => p.type === 'recurring').length : 0,
+            data: analysisPatterns,
+            count: analysisPatterns.length,
+            recurring: analysisPatterns.filter((p: any) => p.type === 'recurring').length,
           });
           
+          // Handle optional anomalies property
+          const analysisAnomalies = analysis.anomalies || [];
           setAnomalies({
-            data: analysis.anomalies || [],
-            count: analysis.anomalies ? analysis.anomalies.length : 0,
-            highSeverity: analysis.anomalies ? analysis.anomalies.filter((a: any) => a.severity === 'high').length : 0,
+            data: analysisAnomalies,
+            count: analysisAnomalies.length,
+            highSeverity: analysisAnomalies.filter((a: any) => a.severity === 'high').length,
           });
           
+          // Handle optional predictions property
+          const analysisPredictions = analysis.predictions || [];
           setPredictions({
-            data: analysis.predictions || [],
+            data: analysisPredictions,
             spendingTrend: 'stable',
             budgetStatus: 'on_track',
           });
