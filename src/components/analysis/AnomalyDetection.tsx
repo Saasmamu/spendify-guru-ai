@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -19,19 +20,37 @@ interface Anomaly {
 }
 
 interface AnomalyDetectionProps {
-  anomalies: {
-    data: any[];
-    count: number;
-    highSeverity: number;
-  };
   transactions: any[];
 }
 
-const AnomalyDetection: React.FC<AnomalyDetectionProps> = ({ anomalies, transactions }) => {
+const AnomalyDetection: React.FC<AnomalyDetectionProps> = ({ transactions }) => {
   const [selectedSeverity, setSelectedSeverity] = useState<string>('all');
   
   // Mock anomaly data - in real implementation, this would come from AI analysis
-  const anomaliesData = anomalies.data;
+  const anomalies: Anomaly[] = [
+    {
+      id: '1',
+      transaction_id: 'txn_001',
+      amount: 2500.00,
+      description: 'LUXURY STORE PURCHASE',
+      date: '2024-01-15',
+      type: 'unusual_amount',
+      severity: 'high',
+      confidence: 95,
+      reason: 'Amount is 400% higher than typical spending for this category'
+    },
+    {
+      id: '2',
+      transaction_id: 'txn_002',
+      amount: 45.99,
+      description: 'SUBSCRIPTION SERVICE',
+      date: '2024-01-12',
+      type: 'duplicate',
+      severity: 'medium',
+      confidence: 87,
+      reason: 'Similar transaction found within 24 hours'
+    }
+  ];
 
   const getSeverityIcon = (severity: string) => {
     switch (severity) {
@@ -52,8 +71,8 @@ const AnomalyDetection: React.FC<AnomalyDetectionProps> = ({ anomalies, transact
   };
 
   const filteredAnomalies = selectedSeverity === 'all' 
-    ? anomaliesData 
-    : anomaliesData.filter(anomaly => anomaly.severity === selectedSeverity);
+    ? anomalies 
+    : anomalies.filter(anomaly => anomaly.severity === selectedSeverity);
 
   return (
     <div className="space-y-6">
@@ -64,7 +83,7 @@ const AnomalyDetection: React.FC<AnomalyDetectionProps> = ({ anomalies, transact
             <AlertTriangle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{anomalies.count}</div>
+            <div className="text-2xl font-bold">{anomalies.length}</div>
             <p className="text-xs text-muted-foreground">
               Detected this month
             </p>
@@ -78,7 +97,7 @@ const AnomalyDetection: React.FC<AnomalyDetectionProps> = ({ anomalies, transact
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-500">
-              {anomalies.highSeverity}
+              {anomalies.filter(a => a.severity === 'high').length}
             </div>
             <p className="text-xs text-muted-foreground">
               Requires attention
@@ -93,7 +112,7 @@ const AnomalyDetection: React.FC<AnomalyDetectionProps> = ({ anomalies, transact
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-500">
-              {Math.round(anomaliesData.reduce((sum, a) => sum + a.confidence, 0) / anomaliesData.length)}%
+              {Math.round(anomalies.reduce((sum, a) => sum + a.confidence, 0) / anomalies.length)}%
             </div>
             <p className="text-xs text-muted-foreground">
               Average detection confidence

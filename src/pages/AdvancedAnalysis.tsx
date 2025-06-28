@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -75,15 +74,6 @@ export default function AdvancedAnalysis() {
       title: "Analysis Started",
       description: "Your financial data is being analyzed with our AI. This may take a moment.",
     });
-  };
-
-  const handleAnalysisComplete = (analysisData: any) => {
-    // Handle analysis completion - data is already updated through the hook
-    console.log('Analysis completed:', analysisData);
-  };
-
-  const handleDocumentSelect = (documentId: string) => {
-    setSelectedDocumentId(documentId);
   };
 
   return (
@@ -203,7 +193,7 @@ export default function AdvancedAnalysis() {
 
             <TabsContent value="categorization" className="mt-0">
               <CategoryManager 
-                transactions={transactions?.data || []}
+                transactions={transactions}
                 categories={categories}
               />
             </TabsContent>
@@ -211,21 +201,21 @@ export default function AdvancedAnalysis() {
             <TabsContent value="patterns" className="mt-0">
               <SpendingPatterns 
                 patterns={patterns}
-                transactions={transactions?.data || []}
+                transactions={transactions}
               />
             </TabsContent>
 
             <TabsContent value="anomalies" className="mt-0">
               <AnomalyDetection 
                 anomalies={anomalies}
-                transactions={transactions?.data || []}
+                transactions={transactions}
               />
             </TabsContent>
 
             <TabsContent value="predictions" className="mt-0">
               <PredictiveAnalysis 
                 predictions={predictions}
-                transactions={transactions?.data || []}
+                transactions={transactions}
               />
             </TabsContent>
           </Tabs>

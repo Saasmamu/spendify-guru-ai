@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -20,19 +21,14 @@ interface SpendingPattern {
 }
 
 interface SpendingPatternsProps {
-  patterns: {
-    data: any[];
-    count: number;
-    recurring: number;
-  };
   transactions: any[];
 }
 
-const SpendingPatterns: React.FC<SpendingPatternsProps> = ({ patterns, transactions }) => {
+const SpendingPatterns: React.FC<SpendingPatternsProps> = ({ transactions }) => {
   const [activeTab, setActiveTab] = useState('overview');
 
   // Mock pattern data - in real implementation, this would come from AI analysis
-  const mockPatterns: SpendingPattern[] = [
+  const patterns: SpendingPattern[] = [
     {
       id: '1',
       name: 'Monthly Coffee Subscriptions',
@@ -102,7 +98,7 @@ const SpendingPatterns: React.FC<SpendingPatternsProps> = ({ patterns, transacti
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{patterns.count}</div>
+            <div className="text-2xl font-bold">{patterns.length}</div>
             <p className="text-xs text-muted-foreground">
               AI-detected patterns
             </p>
@@ -116,7 +112,7 @@ const SpendingPatterns: React.FC<SpendingPatternsProps> = ({ patterns, transacti
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {patterns.recurring}
+              {patterns.filter(p => p.type === 'recurring').length}
             </div>
             <p className="text-xs text-muted-foreground">
               Monthly recurring
@@ -131,7 +127,7 @@ const SpendingPatterns: React.FC<SpendingPatternsProps> = ({ patterns, transacti
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {mockPatterns.filter(p => p.type === 'seasonal').length}
+              {patterns.filter(p => p.type === 'seasonal').length}
             </div>
             <p className="text-xs text-muted-foreground">
               Seasonal variations
@@ -146,7 +142,7 @@ const SpendingPatterns: React.FC<SpendingPatternsProps> = ({ patterns, transacti
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {Math.round(mockPatterns.reduce((sum, p) => sum + p.confidence, 0) / mockPatterns.length)}%
+              {Math.round(patterns.reduce((sum, p) => sum + p.confidence, 0) / patterns.length)}%
             </div>
             <p className="text-xs text-muted-foreground">
               Pattern accuracy
@@ -171,7 +167,7 @@ const SpendingPatterns: React.FC<SpendingPatternsProps> = ({ patterns, transacti
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {patterns.data.map((pattern: any) => (
+              {patterns.map((pattern) => (
                 <div key={pattern.id} className="flex items-center justify-between p-4 border rounded-lg">
                   <div className="space-y-2">
                     <div className="flex items-center space-x-2">

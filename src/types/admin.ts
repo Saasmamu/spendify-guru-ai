@@ -1,4 +1,3 @@
-
 export interface AdminUser {
   id: string;
   user_id: string;
@@ -59,63 +58,4 @@ export interface AdminActivityLog {
   created_at: string;
   admin_email?: string;
   role_name?: string;
-}
-
-export interface AdminContextType {
-  isAdmin: boolean;
-  isLoading: boolean;
-  loading: boolean;
-  user: any;
-  adminUser: AdminUser | null;
-  loadAdminData: () => Promise<void>;
-  hasPermission: (permission: string) => boolean;
-  logActivity: (action: string, resource: string, details?: any) => Promise<void>;
-  setAdminUser: (user: AdminUser | null) => void;
-}
-
-export interface ApiIntegration {
-  id: string;
-  name: string;
-  enabled: boolean;
-  description?: string;
-  credentials?: Record<string, any>;
-  last_used?: string;
-  usage_count?: number;
-  created_at: string;
-  updated_at: string;
-  api_key?: string;
-  key?: string;
-}
-
-export interface RetentionData {
-  period: string;
-  users_retained: number;
-  total_users: number;
-  retention_rate: number;
-  week_1_retention?: number;
-  month_1_retention?: number;
-  month_3_retention?: number;
-  avg_active_days_per_month?: number;
-  avg_features_used?: number;
-  avg_docs_processed_per_month?: number;
-}
-
-export interface DocumentProcessingData {
-  date: string;
-  documents_processed: number;
-  success_rate: number;
-  error_rate?: number;
-  avg_processing_time: number;
-  total_pages: number;
-}
-
-export interface Permission {
-  id: string;
-  name: string;
-  description: string;
-  category?: string;
-  resource: string;
-  action: string;
-  created_at: string;
-  updated_at: string;
 }

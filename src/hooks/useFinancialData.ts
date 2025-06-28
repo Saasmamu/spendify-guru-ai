@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -89,6 +88,9 @@ export interface FinancialData {
   };
 }
 
+
+
+
 export const useFinancialData = () => {
   const { user } = useAuth();
   const { generateAIAnalysis } = useGemini();
@@ -171,77 +173,29 @@ export const useFinancialData = () => {
         const { getAnalysisById } = await import('@/services/storageService');
         const analysis = await getAnalysisById(selectedDocumentId);
         if (analysis) {
-          // Convert BankTransaction to Transaction format
-          const convertedTransactions: Transaction[] = analysis.transactions.map((t: any, index: number) => ({
-            id: t.id || `tx_${index}`,
-            date: t.date,
-            description: t.description,
-            amount: t.amount,
-            category_id: t.category || null,
-            is_recurring: false,
-            is_anomaly: false,
-            confidence_score: 1.0,
-            user_id: user?.id || '',
-            document_id: selectedDocumentId,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          }));
-
           setTransactions({
-            data: convertedTransactions,
-            total: convertedTransactions.length,
-            categorized: convertedTransactions.filter(t => t.category_id !== null).length,
+            data: analysis.transactions,
+            total: analysis.transactions.length,
+            categorized: analysis.transactions.filter(t => t.category_id !== null).length,
           });
-
-          // Convert category data to proper Category format
-          const convertedCategories: Category[] = analysis.categories?.map((c: any, index: number) => ({
-            id: `cat_${index}`,
-            name: c.category || c.name || 'Unknown',
-            color: '#000000',
-            icon: 'tag',
-            is_income: false,
-            is_custom: false,
-            budget_amount: null,
-            user_id: user?.id || ''
-          })) || [];
-
-          setCategories(convertedCategories);
-          
-          // Handle optional patterns property with proper type checking
-          if (analysis.patterns && Array.isArray(analysis.patterns)) {
-            setPatterns({
-              data: analysis.patterns,
-              count: analysis.patterns.length,
-              recurring: analysis.patterns.filter((p: any) => p.type === 'recurring').length,
-            });
-          } else {
-            setPatterns({ data: [], count: 0, recurring: 0 });
-          }
-          
-          // Handle optional anomalies property with proper type checking
-          if (analysis.anomalies && Array.isArray(analysis.anomalies)) {
-            setAnomalies({
-              data: analysis.anomalies,
-              count: analysis.anomalies.length,
-              highSeverity: analysis.anomalies.filter((a: any) => a.severity === 'high').length,
-            });
-          } else {
-            setAnomalies({ data: [], count: 0, highSeverity: 0 });
-          }
-          
-          // Handle optional predictions property with proper type checking
-          if (analysis.predictions && Array.isArray(analysis.predictions)) {
-            setPredictions({
-              data: analysis.predictions,
-              spendingTrend: 'stable',
-              budgetStatus: 'on_track',
-            });
-          } else {
-            setPredictions({ data: [], spendingTrend: 'stable', budgetStatus: 'on_track' });
-          }
+          setCategories(analysis.categories || []);
+          setPatterns({
+            data: analysis.patterns || [],
+            count: analysis.patterns ? analysis.patterns.length : 0,
+            recurring: analysis.patterns ? analysis.patterns.filter(p => p.type === 'recurring').length : 0,
+          });
+          setAnomalies({
+            data: analysis.anomalies || [],
+            count: analysis.anomalies ? analysis.anomalies.length : 0,
+            highSeverity: analysis.anomalies ? analysis.anomalies.filter(a => a.severity === 'high').length : 0,
+          });
+          setPredictions({
+            data: analysis.predictions || [],
+            spendingTrend: analysis.predictions ? 'stable' : 'stable',
+            budgetStatus: analysis.predictions ? 'on_track' : 'on_track',
+          });
         }
       } catch (err) {
-        console.error('Error loading analysis:', err);
         setTransactions({ data: [], total: 0, categorized: 0 });
         setCategories([]);
         setPatterns({ data: [], count: 0, recurring: 0 });
@@ -250,12 +204,13 @@ export const useFinancialData = () => {
       }
     }
     loadSelectedAnalysis();
-  }, [selectedDocumentId, user]);
+  }, [selectedDocumentId]);
 
   // Fetch patterns, anomalies, and predictions
   const fetchPatterns = async () => {
     if (!user) return;
     
+    if (!user) return;
     
     try {
       let query = supabase

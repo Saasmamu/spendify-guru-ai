@@ -1,121 +1,177 @@
-
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
-import { DollarSign, TrendingUp, TrendingDown, AlertTriangle, Plus, Save, CheckCircle, ArrowUp, ArrowDown, Home, ShoppingBag, Car, Coffee, Tag } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/hooks/useToast';
-import Navbar from '@/components/Navbar';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import StatCard from '@/components/StatCard';
+import { PieChart as PieChartIcon, ArrowDown, ArrowUp, DollarSign, ShoppingBag, Home, Car, Coffee, Tag, SparkleIcon, Save, TrendingUp, CheckCircle, AlertTriangle } from 'lucide-react';
 import { useStatement } from '@/contexts/StatementContext';
+import ApiKeyInput from '@/components/ApiKeyInput';
+import { generateInsights, hasGeminiApiKey } from '@/services/insightService';
+import { useToast } from '@/components/ui/use-toast';
+import { BankTransaction } from '@/services/pdfService';
+import { useNavigate } from 'react-router-dom';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { AiChat } from '@/components/AiChat';
 import { SaveAnalysisDialog } from '@/components/SaveAnalysisDialog';
-import { generateInsights } from '@/services/insightService';
+import { SavedAnalyses } from '@/components/SavedAnalyses';
+import Navbar from '@/components/Navbar';
+import { MerchantAnalytics } from '@/components/MerchantAnalytics';
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#FF6B6B', '#4ECDC4', '#45B7D1'];
+const processCategoriesFromTransactions = (transactions: BankTransaction[]) => {
+  const categoryMap = new Map();
+  const totalAmount = transactions.reduce((sum, t) => sum + Math.abs(t.amount), 0);
 
-const SparkleIcon = ({ className }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8L12 2z"/>
-  </svg>
-);
+  transactions.forEach(t => {
+    let finalCategory = t.category || 'Miscellaneous';
+    const descriptionLower = t.description.toLowerCase();
 
-interface BankTransaction {
-  date: string;
-  description: string;
-  amount: number;
-  category?: string;
-  type: 'debit' | 'credit';
-}
-
-interface CategoryData {
-  name: string;
-  amount: number;
-  count: number;
-}
-
-interface MerchantData {
-  name: string;
-  totalSpent: number;
-  transactionCount: number;
-  category: string;
-  color: string;
-}
-
-const processCategoriesFromTransactions = (transactions: BankTransaction[]): CategoryData[] => {
-  const categoryMap = new Map<string, { amount: number; count: number }>();
-  
-  transactions.forEach(transaction => {
-    const category = transaction.category || 'Miscellaneous';
-    const amount = Math.abs(transaction.amount);
-    
-    if (categoryMap.has(category)) {
-      const existing = categoryMap.get(category)!;
-      categoryMap.set(category, {
-        amount: existing.amount + amount,
-        count: existing.count + 1
-      });
-    } else {
-      categoryMap.set(category, { amount, count: 1 });
+    if (finalCategory === 'Transfer from' || finalCategory === 'Transfer to') {
+      // Keep the specific category
+    } 
+    else if (finalCategory.toLowerCase().includes('transfer') || descriptionLower.includes('transfer from') || descriptionLower.includes('transfer to')) {
+      if (descriptionLower.includes('transfer from')) {
+        finalCategory = 'Transfer from';
+      } else if (descriptionLower.includes('transfer to')) {
+        finalCategory = 'Transfer to';
+      } else {
+        if (!t.category?.toLowerCase().includes('transfer')) {
+             finalCategory = 'Miscellaneous';
+        } else {
+             finalCategory = t.category || 'Miscellaneous';
+        }
+      }
     }
+
+    const currentAmount = categoryMap.get(finalCategory)?.amount || 0;
+    categoryMap.set(finalCategory, {
+      amount: currentAmount + t.amount,
+    });
   });
-  
-  return Array.from(categoryMap.entries()).map(([name, data]) => ({
-    name,
-    amount: data.amount,
-    count: data.count
-  }));
+
+  return Array.from(categoryMap.entries()).map(([name, data]: [string, any]) => {
+    const amount = data.amount;
+    return {
+      name,
+      amount,
+    };
+  }).sort((a, b) => b.amount - a.amount);
 };
 
-const processMerchantsFromTransactions = (transactions: BankTransaction[], categoryIcons: Record<string, any>): MerchantData[] => {
-  const merchantMap = new Map<string, { totalSpent: number; count: number; category: string }>();
-  
-  transactions.forEach(transaction => {
-    if (transaction.amount > 0) return;
-    
-    const merchant = transaction.description.split(' ')[0] || 'Unknown';
-    const amount = Math.abs(transaction.amount);
-    const category = transaction.category || 'Miscellaneous';
-    
-    if (merchantMap.has(merchant)) {
-      const existing = merchantMap.get(merchant)!;
-      merchantMap.set(merchant, {
-        totalSpent: existing.totalSpent + amount,
-        count: existing.count + 1,
-        category: existing.category
-      });
-    } else {
-      merchantMap.set(merchant, { totalSpent: amount, count: 1, category });
+const processMerchantsFromTransactions = (transactions: BankTransaction[], categoryIcons: Record<string, any>) => {
+  const merchantMap = new Map<string, { amount: number; count: number; categories: Set<string> }>();
+
+  transactions.forEach(t => {
+    const amount = typeof t.amount === 'number' ? t.amount : 0;
+    if (amount === 0) return;
+
+    let merchantName = t.description;
+    const separators = [' - ', ' / ', ' AT ', ' TO ', ' FROM '];
+    for (const sep of separators) {
+        if (t.description.toUpperCase().includes(sep)) {
+            const parts = t.description.split(new RegExp(sep, 'i'));
+            if (sep === ' TO ' || sep === ' FROM ') {
+                merchantName = parts[1]?.trim() || parts[0]?.trim();
+            } else {
+                merchantName = parts[0]?.trim();
+            }
+            if (merchantName.toLowerCase().includes('transfer')) {
+                merchantName = t.description;
+            } else {
+                 break;
+            }
+        }
     }
+
+    merchantName = merchantName.replace(/[\d\/\s-]{6,}$/, '').trim();
+    merchantName = merchantName || t.description;
+
+    const normalizedMerchant = merchantName.toLowerCase().replace(/\s+/g, ' ').trim();
+
+    const ignoreList = ['transfer', 'payment', 'deposit', 'withdrawal', 'reversal', 'charge', 'fee'];
+    if (!normalizedMerchant || ignoreList.some(term => normalizedMerchant.includes(term))) {
+        return;
+    }
+
+    const current = merchantMap.get(normalizedMerchant) || { amount: 0, count: 0, categories: new Set<string>() };
+    current.amount += Math.abs(amount);
+    current.count += 1;
+    if (t.category && t.category !== 'Miscellaneous') {
+        current.categories.add(t.category);
+    }
+    merchantMap.set(normalizedMerchant, current);
   });
-  
-  return Array.from(merchantMap.entries())
-    .map(([name, data]) => ({
-      name,
-      totalSpent: data.totalSpent,
-      transactionCount: data.count,
-      category: data.category,
-      color: categoryIcons[data.category]?.pieColor || '#8884D8'
-    }))
-    .sort((a, b) => b.totalSpent - a.totalSpent);
+
+  return Array.from(merchantMap.entries()).map(([name, data]) => {
+    const primaryCategory = data.categories.size > 0 ? [...data.categories][0] : 'Miscellaneous';
+    const displayName = name.split(' ')
+                            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                            .join(' ');
+
+    const { icon, color, pieColor } = categoryIcons[primaryCategory] || categoryIcons['Miscellaneous'];
+
+    return {
+      name: displayName,
+      category: primaryCategory,
+      totalSpent: data.amount,
+      frequency: data.count,
+      averageSpent: data.amount / data.count,
+      icon: icon,
+      color: color,
+      pieColor: pieColor
+    };
+  }).sort((a, b) => b.totalSpent - a.totalSpent);
 };
 
 const mockCategories = [
-  { name: 'Food & Dining', amount: 1250, count: 24 },
-  { name: 'Shopping', amount: 850, count: 12 },
-  { name: 'Transportation', amount: 450, count: 8 },
-  { name: 'Housing', amount: 1200, count: 3 },
-  { name: 'Miscellaneous', amount: 320, count: 15 }
+  { name: 'Shopping', amount: 1240, percentage: 20, icon: ShoppingBag, color: 'bg-blue-500', pieColor: '#4285F4' },
+  { name: 'Housing', amount: 1500, percentage: 24, icon: Home, color: 'bg-green-500', pieColor: '#34A853' },
+  { name: 'Transportation', amount: 450, percentage: 7, icon: Car, color: 'bg-amber-500', pieColor: '#FBBC05' },
+  { name: 'Food & Dining', amount: 680, percentage: 11, icon: Coffee, color: 'bg-red-500', pieColor: '#EA4335' },
+  { name: 'Airtime', amount: 250, percentage: 4, icon: SparkleIcon, color: 'bg-sky-500', pieColor: '#0EA5E9' },
+  { name: 'Electricity', amount: 320, percentage: 5, icon: Home, color: 'bg-yellow-500', pieColor: '#EAB308' },
+  { name: 'Online Payment', amount: 280, percentage: 4, icon: ShoppingBag, color: 'bg-blue-700', pieColor: '#1D4ED8' },
+  { name: 'TV', amount: 250, percentage: 4, icon: Home, color: 'bg-purple-600', pieColor: '#9333EA' },
+  { name: 'Bank Deposit', amount: 180, percentage: 3, icon: ArrowDown, color: 'bg-emerald-500', pieColor: '#10B981' },
+  { name: 'Transfer from', amount: 220, percentage: 3, icon: ArrowDown, color: 'bg-indigo-500', pieColor: '#6366F1' },
+  { name: 'Transfer to', amount: 190, percentage: 3, icon: ArrowUp, color: 'bg-rose-500', pieColor: '#F43F5E' },
+  { name: 'Betting', amount: 150, percentage: 2, icon: Tag, color: 'bg-orange-500', pieColor: '#F97316' },
+  { name: 'Mobile Data', amount: 120, percentage: 2, icon: SparkleIcon, color: 'bg-cyan-500', pieColor: '#06B6D4' },
+  { name: 'Cash Withdraw', amount: 200, percentage: 3, icon: ArrowUp, color: 'bg-red-600', pieColor: '#DC2626' },
+  { name: 'Targets', amount: 170, percentage: 3, icon: DollarSign, color: 'bg-amber-600', pieColor: '#D97706' },
+  { name: 'USSD Charge', amount: 100, percentage: 2, icon: Tag, color: 'bg-slate-500', pieColor: '#64748B' }
 ];
 
 const mockTransactions: BankTransaction[] = [
-  { date: '2024-01-15', description: 'Restaurant ABC', amount: -45.50, category: 'Food & Dining', type: 'debit' },
-  { date: '2024-01-14', description: 'Gas Station XYZ', amount: -32.20, category: 'Transportation', type: 'debit' },
-  { date: '2024-01-13', description: 'Grocery Store', amount: -87.65, category: 'Food & Dining', type: 'debit' },
-  { date: '2024-01-12', description: 'Online Shopping', amount: -156.00, category: 'Shopping', type: 'debit' },
-  { date: '2024-01-11', description: 'Coffee Shop', amount: -8.95, category: 'Food & Dining', type: 'debit' }
+  { id: '1', date: '2023-06-15', description: 'Whole Foods Market', amount: 78.35, category: 'Food & Dining', type: 'debit', balance: 1000, reference: 'TXN001', channel: 'POS' },
+  { id: '2', date: '2023-06-14', description: 'Amazon.com', amount: 124.99, category: 'Shopping', type: 'debit', balance: 1078.35, reference: 'TXN002', channel: 'Online' },
+  { id: '3', date: '2023-06-13', description: 'Uber', amount: 24.50, category: 'Transportation', type: 'debit', balance: 1203.34, reference: 'TXN003', channel: 'Mobile' },
+  { id: '4', date: '2023-06-10', description: 'Rent Payment', amount: 1500, category: 'Housing', type: 'debit', balance: 1227.84, reference: 'TXN004', channel: 'Transfer' },
+  { id: '5', date: '2023-06-08', description: 'Starbucks', amount: 5.65, category: 'Food & Dining', type: 'debit', balance: 2727.84, reference: 'TXN005', channel: 'POS' }
 ];
+
+const COLORS = ['#8e44ad', '#00C49F', '#FFBB28', '#FF8042', '#4285F4', '#EA4335', '#34A853', '#F97316', '#6366F1', '#10B981', '#DC2626', '#EAB308', '#9333EA', '#06B6D4', '#D97706', '#64748B'];
+const RADIAN = Math.PI / 180;
+
+const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, index, name }: any) => {
+  const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+  return (
+    <text 
+      x={x} 
+      y={y} 
+      fill="white" 
+      textAnchor={x > cx ? 'start' : 'end'} 
+      dominantBaseline="central"
+      className="text-xs font-medium"
+    >
+      {`${(percent * 100).toFixed(0)}%`}
+    </text>
+  );
+};
 
 export default function Analyze() {
   const { toast } = useToast();
@@ -261,7 +317,7 @@ export default function Analyze() {
       const sanitizedTransactions = statementData.transactions.map(t => ({
         ...t,
         amount: typeof t.amount === 'string'
-                  ? parseFloat(String(t.amount).replace(/[^0-9.-]+/g,""))
+                  ? parseFloat(t.amount.replace(/[^0-9.-]+/g,""))
                   : (typeof t.amount === 'number' ? t.amount : 0),
         category: typeof t.category === 'string' && t.category.trim() !== '' ? t.category : 'Miscellaneous',
         description: typeof t.description === 'string' ? t.description : '',
@@ -342,27 +398,17 @@ export default function Analyze() {
     }
   };
 
-  const DataSourceIndicator = ({ isReal }: { isReal: boolean }) => (
-    <div className="flex items-center gap-2 mb-4">
-      {isReal ? (
-        <>
-          <CheckCircle className="w-4 h-4 text-green-500" />
-          <Badge variant="default" className="bg-green-100 text-green-800 border-green-200">
-            Real Data
-          </Badge>
-          <span className="text-sm text-gray-600">Based on your uploaded bank statement</span>
-        </>
-      ) : (
-        <>
-          <AlertTriangle className="w-4 h-4 text-amber-500" />
-          <Badge variant="secondary" className="bg-amber-100 text-amber-800 border-amber-200">
-            Mock Data
-          </Badge>
-          <span className="text-sm text-gray-600">Example data - upload a statement for real insights</span>
-        </>
-      )}
-    </div>
-  );
+  const handleViewAdvancedAnalysis = () => {
+    if (!useRealData || !statementData) {
+      toast({
+        title: "No Statement Data",
+        description: "Please upload a bank statement first to view advanced analysis.",
+        variant: "destructive"
+      });
+      return;
+    }
+    navigate('/dashboard/advanced-financial-analysis');
+  };
 
   return (
     <div className="container mx-auto p-6">
@@ -377,7 +423,7 @@ export default function Analyze() {
                 : 'Example data shown. Please upload a statement for real insights.'}
             </p>
           </div>
-          <div className="mt-4 md:mt-0">
+          <div className="mt-4 md:mt-0 flex gap-2">
             {!useRealData && (
               <Button 
                 variant="default" 
@@ -392,232 +438,425 @@ export default function Analyze() {
               <>
                 <Button 
                   variant="outline" 
-                  className="gap-2 text-sm mr-2"
+                  className="gap-2 text-sm"
                 >
                   <DollarSign className="w-4 h-4" />
                   Your Statement
                 </Button>
                 <Button 
                   variant="default" 
-                  className="gap-2 text-sm mr-2"
+                  className="gap-2 text-sm"
                   onClick={() => setShowSaveDialog(true)}
                 >
                   <Save className="w-4 h-4" />
                   Save Analysis
                 </Button>
                 <Button 
-                  variant="outline" 
-                  className="gap-2 text-sm"
-                  onClick={() => navigate('/advanced-analysis')}
+                  variant="default" 
+                  className="gap-2 text-sm bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                  onClick={handleViewAdvancedAnalysis}
                 >
-                  Advanced Analysis
+                  <TrendingUp className="w-4 h-4" />
+                  View Advanced Analysis
                 </Button>
               </>
             )}
           </div>
         </div>
         
+        {/* Add data source indicator */}
+        <div className="mb-6">
+          {useRealData ? (
+            <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+              <CheckCircle className="w-4 h-4 text-green-600" />
+              <span className="text-sm text-green-700 dark:text-green-300">
+                Showing real data from your uploaded bank statement
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+              <AlertTriangle className="w-4 h-4 text-amber-600" />
+              <span className="text-sm text-amber-700 dark:text-amber-300">
+                Showing sample data for demonstration. Upload your statement to see real insights.
+              </span>
+            </div>
+          )}
+        </div>
+        
         {!loaded ? (
           <div className="space-y-6 animate-pulse">
-            <div className="h-6 bg-gray-200 rounded-md w-3/4"></div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="h-24 bg-gray-200 rounded-md"></div>
-              <div className="h-24 bg-gray-200 rounded-md"></div>
-              <div className="h-24 bg-gray-200 rounded-md"></div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {[1, 2, 3].map((i) => (
+                <Card key={i} className="h-28">
+                  <CardContent className="p-6">
+                    <div className="h-5 w-24 bg-muted/50 rounded-md mb-4"></div>
+                    <div className="h-6 w-16 bg-muted/50 rounded-md"></div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <div className="h-64 bg-gray-200 rounded-md"></div>
-              <div className="h-64 bg-gray-200 rounded-md"></div>
-            </div>
-            <div className="h-48 bg-gray-200 rounded-md"></div>
-            <div className="h-48 bg-gray-200 rounded-md"></div>
+            <Card className="h-96">
+              <CardContent className="p-6">
+                <div className="h-full w-full flex flex-col items-center justify-center">
+                  <div className="w-20 h-20 rounded-full bg-muted/50 mb-4"></div>
+                  <div className="h-4 w-32 bg-muted/50 rounded-md"></div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         ) : (
-          <div className="space-y-8">
-            <DataSourceIndicator isReal={useRealData} />
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Card className="animate-slide-up delay-100">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Spent</CardTitle>
-                  <TrendingDown className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">${totalSpent.toFixed(2)}</div>
-                  <p className="text-xs text-muted-foreground">
-                    Across {categories.length} categories
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="animate-slide-up delay-200">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Top Category</CardTitle>
-                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{categories[0]?.name || 'None'}</div>
-                  <p className="text-xs text-muted-foreground">
-                    ${categories[0]?.amount.toFixed(2) || '0.00'} spent
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="animate-slide-up delay-300">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">AI Insights</CardTitle>
-                  <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{insights.length}</div>
-                  <p className="text-xs text-muted-foreground">
-                    {isGeneratingInsights ? 'Generating...' : 'Generated insights'}
-                  </p>
-                </CardContent>
-              </Card>
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-slide-up">
+              <StatCard
+                title="Total Expenses"
+                value={`$${totalSpent.toLocaleString()}`}
+                icon={<DollarSign className="w-4 h-4 text-primary" />}
+                trend="up"
+                trendValue={statementData ? `${statementData.transactions.length} items` : "+12%"}
+              />
+              <StatCard
+                title="Top Category"
+                value={categories[0]?.name || "N/A"}
+                icon={categories[0]?.icon ? React.createElement(categories[0].icon, { className: "w-4 h-4 text-green-500" }) : <Tag className="w-4 h-4 text-green-500" />}
+                trend="neutral"
+                trendValue={categories[0] ? `${categories[0].percentage}%` : "0%"}
+              />
+              <StatCard
+                title="Transactions"
+                value={transactions.length}
+                icon={<Tag className="w-4 h-4 text-amber-500" />}
+                trend="down"
+                trendValue={statementData ? `From ${statementData.startDate || 'unknown'}` : "-3%"}
+              />
             </div>
+            
+            <Tabs defaultValue="categories" className="animate-blur-in" style={{ animationDelay: '200ms' }}>
+              <TabsList className="mb-6">
+                <TabsTrigger value="categories">Categories</TabsTrigger>
+                <TabsTrigger value="transactions">Transactions</TabsTrigger>
+                <TabsTrigger value="merchants">Merchants</TabsTrigger>
+                <TabsTrigger value="merchant-analytics">Merchant Analytics</TabsTrigger>
+                <TabsTrigger value="insights">AI Insights</TabsTrigger>
+                <TabsTrigger value="saved">Saved Analyses</TabsTrigger>
+              </TabsList>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <Card className="animate-slide-up delay-400">
-                <CardHeader>
-                  <CardTitle>Spending by Category</CardTitle>
-                  <CardDescription>Your expense breakdown</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-[300px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={expenseCategoriesChartData}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          outerRadius={80}
-                          fill="#8884d8"
-                          dataKey="value"
-                          onMouseEnter={onPieEnter}
-                        >
-                          {expenseCategoriesChartData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
+              <TabsContent value="categories">
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      <div>
+                        <h3 className="text-lg font-medium mb-4">Spending by Category</h3>
+                        
+                        <div className="space-y-4 mt-6 max-h-[500px] overflow-y-auto pr-2">
+                          {categories.map((category, index) => (
+                            <div key={index} className={cn(
+                              "animate-fade-in",
+                              index === activeIndex ? "scale-105 transition-transform" : ""
+                            )} style={{ animationDelay: `${index * 100}ms` }}>
+                              <div className="flex items-center justify-between mb-1">
+                                <div className="flex items-center">
+                                  <div className={cn("p-1.5 rounded-md mr-2", category.color)}>
+                                    {React.createElement(category.icon, { className: "w-3.5 h-3.5 text-white" })}
+                                  </div>
+                                  <span className="text-sm font-medium">{category.name}</span>
+                                </div>
+                                <span className="text-sm font-medium">${category.amount.toFixed(2)}</span>
+                              </div>
+                              <div className="w-full h-2 bg-muted/50 rounded-full overflow-hidden">
+                                <div 
+                                  className={cn("h-full rounded-full", category.color)}
+                                  style={{ width: `${category.percentage}%`, transition: "width 1s ease-in-out" }}
+                                ></div>
+                              </div>
+                              <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                                <span>{category.percentage}%</span>
+                              </div>
+                            </div>
                           ))}
-                        </Pie>
-                        <Tooltip formatter={(value) => [`$${Number(value).toFixed(2)}`, 'Amount']} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center justify-center">
+                        <div className="h-64 w-full max-w-64">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={chartData}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={60}
+                                outerRadius={80}
+                                paddingAngle={5}
+                                dataKey="value"
+                                labelLine={false}
+                                label={renderCustomizedLabel}
+                                animationBegin={0}
+                                animationDuration={1500}
+                                animationEasing="ease-out"
+                                onMouseEnter={onPieEnter}
+                              >
+                                {chartData.map((entry, index) => (
+                                  <Cell 
+                                    key={`cell-${index}`} 
+                                    fill={entry.color} 
+                                    className={cn(
+                                      "transition-opacity duration-300",
+                                      index === activeIndex ? "filter drop-shadow(0 0 8px rgba(0, 0, 0, 0.3))" : "opacity-70"
+                                    )}
+                                    stroke={index === activeIndex ? "#fff" : "none"}
+                                    strokeWidth={index === activeIndex ? 2 : 0}
+                                  />
+                                ))}
+                              </Pie>
+                              <Tooltip 
+                                content={({ active, payload }) => {
+                                  if (active && payload && payload.length) {
+                                    const data = payload[0].payload;
+                                    return (
+                                      <div className="bg-background border border-border p-2 rounded-md shadow-md">
+                                        <p className="font-medium">{data.name}</p>
+                                        <p className="text-sm">${data.value.toFixed(2)}</p>
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                }}
+                              />
+                              <Legend 
+                                layout="horizontal" 
+                                verticalAlign="bottom" 
+                                align="center"
+                                wrapperStyle={{ paddingTop: "20px" }}
+                              />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              
+              <TabsContent value="transactions">
+                <Card>
+                  <CardContent className="p-6">
+                    <h3 className="text-lg font-medium mb-4">Recent Transactions</h3>
+                    
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Date</th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Description</th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Category</th>
+                            <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Amount</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {transactions.map((transaction, index) => {
+                            // Determine the display category for the transaction list
+                            let displayCategory = transaction.category || "Uncategorized";
+                            if (displayCategory === 'Transfers') {
+                              const description = transaction.description.toLowerCase();
+                              if (description.includes('from')) {
+                                displayCategory = 'Transfer from';
+                              } else if (description.includes('to')) {
+                                displayCategory = 'Transfer to';
+                              }
+                            }
 
-              <Card className="animate-slide-up delay-500">
-                <CardHeader>
-                  <CardTitle>Top Categories</CardTitle>
-                  <CardDescription>Your highest spending areas</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {categories.slice(0, 5).map((category, index) => {
-                      const IconComponent = category.icon;
-                      return (
-                        <div key={category.name} className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            <div className={`p-2 rounded-full ${category.color}`}>
-                              <IconComponent className="w-4 h-4 text-white" />
-                            </div>
-                            <div>
-                              <p className="font-medium">{category.name}</p>
-                              <p className="text-sm text-muted-foreground">
-                                {category.percentage}% of total
-                              </p>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-medium">${category.amount.toFixed(2)}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {useRealData && statementData?.transactions 
-                                ? statementData.transactions.filter(t => t.category === category.name).length 
-                                : mockCategories.find(c => c.name === category.name)?.count || 0} transactions
-                            </p>
+                            return (
+                              <tr 
+                                key={transaction.id || index}
+                                className={cn(
+                                  "border-b border-border/50 hover:bg-muted/20 transition-colors",
+                                  "animate-fade-in"
+                                )}
+                                style={{ animationDelay: `${index * 50}ms` }}
+                              >
+                                <td className="py-3 px-4 text-sm">
+                                  {transaction.date}
+                                </td>
+                                <td className="py-3 px-4 text-sm font-medium">{transaction.description}</td>
+                                <td className="py-3 px-4 text-sm">
+                                  <span className="px-2 py-1 rounded-full text-xs bg-muted/50">
+                                    {displayCategory}
+                                  </span>
+                                </td>
+                                <td className="py-3 px-4 text-sm text-right font-medium">
+                                  ${transaction.amount.toFixed(2)}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              
+              <TabsContent value="merchants">
+                <Card>
+                  <CardContent className="p-6">
+                    <h3 className="text-lg font-medium mb-4">Top Merchants</h3>
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Merchant</th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Category</th>
+                            <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Total Spent</th>
+                            <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Frequency</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {merchants.map((merchant, index) => (
+                            <tr
+                              key={index}
+                              className={cn(
+                                "border-b border-border/50 hover:bg-muted/20 transition-colors",
+                                "animate-fade-in"
+                              )}
+                              style={{ animationDelay: `${index * 50}ms` }}
+                            >
+                              <td className="py-3 px-4 text-sm font-medium">{merchant.name}</td>
+                              <td className="py-3 px-4 text-sm">
+                                <span className="px-2 py-1 rounded-full text-xs bg-muted/50">
+                                  {merchant.category}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4 text-sm text-right font-medium">
+                                ${merchant.totalSpent.toFixed(2)}
+                              </td>
+                              <td className="py-3 px-4 text-sm text-right font-medium">
+                                {merchant.frequency}x
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                     {merchants.length === 0 && (
+                        <div className="text-center py-8 text-muted-foreground">
+                            No merchant data could be extracted from the transactions.
+                        </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="merchant-analytics">
+                <Card>
+                  <CardContent className="p-6">
+                    <MerchantAnalytics
+                      merchants={merchants}
+                      topMerchantsChartData={topMerchantsChartData}
+                      COLORS={COLORS}
+                    />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="insights">
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      <div className="space-y-6">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
+                          <h3 className="text-lg font-medium">AI-Powered Insights</h3>
+                          <div className="mt-2 md:mt-0">
+                            <Button 
+                              onClick={generateAIInsights} 
+                              disabled={isGeneratingInsights}
+                              className="gap-2"
+                            >
+                              <SparkleIcon className="w-4 h-4" />
+                              {isGeneratingInsights ? 'Generating...' : 'Generate Insights'}
+                            </Button>
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {merchants.length > 0 && (
-              <Card className="animate-slide-up delay-600">
-                <CardHeader>
-                  <CardTitle>Top Merchants</CardTitle>
-                  <CardDescription>Where you spend the most</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-[300px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={topMerchantsChartData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" />
-                        <YAxis />
-                        <Tooltip formatter={(value) => [`$${Number(value).toFixed(2)}`, 'Total Spent']} />
-                        <Bar dataKey="totalSpent" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {insights.length > 0 && (
-              <Card className="animate-slide-up delay-700">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <SparkleIcon className="w-5 h-5 text-blue-500" />
-                    AI Insights
-                    <Badge variant={useRealData ? "default" : "secondary"}>
-                      {useRealData ? "Real Data Analysis" : "Mock Data Example"}
-                    </Badge>
-                  </CardTitle>
-                  <CardDescription>
-                    {useRealData 
-                      ? "Personalized insights based on your spending patterns" 
-                      : "Example insights - upload your statement for personalized analysis"}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {insights.map((insight, index) => (
-                      <Alert key={index}>
-                        <AlertTriangle className="h-4 w-4" />
-                        <AlertDescription>{insight}</AlertDescription>
-                      </Alert>
-                    ))}
-                    {isGeneratingInsights && (
-                      <Alert>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
-                        <AlertDescription>Generating additional insights...</AlertDescription>
-                      </Alert>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+                        
+                        {insights.length > 0 ? (
+                          <div className="space-y-6">
+                            <div className="p-4 rounded-md bg-primary/5 border border-primary/20 animate-slide-up">
+                              <h4 className="font-medium flex items-center gap-2 mb-2">
+                                <ArrowDown className="w-4 h-4 text-green-500" />
+                                {insights[0] ? 'Spending Opportunity' : 'No Insights Available'}
+                              </h4>
+                              <p className="text-muted-foreground">
+                                {insights[0] || 'Generate insights to see recommendations based on your spending patterns.'}
+                              </p>
+                            </div>
+                            
+                            {insights[1] && (
+                              <div className="p-4 rounded-md bg-amber-500/5 border border-amber-500/20 animate-slide-up" style={{ animationDelay: '100ms' }}>
+                                <h4 className="font-medium flex items-center gap-2 mb-2">
+                                  <PieChartIcon className="w-4 h-4 text-amber-500" />
+                                  Category Analysis
+                                </h4>
+                                <p className="text-muted-foreground">{insights[1]}</p>
+                              </div>
+                            )}
+                            
+                            {insights[2] && (
+                              <div className="p-4 rounded-md bg-green-500/5 border border-green-500/20 animate-slide-up" style={{ animationDelay: '200ms' }}>
+                                <h4 className="font-medium flex items-center gap-2 mb-2">
+                                  <ArrowUp className="w-4 h-4 text-green-500" />
+                                  Savings Recommendation
+                                </h4>
+                                <p className="text-muted-foreground">{insights[2]}</p>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center justify-center py-8 text-center">
+                            <div className="bg-muted/30 p-4 rounded-full mb-4">
+                              <SparkleIcon className="w-8 h-8 text-primary/50" />
+                            </div>
+                            <h4 className="text-lg font-medium mb-2">No insights generated yet</h4>
+                            <p className="text-muted-foreground max-w-md mb-6">
+                              Click the "Generate Insights" button to get AI-powered recommendations based on your financial data.
+                            </p>
+                            {!hasGeminiApiKey() && (
+                              <div className="mt-2 p-3 bg-amber-100 dark:bg-amber-900/20 text-amber-800 dark:text-amber-300 rounded-md text-sm max-w-md">
+                                <p className="font-medium mb-1">API Key Required</p>
+                                <p>Please set your Gemini API key in the settings to enable AI insights.</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-medium">AI Chat Assistant</h3>
+                        <AiChat 
+                          transactions={transactions}
+                          totalIncome={useRealData && statementData?.totalIncome ? statementData.totalIncome : 0}
+                          totalExpense={totalSpent}
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              
+              <TabsContent value="saved">
+                <SavedAnalyses onLoadAnalysis={handleLoadAnalysis} />
+              </TabsContent>
+            </Tabs>
           </div>
         )}
 
-        {showSaveDialog && (
-          <SaveAnalysisDialog
-            isOpen={showSaveDialog}
-            onClose={() => setShowSaveDialog(false)}
-            data={{
-              transactions: transactions,
-              totalIncome: statementData?.totalIncome || 0,
-              totalExpense: statementData?.totalExpense || totalSpent,
-              categories: processCategoriesFromTransactions(transactions),
-              insights
-            }}
-          />
-        )}
+        <SaveAnalysisDialog
+          isOpen={showSaveDialog}
+          onClose={() => setShowSaveDialog(false)}
+          transactions={transactions}
+          totalIncome={useRealData && statementData?.totalIncome ? statementData.totalIncome : 0}
+          totalExpense={totalSpent}
+          categories={categories}
+          insights={insights}
+        />
       </div>
     </div>
   );
