@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,13 +17,13 @@ interface FinancialGoal {
   target_amount: number;
   current_amount: number;
   deadline: string;
-  type: string;
+  type: 'savings' | 'budget' | 'emergency' | 'retirement';
   category_id?: string;
   category?: string;
   notes?: string;
   created_at: string;
   updated_at: string;
-  status?: string;
+  status?: 'completed' | 'overdue' | 'urgent' | 'in_progress';
   progress_percentage?: number;
 }
 
@@ -35,7 +36,7 @@ const FinancialGoals: React.FC = () => {
     targetAmount: '',
     currentAmount: '',
     deadline: '',
-    type: '',
+    type: 'savings' as 'savings' | 'budget' | 'emergency' | 'retirement',
     category_id: '',
     notes: ''
   });
@@ -75,7 +76,7 @@ const FinancialGoals: React.FC = () => {
         type: formData.type,
         category_id: formData.category_id,
         notes: formData.notes,
-        status: 'in_progress',
+        status: 'in_progress' as const,
         progress_percentage: 0
       };
 
@@ -85,7 +86,7 @@ const FinancialGoals: React.FC = () => {
         targetAmount: '',
         currentAmount: '',
         deadline: '',
-        type: '',
+        type: 'savings',
         category_id: '',
         notes: ''
       });
@@ -103,7 +104,7 @@ const FinancialGoals: React.FC = () => {
       targetAmount: suggestion.suggested_amount.toString(),
       currentAmount: '0',
       deadline: suggestion.suggested_deadline,
-      type: suggestion.type,
+      type: suggestion.type as 'savings' | 'budget' | 'emergency' | 'retirement',
       category_id: suggestion.category_id,
       notes: suggestion.description || ''
     });
@@ -167,15 +168,15 @@ const FinancialGoals: React.FC = () => {
 
               <div>
                 <Label htmlFor="type">Goal Type</Label>
-                <Select value={formData.type} onValueChange={(value) => setFormData({...formData, type: value})}>
+                <Select value={formData.type} onValueChange={(value: 'savings' | 'budget' | 'emergency' | 'retirement') => setFormData({...formData, type: value})}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select goal type" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="savings">Savings</SelectItem>
-                    <SelectItem value="investment">Investment</SelectItem>
-                    <SelectItem value="debt">Debt Repayment</SelectItem>
-                    <SelectItem value="purchase">Major Purchase</SelectItem>
+                    <SelectItem value="budget">Budget</SelectItem>
+                    <SelectItem value="emergency">Emergency</SelectItem>
+                    <SelectItem value="retirement">Retirement</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -232,9 +233,9 @@ const FinancialGoals: React.FC = () => {
                     <h4 className="font-medium">{suggestion.name}</h4>
                     <span className="text-sm text-gray-500">{suggestion.type}</span>
                   </div>
-                  <Progress value={(suggestion.current_amount / suggestion.target_amount) * 100} className="mb-2" />
+                  <Progress value={0} className="mb-2" />
                   <p className="text-sm text-gray-600">
-                    Target: ${suggestion.target_amount.toLocaleString()}
+                    Target: ${suggestion.suggested_amount.toLocaleString()}
                   </p>
                 </div>
               ))}

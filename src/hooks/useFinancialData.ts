@@ -88,9 +88,6 @@ export interface FinancialData {
   };
 }
 
-
-
-
 export const useFinancialData = () => {
   const { user } = useAuth();
   const { generateAIAnalysis } = useGemini();
@@ -173,12 +170,41 @@ export const useFinancialData = () => {
         const { getAnalysisById } = await import('@/services/storageService');
         const analysis = await getAnalysisById(selectedDocumentId);
         if (analysis) {
+          // Convert BankTransaction to Transaction format
+          const convertedTransactions: Transaction[] = analysis.transactions.map((t: any, index: number) => ({
+            id: t.id || `tx_${index}`,
+            date: t.date,
+            description: t.description,
+            amount: t.amount,
+            category_id: t.category || null,
+            is_recurring: false,
+            is_anomaly: false,
+            confidence_score: 1.0,
+            user_id: user?.id || '',
+            document_id: selectedDocumentId,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }));
+
           setTransactions({
-            data: analysis.transactions,
-            total: analysis.transactions.length,
-            categorized: analysis.transactions.filter(t => t.category_id !== null).length,
+            data: convertedTransactions,
+            total: convertedTransactions.length,
+            categorized: convertedTransactions.filter(t => t.category_id !== null).length,
           });
-          setCategories(analysis.categories || []);
+
+          // Convert category data to proper Category format
+          const convertedCategories: Category[] = analysis.categories?.map((c: any, index: number) => ({
+            id: `cat_${index}`,
+            name: c.category || c.name || 'Unknown',
+            color: '#000000',
+            icon: 'tag',
+            is_income: false,
+            is_custom: false,
+            budget_amount: null,
+            user_id: user?.id || ''
+          })) || [];
+
+          setCategories(convertedCategories);
           setPatterns({
             data: analysis.patterns || [],
             count: analysis.patterns ? analysis.patterns.length : 0,
@@ -191,11 +217,12 @@ export const useFinancialData = () => {
           });
           setPredictions({
             data: analysis.predictions || [],
-            spendingTrend: analysis.predictions ? 'stable' : 'stable',
-            budgetStatus: analysis.predictions ? 'on_track' : 'on_track',
+            spendingTrend: 'stable',
+            budgetStatus: 'on_track',
           });
         }
       } catch (err) {
+        console.error('Error loading analysis:', err);
         setTransactions({ data: [], total: 0, categorized: 0 });
         setCategories([]);
         setPatterns({ data: [], count: 0, recurring: 0 });
@@ -204,13 +231,12 @@ export const useFinancialData = () => {
       }
     }
     loadSelectedAnalysis();
-  }, [selectedDocumentId]);
+  }, [selectedDocumentId, user]);
 
   // Fetch patterns, anomalies, and predictions
   const fetchPatterns = async () => {
     if (!user) return;
     
-    if (!user) return;
     
     try {
       let query = supabase
