@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import { Plus, Lightbulb } from 'lucide-react';
-import { financialGoalsService } from '@/services/financialGoalsService';
+import { financialGoalsService, GoalSuggestion } from '@/services/financialGoalsService';
 
 interface FinancialGoal {
   id?: string;
@@ -18,15 +17,18 @@ interface FinancialGoal {
   current_amount: number;
   deadline: string;
   type: string;
-  category: string;
+  category_id?: string;
+  category?: string;
   notes?: string;
   created_at: string;
   updated_at: string;
+  status?: string;
+  progress_percentage?: number;
 }
 
 const FinancialGoals: React.FC = () => {
   const [goals, setGoals] = useState<FinancialGoal[]>([]);
-  const [suggestions, setSuggestions] = useState<FinancialGoal[]>([]);
+  const [suggestions, setSuggestions] = useState<GoalSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -34,7 +36,7 @@ const FinancialGoals: React.FC = () => {
     currentAmount: '',
     deadline: '',
     type: '',
-    category: '',
+    category_id: '',
     notes: ''
   });
 
@@ -65,16 +67,16 @@ const FinancialGoals: React.FC = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const newGoal: FinancialGoal = {
+      const newGoal = {
         name: formData.name,
         target_amount: parseFloat(formData.targetAmount),
         current_amount: parseFloat(formData.currentAmount) || 0,
         deadline: formData.deadline,
         type: formData.type,
-        category: formData.category,
+        category_id: formData.category_id,
         notes: formData.notes,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        status: 'in_progress',
+        progress_percentage: 0
       };
 
       await financialGoalsService.addGoal(newGoal);
@@ -84,7 +86,7 @@ const FinancialGoals: React.FC = () => {
         currentAmount: '',
         deadline: '',
         type: '',
-        category: '',
+        category_id: '',
         notes: ''
       });
       fetchGoals();
@@ -95,15 +97,15 @@ const FinancialGoals: React.FC = () => {
     }
   };
 
-  const handleSuggestionClick = (suggestion: FinancialGoal) => {
+  const handleSuggestionClick = (suggestion: GoalSuggestion) => {
     setFormData({
       name: suggestion.name,
-      targetAmount: suggestion.target_amount.toString(),
-      currentAmount: suggestion.current_amount.toString(),
-      deadline: suggestion.deadline,
+      targetAmount: suggestion.suggested_amount.toString(),
+      currentAmount: '0',
+      deadline: suggestion.suggested_deadline,
       type: suggestion.type,
-      category: suggestion.category,
-      notes: suggestion.notes || ''
+      category_id: suggestion.category_id,
+      notes: suggestion.description || ''
     });
   };
 
@@ -180,7 +182,7 @@ const FinancialGoals: React.FC = () => {
 
               <div>
                 <Label htmlFor="category">Category</Label>
-                <Select value={formData.category} onValueChange={(value) => setFormData({...formData, category: value})}>
+                <Select value={formData.category_id} onValueChange={(value) => setFormData({...formData, category_id: value})}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
@@ -270,4 +272,4 @@ const FinancialGoals: React.FC = () => {
   );
 };
 
-export default FinancialGoals; 
+export default FinancialGoals;

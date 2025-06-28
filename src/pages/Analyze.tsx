@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import StatCard from '@/components/StatCard';
-import { PieChart as PieChartIcon, ArrowDown, ArrowUp, DollarSign, ShoppingBag, Home, Car, Coffee, Tag, SparkleIcon, Save, TrendingUp } from 'lucide-react';
+import { PieChart as PieChartIcon, ArrowDown, ArrowUp, DollarSign, ShoppingBag, Home, Car, Coffee, Tag, SparkleIcon, Save, TrendingUp, CheckCircle, AlertTriangle } from 'lucide-react';
 import { useStatement } from '@/contexts/StatementContext';
 import ApiKeyInput from '@/components/ApiKeyInput';
 import { generateInsights, hasGeminiApiKey } from '@/services/insightService';
@@ -143,12 +143,12 @@ const mockCategories = [
   { name: 'USSD Charge', amount: 100, percentage: 2, icon: Tag, color: 'bg-slate-500', pieColor: '#64748B' }
 ];
 
-const mockTransactions = [
-  { id: 1, date: '2023-06-15', description: 'Whole Foods Market', amount: 78.35, category: 'Food & Dining', type: 'expense' as const },
-  { id: 2, date: '2023-06-14', description: 'Amazon.com', amount: 124.99, category: 'Shopping', type: 'expense' as const },
-  { id: 3, date: '2023-06-13', description: 'Uber', amount: 24.50, category: 'Transportation', type: 'expense' as const },
-  { id: 4, date: '2023-06-10', description: 'Rent Payment', amount: 1500, category: 'Housing', type: 'expense' as const },
-  { id: 5, date: '2023-06-08', description: 'Starbucks', amount: 5.65, category: 'Food & Dining', type: 'expense' as const }
+const mockTransactions: BankTransaction[] = [
+  { id: '1', date: '2023-06-15', description: 'Whole Foods Market', amount: 78.35, category: 'Food & Dining', type: 'debit', balance: 1000, reference: 'TXN001', channel: 'POS' },
+  { id: '2', date: '2023-06-14', description: 'Amazon.com', amount: 124.99, category: 'Shopping', type: 'debit', balance: 1078.35, reference: 'TXN002', channel: 'Online' },
+  { id: '3', date: '2023-06-13', description: 'Uber', amount: 24.50, category: 'Transportation', type: 'debit', balance: 1203.34, reference: 'TXN003', channel: 'Mobile' },
+  { id: '4', date: '2023-06-10', description: 'Rent Payment', amount: 1500, category: 'Housing', type: 'debit', balance: 1227.84, reference: 'TXN004', channel: 'Transfer' },
+  { id: '5', date: '2023-06-08', description: 'Starbucks', amount: 5.65, category: 'Food & Dining', type: 'debit', balance: 2727.84, reference: 'TXN005', channel: 'POS' }
 ];
 
 const COLORS = ['#8e44ad', '#00C49F', '#FFBB28', '#FF8042', '#4285F4', '#EA4335', '#34A853', '#F97316', '#6366F1', '#10B981', '#DC2626', '#EAB308', '#9333EA', '#06B6D4', '#D97706', '#64748B'];
