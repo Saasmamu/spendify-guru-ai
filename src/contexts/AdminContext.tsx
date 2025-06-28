@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
 import { useAuth } from './AuthContext';
@@ -7,7 +8,7 @@ import type { AdminUser, AdminRole, AdminPermission } from '@/types/admin';
 interface AdminContextType {
   adminUser: AdminUser | null;
   isAdmin: boolean;
-  loading: boolean;
+  isLoading: boolean;
   permissions: Set<string>;
   hasPermission: (permission: string) => boolean;
   checkPermission: (permission: string) => Promise<boolean>;
@@ -23,7 +24,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
 
   const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
   const [permissions, setPermissions] = useState<Set<string>>(new Set());
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
 
   const logActivity = async (action: string, resource: string, details?: Record<string, any>) => {
     if (!adminUser) return;
@@ -50,7 +51,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     } else {
       setAdminUser(null);
       setPermissions(new Set());
-      setLoading(false);
+      setIsLoading(false);
     }
   }, [user]);
 
@@ -92,7 +93,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('Error loading admin data:', error);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -126,7 +127,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
   const value = {
     adminUser,
     isAdmin: !!adminUser,
-    loading,
+    isLoading,
     permissions,
     hasPermission,
     checkPermission,
