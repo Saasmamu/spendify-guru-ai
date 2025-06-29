@@ -1,6 +1,7 @@
+
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { Receipt, Upload, PieChart, Save, BarChart } from 'lucide-react';
+import { Receipt, Upload, PieChart, Save, BarChart, PiggyBank } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 const BottomNav = () => {
@@ -32,8 +33,8 @@ const BottomNav = () => {
         <NavItem to="/dashboard" icon={Receipt} label="Home" />
         <NavItem to="/dashboard/upload" icon={Upload} label="Upload" />
         <NavItem to="/dashboard/analyze" icon={PieChart} label="Analyze" />
-        <NavItem to="/dashboard/saved" icon={Save} label="Saved" />
         <NavItem to="/dashboard/charts" icon={BarChart} label="Charts" />
+        <NavItem to="/dashboard/budgets" icon={PiggyBank} label="Budget" />
       </div>
     </nav>
   );

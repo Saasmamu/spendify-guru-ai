@@ -1,7 +1,8 @@
+
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { Receipt, Upload, PieChart, LogIn, LogOut, Menu, Save, BarChart, CreditCard, Home, ArrowLeftRight, TrendingUp, Target, Bot, Fingerprint } from 'lucide-react';
+import { Receipt, Upload, PieChart, LogIn, LogOut, Menu, Save, BarChart, CreditCard, Home, ArrowLeftRight, TrendingUp, Target, Bot, Fingerprint, PiggyBank } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAdmin } from '@/contexts/AdminContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
@@ -98,6 +99,7 @@ const Navbar = () => {
                 <NavLink to="/dashboard/analyze" label="Analyze" icon={PieChart} />
                 <NavLink to="/dashboard/saved" label="Saved" icon={Save} />
                 <NavLink to="/dashboard/charts" label="Charts" icon={BarChart} />
+                <NavLink to="/dashboard/budgets" label="Budgets" icon={PiggyBank} />
                 <NavLink to="/pricing" label="Pricing" icon={CreditCard} />
                 <NavLink to="/billing" label="Billing" icon={Receipt} />
                 {isAdmin && <NavLink to="/admin" label="Admin Panel" icon={Target} />}
@@ -159,6 +161,18 @@ const Navbar = () => {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel>Features</DropdownMenuLabel>
+                  <DropdownMenuItem asChild>
+                    <Link to="/dashboard/charts" className="flex items-center gap-2">
+                      <BarChart className="w-4 h-4 text-blue-500" />
+                      <span>Charts</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/dashboard/budgets" className="flex items-center gap-2">
+                      <PiggyBank className="w-4 h-4 text-green-600" />
+                      <span>Budget Planner</span>
+                    </Link>
+                  </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link to="/dashboard/compare" className="flex items-center gap-2">
                       <ArrowLeftRight className="w-4 h-4 text-blue-700" />
