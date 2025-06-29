@@ -78,7 +78,14 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.description || !formData.category || !formData.amount) {
+    if (!formData.description?.trim() || !formData.category || !formData.amount) {
+      console.log('Validation failed:', { formData });
+      return;
+    }
+
+    const amount = parseFloat(formData.amount);
+    if (isNaN(amount) || amount <= 0) {
+      console.log('Invalid amount:', formData.amount);
       return;
     }
 
@@ -86,14 +93,15 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
       setLoading(true);
       
       const expenseData = {
-        description: formData.description,
+        description: formData.description.trim(),
         category: formData.category,
-        amount: parseFloat(formData.amount),
+        amount: amount,
         date: format(formData.date, 'yyyy-MM-dd'),
-        receipt: formData.receipt,
-        ...(expense && { id: expense.id, user_id: expense.user_id })
+        receipt: formData.receipt || null,
+        ...(expense && { id: expense.id })
       };
 
+      console.log('Submitting expense data:', expenseData);
       await onSave(expenseData);
       
       if (!expense) {
@@ -168,6 +176,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
                 id="amount"
                 type="number"
                 step="0.01"
+                min="0.01"
                 placeholder="0.00"
                 value={formData.amount}
                 onChange={(e) => setFormData(prev => ({ ...prev, amount: e.target.value }))}
