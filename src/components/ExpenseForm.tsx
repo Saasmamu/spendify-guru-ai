@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Receipt, Loader2 } from 'lucide-react';
+import { CalendarIcon, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -86,9 +86,11 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
       setLoading(true);
       
       const expenseData = {
-        ...formData,
+        description: formData.description,
+        category: formData.category,
         amount: parseFloat(formData.amount),
         date: format(formData.date, 'yyyy-MM-dd'),
+        receipt: formData.receipt,
         ...(expense && { id: expense.id, user_id: expense.user_id })
       };
 
@@ -196,7 +198,6 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
                   selected={formData.date}
                   onSelect={(date) => date && setFormData(prev => ({ ...prev, date }))}
                   initialFocus
-                  className="pointer-events-auto"
                 />
               </PopoverContent>
             </Popover>
