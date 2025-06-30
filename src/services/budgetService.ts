@@ -228,7 +228,7 @@ class BudgetService {
 
       console.log('Budget created:', newBudget);
       
-      // Insert categories
+      // Insert categories - ID will be auto-generated now
       const categoriesData = budgetData.categories.map(cat => ({
         budget_id: newBudget.id,
         category: cat.category,
@@ -299,7 +299,7 @@ class BudgetService {
         throw deleteError;
       }
       
-      // Insert updated categories
+      // Insert updated categories - ID will be auto-generated
       const categoriesData = budgetData.categories.map(cat => ({
         budget_id: budgetId,
         category: cat.category,

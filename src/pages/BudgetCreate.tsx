@@ -130,7 +130,7 @@ const BudgetCreate = () => {
 
       console.log('Budget created successfully:', budget);
 
-      // Create budget categories
+      // Create budget categories - now with proper ID generation
       const categoriesData = validCategories.map(cat => ({
         budget_id: budget.id,
         category: cat.category.trim(),
@@ -157,7 +157,7 @@ const BudgetCreate = () => {
       });
 
       navigate('/dashboard/budgets');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating budget:', error);
       toast({
         title: 'Error',
