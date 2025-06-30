@@ -55,14 +55,66 @@ const BudgetCreate = () => {
     e.preventDefault();
     if (!user) return;
 
+    // Validate form
+    if (!name.trim()) {
+      toast({
+        title: 'Error',
+        description: 'Budget name is required',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!period) {
+      toast({
+        title: 'Error',
+        description: 'Period is required',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!startDate) {
+      toast({
+        title: 'Error',
+        description: 'Start date is required',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Filter out empty categories
+    const validCategories = categories.filter(cat => 
+      cat.category.trim() && cat.allocated_amount > 0
+    );
+
+    if (validCategories.length === 0) {
+      toast({
+        title: 'Error',
+        description: 'At least one valid category is required',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setLoading(true);
+    
     try {
+      console.log('Creating budget with data:', {
+        name: name.trim(),
+        amount: getTotalAmount(),
+        period,
+        start_date: startDate,
+        end_date: endDate || null,
+        categories: validCategories
+      });
+
       // Create budget
       const { data: budget, error: budgetError } = await supabase
         .from('budgets')
         .insert({
           user_id: user.id,
-          name,
+          name: name.trim(),
           amount: getTotalAmount(),
           period,
           start_date: startDate,
@@ -71,22 +123,33 @@ const BudgetCreate = () => {
         .select()
         .single();
 
-      if (budgetError) throw budgetError;
+      if (budgetError) {
+        console.error('Budget creation error:', budgetError);
+        throw budgetError;
+      }
+
+      console.log('Budget created successfully:', budget);
 
       // Create budget categories
-      const categoriesData = categories
-        .filter(cat => cat.category && cat.allocated_amount > 0)
-        .map(cat => ({
-          budget_id: budget.id,
-          category: cat.category,
-          allocated_amount: cat.allocated_amount,
-        }));
+      const categoriesData = validCategories.map(cat => ({
+        budget_id: budget.id,
+        category: cat.category.trim(),
+        allocated_amount: cat.allocated_amount,
+      }));
 
-      const { error: categoriesError } = await supabase
+      console.log('Creating budget categories:', categoriesData);
+
+      const { data: createdCategories, error: categoriesError } = await supabase
         .from('budget_categories')
-        .insert(categoriesData);
+        .insert(categoriesData)
+        .select();
 
-      if (categoriesError) throw categoriesError;
+      if (categoriesError) {
+        console.error('Budget categories creation error:', categoriesError);
+        throw categoriesError;
+      }
+
+      console.log('Budget categories created successfully:', createdCategories);
 
       toast({
         title: 'Success',
@@ -98,7 +161,7 @@ const BudgetCreate = () => {
       console.error('Error creating budget:', error);
       toast({
         title: 'Error',
-        description: 'Failed to create budget',
+        description: error?.message || 'Failed to create budget',
         variant: 'destructive',
       });
     } finally {
@@ -128,7 +191,7 @@ const BudgetCreate = () => {
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Budget Name</Label>
+                  <Label htmlFor="name">Budget Name *</Label>
                   <Input
                     id="name"
                     value={name}
@@ -138,7 +201,7 @@ const BudgetCreate = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="period">Period</Label>
+                  <Label htmlFor="period">Period *</Label>
                   <Select value={period} onValueChange={setPeriod} required>
                     <SelectTrigger>
                       <SelectValue placeholder="Select period" />
@@ -155,7 +218,7 @@ const BudgetCreate = () => {
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="startDate">Start Date</Label>
+                  <Label htmlFor="startDate">Start Date *</Label>
                   <Input
                     id="startDate"
                     type="date"
@@ -177,7 +240,7 @@ const BudgetCreate = () => {
 
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <Label className="text-base font-medium">Budget Categories</Label>
+                  <Label className="text-base font-medium">Budget Categories *</Label>
                   <Button type="button" variant="outline" onClick={addCategory}>
                     <Plus className="w-4 h-4 mr-2" />
                     Add Category
@@ -236,6 +299,7 @@ const BudgetCreate = () => {
                   variant="outline"
                   onClick={() => navigate('/dashboard/budgets')}
                   className="flex-1"
+                  disabled={loading}
                 >
                   Cancel
                 </Button>
