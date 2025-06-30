@@ -46,7 +46,7 @@ const BudgetInsights: React.FC<BudgetInsightsProps> = ({ budgets }) => {
     const totalSpent = budgets.reduce((sum, budget) => 
       sum + budget.categories.reduce((catSum, cat) => catSum + cat.spent_amount, 0), 0
     );
-    const overallPercentage = (totalSpent / totalBudgeted) * 100;
+    const overallPercentage = totalBudgeted > 0 ? (totalSpent / totalBudgeted) * 100 : 0;
 
     // Overall budget health
     if (overallPercentage <= 70) {
@@ -77,8 +77,8 @@ const BudgetInsights: React.FC<BudgetInsightsProps> = ({ budgets }) => {
     }
 
     // Find problematic categories
-    const overBudgetCategories = [];
-    const nearLimitCategories = [];
+    const overBudgetCategories: any[] = [];
+    const nearLimitCategories: any[] = [];
     
     budgets.forEach(budget => {
       budget.categories.forEach(category => {
@@ -109,7 +109,7 @@ const BudgetInsights: React.FC<BudgetInsightsProps> = ({ budgets }) => {
     }
 
     // Savings opportunity
-    const wellManagedCategories = [];
+    const wellManagedCategories: any[] = [];
     budgets.forEach(budget => {
       budget.categories.forEach(category => {
         if (category.percentage < 50 && category.allocated_amount > 0) {
@@ -134,7 +134,7 @@ const BudgetInsights: React.FC<BudgetInsightsProps> = ({ budgets }) => {
     }
 
     // Spending pattern insights
-    const categorySpending = {};
+    const categorySpending: Record<string, number> = {};
     budgets.forEach(budget => {
       budget.categories.forEach(category => {
         if (categorySpending[category.category]) {
@@ -156,24 +156,6 @@ const BudgetInsights: React.FC<BudgetInsightsProps> = ({ budgets }) => {
         title: 'Top Spending Category',
         description: `${topSpendingCategory.category} accounts for ${percentage.toFixed(1)}% of your total spending.`,
         value: formatCurrency(topSpendingCategory.amount as number)
-      });
-    }
-
-    // Budget period insights
-    const activeBudgets = budgets.filter(budget => {
-      const now = new Date();
-      const startDate = new Date(budget.start_date);
-      const endDate = budget.end_date ? new Date(budget.end_date) : null;
-      
-      return startDate <= now && (!endDate || endDate >= now);
-    });
-
-    if (activeBudgets.length !== budgets.length) {
-      insights.push({
-        type: 'info',
-        title: 'Budget Timeline',
-        description: `${activeBudgets.length} of ${budgets.length} budgets are currently active.`,
-        actionable: true
       });
     }
 

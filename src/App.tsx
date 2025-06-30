@@ -1,3 +1,4 @@
+
 import { RouterProvider } from 'react-router-dom';
 import { Toaster } from '@/components/ui/toaster';
 import PageTransition from './components/PageTransition';
@@ -28,11 +29,11 @@ import './App.css';
 import Layout from './components/Layout';
 import BillingPage from './pages/BillingPage';
 
-import router from './routes';
+import AppRoutes from './routes';
 
 function App() {
   return (
-    <RouterProvider router={router} />
+    <AppRoutes />
   );
 }
 

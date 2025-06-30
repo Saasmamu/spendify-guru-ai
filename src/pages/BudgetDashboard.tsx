@@ -19,20 +19,15 @@ import {
   Plus,
   Brain
 } from 'lucide-react';
-import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line } from 'recharts';
+import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { formatCurrency } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
+import BudgetInsights from '@/components/BudgetInsights';
+import BudgetSpendingChart from '@/components/BudgetSpendingChart';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D', '#FFC658', '#FF7300'];
-
-interface BudgetInsight {
-  type: 'warning' | 'success' | 'info' | 'danger';
-  title: string;
-  description: string;
-  action?: string;
-}
 
 const BudgetDashboard = () => {
   const { user } = useAuth();
@@ -42,7 +37,6 @@ const BudgetDashboard = () => {
   const [budgets, setBudgets] = useState<BudgetWithCategories[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedBudget, setSelectedBudget] = useState<string>('all');
-  const [insights, setInsights] = useState<BudgetInsight[]>([]);
 
   useEffect(() => {
     if (user) {
@@ -55,7 +49,7 @@ const BudgetDashboard = () => {
       setLoading(true);
       const data = await budgetService.getBudgets(user!.id);
       setBudgets(data);
-      generateInsights(data);
+      console.log('Budgets loaded:', data);
     } catch (error) {
       console.error('Error fetching budgets:', error);
       toast({
@@ -68,61 +62,6 @@ const BudgetDashboard = () => {
     }
   };
 
-  const generateInsights = (budgetData: BudgetWithCategories[]) => {
-    const insights: BudgetInsight[] = [];
-    
-    budgetData.forEach(budget => {
-      const totalSpent = budget.categories.reduce((sum, cat) => sum + cat.spent_amount, 0);
-      const spentPercentage = (totalSpent / budget.amount) * 100;
-      
-      if (spentPercentage > 90) {
-        insights.push({
-          type: 'danger',
-          title: `${budget.name} Almost Exhausted`,
-          description: `You've spent ${spentPercentage.toFixed(1)}% of your budget. Consider reviewing your expenses.`,
-          action: 'Review Budget'
-        });
-      } else if (spentPercentage > 75) {
-        insights.push({
-          type: 'warning',
-          title: `${budget.name} Nearing Limit`,
-          description: `You've spent ${spentPercentage.toFixed(1)}% of your budget. Monitor closely.`,
-          action: 'Monitor Spending'
-        });
-      }
-      
-      budget.categories.forEach(category => {
-        if (category.percentage > 100) {
-          insights.push({
-            type: 'danger',
-            title: `${category.category} Over Budget`,
-            description: `This category has exceeded its allocation by ${(category.percentage - 100).toFixed(1)}%.`,
-            action: 'Adjust Category'
-          });
-        }
-      });
-    });
-
-    // Add positive insights
-    if (budgetData.length > 0) {
-      const wellManagedBudgets = budgetData.filter(b => {
-        const totalSpent = b.categories.reduce((sum, cat) => sum + cat.spent_amount, 0);
-        const spentPercentage = (totalSpent / b.amount) * 100;
-        return spentPercentage <= 75;
-      });
-
-      if (wellManagedBudgets.length > 0) {
-        insights.push({
-          type: 'success',
-          title: 'Good Budget Management',
-          description: `${wellManagedBudgets.length} of your budgets are well within limits. Keep it up!`,
-        });
-      }
-    }
-
-    setInsights(insights);
-  };
-
   const calculateOverallMetrics = () => {
     const totalBudgeted = budgets.reduce((sum, budget) => sum + budget.amount, 0);
     const totalSpent = budgets.reduce((sum, budget) => 
@@ -132,59 +71,6 @@ const BudgetDashboard = () => {
     const overallPercentage = totalBudgeted > 0 ? (totalSpent / totalBudgeted) * 100 : 0;
     
     return { totalBudgeted, totalSpent, totalRemaining, overallPercentage };
-  };
-
-  const prepareChartData = () => {
-    const filteredBudgets = selectedBudget === 'all' 
-      ? budgets 
-      : budgets.filter(b => b.id === selectedBudget);
-
-    const categoryData = {};
-    const budgetComparisonData = [];
-
-    filteredBudgets.forEach(budget => {
-      const totalSpent = budget.categories.reduce((sum, cat) => sum + cat.spent_amount, 0);
-      
-      budgetComparisonData.push({
-        name: budget.name,
-        budgeted: budget.amount,
-        spent: totalSpent,
-        remaining: budget.amount - totalSpent
-      });
-
-      budget.categories.forEach(category => {
-        if (categoryData[category.category]) {
-          categoryData[category.category] += category.spent_amount;
-        } else {
-          categoryData[category.category] = category.spent_amount;
-        }
-      });
-    });
-
-    const pieData = Object.entries(categoryData).map(([name, value]) => ({
-      name,
-      value: value as number
-    }));
-
-    return { pieData, budgetComparisonData };
-  };
-
-  const getInsightIcon = (type: string) => {
-    switch (type) {
-      case 'danger': return <AlertTriangle className="w-4 h-4 text-red-500" />;
-      case 'warning': return <AlertTriangle className="w-4 h-4 text-yellow-500" />;
-      case 'success': return <TrendingUp className="w-4 h-4 text-green-500" />;
-      default: return <Brain className="w-4 h-4 text-blue-500" />;
-    }
-  };
-
-  const getInsightColor = (type: string) => {
-    switch (type) {
-      case 'danger': return 'border-red-200 bg-red-50';
-      case 'warning': return 'border-yellow-200 bg-yellow-50';
-      case 'success': return 'border-green-200 bg-green-50';
-      default: return 'border-blue-200 bg-blue-50';
-    }
   };
 
   if (loading) {
@@ -222,7 +108,6 @@ const BudgetDashboard = () => {
   }
 
   const metrics = calculateOverallMetrics();
-  const { pieData, budgetComparisonData } = prepareChartData();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -329,174 +214,82 @@ const BudgetDashboard = () => {
         </Card>
 
         {/* AI Insights */}
-        {insights.length > 0 && (
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Brain className="w-5 h-5" />
-                AI Insights & Recommendations
-              </CardTitle>
-              <CardDescription>
-                Smart analysis of your budget performance
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4">
-                {insights.map((insight, index) => (
-                  <div
-                    key={index}
-                    className={`p-4 rounded-lg border ${getInsightColor(insight.type)}`}
-                  >
-                    <div className="flex items-start gap-3">
-                      {getInsightIcon(insight.type)}
-                      <div className="flex-1">
-                        <h4 className="font-medium mb-1">{insight.title}</h4>
-                        <p className="text-sm text-muted-foreground mb-2">
-                          {insight.description}
-                        </p>
-                        {insight.action && (
-                          <Badge variant="outline" className="text-xs">
-                            {insight.action}
-                          </Badge>
-                        )}
+        <div className="mb-8">
+          <BudgetInsights budgets={budgets} />
+        </div>
+
+        {/* Charts and Analytics */}
+        <div className="mb-8">
+          <BudgetSpendingChart 
+            budgets={budgets}
+            selectedBudget={selectedBudget}
+            onBudgetChange={setSelectedBudget}
+          />
+        </div>
+
+        {/* Individual Budget Performance */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Budget Performance</CardTitle>
+            <CardDescription>
+              Individual budget progress and health
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              {budgets.map((budget) => {
+                const totalSpent = budget.categories.reduce((sum, cat) => sum + cat.spent_amount, 0);
+                const percentage = (totalSpent / budget.amount) * 100;
+                const remaining = budget.amount - totalSpent;
+                
+                return (
+                  <div key={budget.id} className="space-y-3 p-4 border rounded-lg">
+                    <div className="flex justify-between items-center">
+                      <h4 className="font-semibold text-lg">{budget.name}</h4>
+                      <Badge variant={percentage > 90 ? 'destructive' : percentage > 75 ? 'secondary' : 'default'}>
+                        {percentage.toFixed(1)}% used
+                      </Badge>
+                    </div>
+                    <Progress value={Math.min(percentage, 100)} className="h-3" />
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">Spent:</span>
+                        <div className="font-medium">{formatCurrency(totalSpent)}</div>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Remaining:</span>
+                        <div className={`font-medium ${remaining < 0 ? 'text-red-500' : 'text-green-500'}`}>
+                          {formatCurrency(remaining)}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Category breakdown */}
+                    <div className="mt-4">
+                      <h5 className="font-medium mb-2">Categories</h5>
+                      <div className="space-y-2">
+                        {budget.categories.map((category) => (
+                          <div key={category.id} className="flex justify-between items-center text-sm">
+                            <span>{category.category}</span>
+                            <div className="flex items-center gap-2">
+                              <Progress 
+                                value={Math.min(category.percentage, 100)} 
+                                className="w-16 h-2" 
+                              />
+                              <span className={`font-medium ${category.percentage > 100 ? 'text-red-500' : ''}`}>
+                                {formatCurrency(category.spent_amount)} / {formatCurrency(category.allocated_amount)}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Charts and Analytics */}
-        <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="categories">Categories</TabsTrigger>
-            <TabsTrigger value="comparison">Budget vs Actual</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="overview" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Spending by Category</CardTitle>
-                  <CardDescription>
-                    Distribution of your expenses across categories
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-[300px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <RechartsPieChart>
-                        <Pie
-                          data={pieData}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          outerRadius={100}
-                          fill="#8884d8"
-                          dataKey="value"
-                          label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                        >
-                          {pieData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip formatter={(value) => formatCurrency(value as number)} />
-                        <Legend />
-                      </RechartsPieChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Budget Performance</CardTitle>
-                  <CardDescription>
-                    Individual budget progress and health
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {budgets.map((budget) => {
-                      const totalSpent = budget.categories.reduce((sum, cat) => sum + cat.spent_amount, 0);
-                      const percentage = (totalSpent / budget.amount) * 100;
-                      const remaining = budget.amount - totalSpent;
-                      
-                      return (
-                        <div key={budget.id} className="space-y-2">
-                          <div className="flex justify-between items-center">
-                            <span className="font-medium">{budget.name}</span>
-                            <Badge variant={percentage > 90 ? 'destructive' : percentage > 75 ? 'secondary' : 'default'}>
-                              {percentage.toFixed(1)}%
-                            </Badge>
-                          </div>
-                          <Progress value={Math.min(percentage, 100)} className="h-2" />
-                          <div className="flex justify-between text-sm text-muted-foreground">
-                            <span>Spent: {formatCurrency(totalSpent)}</span>
-                            <span>Remaining: {formatCurrency(remaining)}</span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
+                );
+              })}
             </div>
-          </TabsContent>
-
-          <TabsContent value="categories" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Category Spending Analysis</CardTitle>
-                <CardDescription>
-                  Detailed breakdown of spending by category
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[400px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={pieData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis tickFormatter={(value) => `$${value}`} />
-                      <Tooltip formatter={(value) => formatCurrency(value as number)} />
-                      <Bar dataKey="value" fill="#8884d8" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="comparison" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Budget vs Actual Spending</CardTitle>
-                <CardDescription>
-                  Compare your planned budget with actual spending
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[400px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={budgetComparisonData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis tickFormatter={(value) => `$${value}`} />
-                      <Tooltip formatter={(value) => formatCurrency(value as number)} />
-                      <Legend />
-                      <Bar dataKey="budgeted" fill="#8884d8" name="Budgeted" />
-                      <Bar dataKey="spent" fill="#82ca9d" name="Spent" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
