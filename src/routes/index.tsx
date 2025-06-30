@@ -1,308 +1,156 @@
 
-import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
-import { lazy, Suspense } from 'react';
-import { AdminLayout } from '@/components/admin/AdminLayout';
-import { AdminProtectedRoute } from '@/components/admin/AdminProtectedRoute';
-import { AdminRoot } from '@/components/admin/AdminRoot';
-import Layout from '@/components/Layout';
+import { Routes, Route } from 'react-router-dom';
 import { AuthProvider } from '@/contexts/AuthContext';
-import { AdminProvider } from '@/contexts/AdminContext';
 import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
+import { AdminProvider } from '@/contexts/AdminContext';
 import { StatementProvider } from '@/contexts/StatementContext';
 import { Toaster } from '@/components/ui/toaster';
 import Index from '@/pages/Index';
 import Auth from '@/pages/Auth';
+import Dashboard from '@/pages/Dashboard';
+import Upload from '@/pages/Upload';
+import Analyze from '@/pages/Analyze';
+import Compare from '@/pages/Compare';
+import Charts from '@/pages/Charts';
+import History from '@/pages/History';
 import Pricing from '@/pages/Pricing';
-import BillingPage from '@/pages/BillingPage';
-import PaystackTest from '@/pages/PaystackTest';
+import Features from '@/pages/Features';
+import About from '@/pages/About';
+import Contact from '@/pages/Contact';
+import FAQ from '@/pages/FAQ';
+import Blog from '@/pages/Blog';
+import ThankYou from '@/pages/ThankYou';
 import NotFound from '@/pages/NotFound';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import BillingPage from '@/pages/BillingPage';
 import ExpenseTracker from '@/pages/ExpenseTracker';
+import Budgets from '@/pages/Budgets';
+import BudgetForm from '@/pages/BudgetForm';
+import BudgetCreate from '@/pages/BudgetCreate';
+import BudgetDetails from '@/pages/BudgetDetails';
+import BudgetDashboard from '@/pages/BudgetDashboard';
+import Goals from '@/pages/Goals';
+import GoalCreate from '@/pages/GoalCreate';
+import GoalDetails from '@/pages/GoalDetails';
+import FinancialGoals from '@/pages/FinancialGoals';
+import Transactions from '@/pages/Transactions';
+import SavedAnalyses from '@/pages/SavedAnalyses';
+import AdvancedAnalysis from '@/pages/AdvancedAnalysis';
+import AdvancedAnalytics from '@/pages/AdvancedAnalytics';
+import AdvancedFinancialAnalysis from '@/pages/AdvancedFinancialAnalysis';
+import AIFinancialAdvisor from '@/pages/AIFinancialAdvisor';
+import PaystackTest from '@/pages/PaystackTest';
+import DashboardHome from '@/pages/DashboardHome';
+import CategoryCharts from '@/pages/CategoryCharts';
+import CategoryTotalsChart from '@/pages/CategoryTotalsChart';
+import RecurringExpensesChart from '@/pages/RecurringExpensesChart';
+import PredictionsTab from '@/pages/PredictionsTab';
 
-// Lazy load pages
-const DashboardHome = lazy(() => import('@/pages/DashboardHome'));
-const Upload = lazy(() => import('@/pages/Upload'));
-const Analyze = lazy(() => import('@/pages/Analyze'));
-const SavedAnalyses = lazy(() => import('@/pages/SavedAnalyses'));
-const Charts = lazy(() => import('@/pages/Charts'));
-const Compare = lazy(() => import('@/pages/Compare'));
-const AdvancedAnalytics = lazy(() => import('@/pages/AdvancedAnalytics'));
-const AdvancedAnalysis = lazy(() => import('@/pages/AdvancedAnalysis'));
-const FinancialGoals = lazy(() => import('@/pages/FinancialGoals'));
-const AIFinancialAdvisor = lazy(() => import('@/pages/AIFinancialAdvisor'));
-const Transactions = lazy(() => import('@/pages/Transactions'));
-const BudgetDashboard = lazy(() => import('@/pages/BudgetDashboard'));
-const BudgetForm = lazy(() => import('@/pages/BudgetForm'));
+// Admin routes
+import AdminRoot from '@/components/admin/AdminRoot';
+import { AdminProtectedRoute } from '@/components/admin/AdminProtectedRoute';
+import AdminLogin from '@/pages/admin/Login';
+import AdminDashboard from '@/pages/admin/Dashboard';
+import AdminUsers from '@/pages/admin/Users';
+import AdminUserDetails from '@/pages/admin/UserDetails';
+import AdminSubscriptions from '@/pages/admin/Subscriptions';
+import AdminSubscriptionDetails from '@/pages/admin/SubscriptionDetails';
+import AdminAnalytics from '@/pages/admin/Analytics';
+import AdminSettings from '@/pages/admin/Settings';
+import AdminDocuments from '@/pages/admin/Documents';
+import AdminReports from '@/pages/admin/Reports';
+import AdminPlans from '@/pages/admin/Plans';
+import AdminNotifications from '@/pages/admin/Notifications';
+import AdminEmailTemplates from '@/pages/admin/EmailTemplates';
+import AdminCampaigns from '@/pages/admin/Campaigns';
+import AdminUserSegments from '@/pages/admin/UserSegments';
+import AdminBackups from '@/pages/admin/Backups';
+import AdminDataCleanup from '@/pages/admin/DataCleanup';
+import AdminReleaseNotes from '@/pages/admin/ReleaseNotes';
+import AdminSystemUpdates from '@/pages/admin/SystemUpdates';
+import AdminContent from '@/pages/admin/Content';
 
-// Add lazy loading for the advanced financial analysis page
-const AdvancedFinancialAnalysis = lazy(() => import('@/pages/AdvancedFinancialAnalysis'));
-
-// Lazy load admin pages
-const AdminDashboard = lazy(() => import('@/pages/admin/Dashboard'));
-const AdminUsers = lazy(() => import('@/pages/admin/Users'));
-const AdminUserDetails = lazy(() => import('@/pages/admin/UserDetails'));
-const AdminSubscriptions = lazy(() => import('@/pages/admin/Subscriptions'));
-const AdminSubscriptionDetails = lazy(() => import('@/pages/admin/SubscriptionDetails'));
-const AdminPlans = lazy(() => import('@/pages/admin/Plans'));
-const AdminDocuments = lazy(() => import('@/pages/admin/Documents'));
-const AdminAnalytics = lazy(() => import('@/pages/admin/Analytics'));
-const AdminReports = lazy(() => import('@/pages/admin/Reports'));
-const AdminSettings = lazy(() => import('@/pages/admin/Settings'));
-const AdminNotifications = lazy(() => import('@/pages/admin/Notifications'));
-
-import EmailTemplates from '@/pages/admin/EmailTemplates';
-import Campaigns from '@/pages/admin/Campaigns';
-import UserSegments from '@/pages/admin/UserSegments';
-import Backups from '@/pages/admin/Backups';
-import DataCleanup from '@/pages/admin/DataCleanup';
-import ReleaseNotes from '@/pages/admin/ReleaseNotes';
-import SystemUpdates from '@/pages/admin/SystemUpdates';
-const AdminLogin = lazy(() => import('@/pages/admin/Login'));
-
-const Features = lazy(() => import('@/pages/Features'));
-const About = lazy(() => import('@/pages/About'));
-const Blog = lazy(() => import('@/pages/Blog'));
-const Contact = lazy(() => import('@/pages/Contact'));
-const ThankYou = lazy(() => import('@/pages/ThankYou'));
-const FAQ = lazy(() => import('@/pages/FAQ'));
-
-// Root wrapper component that provides all contexts
-const RootWrapper = ({ children }: { children: React.ReactNode }) => (
-  <AuthProvider>
-    <AdminProvider>
+export default function AppRoutes() {
+  return (
+    <AuthProvider>
       <SubscriptionProvider>
-        <StatementProvider>
-          {children}
-          <Toaster />
-        </StatementProvider>
+        <AdminProvider>
+          <StatementProvider>
+            <Routes>
+              {/* Public routes */}
+              <Route path="/" element={<Index />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/pricing" element={<Pricing />} />
+              <Route path="/features" element={<Features />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/contact" element={<Contact />} />
+              <Route path="/faq" element={<FAQ />} />
+              <Route path="/blog" element={<Blog />} />
+              <Route path="/thank-you" element={<ThankYou />} />
+              <Route path="/paystack-test" element={<PaystackTest />} />
+
+              {/* Protected routes */}
+              <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/dashboard/home" element={<ProtectedRoute><DashboardHome /></ProtectedRoute>} />
+              <Route path="/upload" element={<ProtectedRoute><Upload /></ProtectedRoute>} />
+              <Route path="/analyze" element={<ProtectedRoute><Analyze /></ProtectedRoute>} />
+              <Route path="/compare" element={<ProtectedRoute><Compare /></ProtectedRoute>} />
+              <Route path="/charts" element={<ProtectedRoute><Charts /></ProtectedRoute>} />
+              <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
+              <Route path="/billing" element={<ProtectedRoute><BillingPage /></ProtectedRoute>} />
+              <Route path="/expense-tracker" element={<ProtectedRoute><ExpenseTracker /></ProtectedRoute>} />
+              <Route path="/budgets" element={<ProtectedRoute><Budgets /></ProtectedRoute>} />
+              <Route path="/budgets/create" element={<ProtectedRoute><BudgetCreate /></ProtectedRoute>} />
+              <Route path="/budgets/dashboard" element={<ProtectedRoute><BudgetDashboard /></ProtectedRoute>} />
+              <Route path="/budgets/edit/:id" element={<ProtectedRoute><BudgetForm /></ProtectedRoute>} />
+              <Route path="/budgets/:id" element={<ProtectedRoute><BudgetDetails /></ProtectedRoute>} />
+              <Route path="/goals" element={<ProtectedRoute><Goals /></ProtectedRoute>} />
+              <Route path="/goals/create" element={<ProtectedRoute><GoalCreate /></ProtectedRoute>} />
+              <Route path="/goals/:id" element={<ProtectedRoute><GoalDetails /></ProtectedRoute>} />
+              <Route path="/financial-goals" element={<ProtectedRoute><FinancialGoals /></ProtectedRoute>} />
+              <Route path="/transactions" element={<ProtectedRoute><Transactions /></ProtectedRoute>} />
+              <Route path="/saved-analyses" element={<ProtectedRoute><SavedAnalyses /></ProtectedRoute>} />
+              <Route path="/advanced-analysis" element={<ProtectedRoute><AdvancedAnalysis /></ProtectedRoute>} />
+              <Route path="/advanced-analytics" element={<ProtectedRoute><AdvancedAnalytics /></ProtectedRoute>} />
+              <Route path="/advanced-financial-analysis" element={<ProtectedRoute><AdvancedFinancialAnalysis /></ProtectedRoute>} />
+              <Route path="/ai-financial-advisor" element={<ProtectedRoute><AIFinancialAdvisor /></ProtectedRoute>} />
+              <Route path="/category-charts" element={<ProtectedRoute><CategoryCharts /></ProtectedRoute>} />
+              <Route path="/category-totals-chart" element={<ProtectedRoute><CategoryTotalsChart /></ProtectedRoute>} />
+              <Route path="/recurring-expenses-chart" element={<ProtectedRoute><RecurringExpensesChart /></ProtectedRoute>} />
+              <Route path="/predictions" element={<ProtectedRoute><PredictionsTab /></ProtectedRoute>} />
+
+              {/* Admin routes */}
+              <Route path="/admin/login" element={<AdminLogin />} />
+              <Route path="/admin" element={<AdminProtectedRoute><AdminRoot /></AdminProtectedRoute>}>
+                <Route index element={<AdminDashboard />} />
+                <Route path="dashboard" element={<AdminDashboard />} />
+                <Route path="users" element={<AdminUsers />} />
+                <Route path="users/:id" element={<AdminUserDetails />} />
+                <Route path="subscriptions" element={<AdminSubscriptions />} />
+                <Route path="subscriptions/:id" element={<AdminSubscriptionDetails />} />
+                <Route path="analytics" element={<AdminAnalytics />} />
+                <Route path="settings" element={<AdminSettings />} />
+                <Route path="documents" element={<AdminDocuments />} />
+                <Route path="reports" element={<AdminReports />} />
+                <Route path="plans" element={<AdminPlans />} />
+                <Route path="notifications" element={<AdminNotifications />} />
+                <Route path="email-templates" element={<AdminEmailTemplates />} />
+                <Route path="campaigns" element={<AdminCampaigns />} />
+                <Route path="user-segments" element={<AdminUserSegments />} />
+                <Route path="backups" element={<AdminBackups />} />
+                <Route path="data-cleanup" element={<AdminDataCleanup />} />
+                <Route path="release-notes" element={<AdminReleaseNotes />} />
+                <Route path="system-updates" element={<AdminSystemUpdates />} />
+                <Route path="content" element={<AdminContent />} />
+              </Route>
+
+              {/* Catch all route */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+            <Toaster />
+          </StatementProvider>
+        </AdminProvider>
       </SubscriptionProvider>
-    </AdminProvider>
-  </AuthProvider>
-);
-
-const router = createBrowserRouter([
-  {
-    path: '/',
-    element: (
-      <RootWrapper>
-        <Layout />
-      </RootWrapper>
-    ),
-    children: [
-      {
-        index: true,
-        element: <Index />
-      },
-      {
-        path: 'features',
-        element: <Suspense fallback={null}><Features /></Suspense>
-      },
-      {
-        path: 'about',
-        element: <Suspense fallback={null}><About /></Suspense>
-      },
-      {
-        path: 'blog',
-        element: <Suspense fallback={null}><Blog /></Suspense>
-      },
-      {
-        path: 'contact',
-        element: <Suspense fallback={null}><Contact /></Suspense>
-      },
-      {
-        path: 'thankyou',
-        element: <Suspense fallback={null}><ThankYou /></Suspense>
-      },
-      {
-        path: 'faq',
-        element: <Suspense fallback={null}><FAQ /></Suspense>
-      },
-      {
-        path: 'auth',
-        element: <Auth />
-      },
-      {
-        path: 'pricing',
-        element: <Pricing />
-      },
-      {
-        path: 'billing',
-        element: <ProtectedRoute><BillingPage /></ProtectedRoute>
-      },
-      {
-        path: 'dashboard',
-        element: <ProtectedRoute><Outlet /></ProtectedRoute>,
-        children: [
-          {
-            index: true,
-            element: <Suspense fallback={<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>}><DashboardHome /></Suspense>
-          },
-          {
-            path: 'upload',
-            element: <Suspense fallback={<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>}><Upload /></Suspense>
-          },
-          {
-            path: 'analyze',
-            element: <Suspense fallback={<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>}><Analyze /></Suspense>
-          },
-          {
-            path: 'advanced-analysis',
-            element: <Suspense fallback={<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>}><AdvancedAnalysis /></Suspense>
-          },
-          {
-            path: 'advanced-financial-analysis',
-            element: <Suspense fallback={<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>}><AdvancedFinancialAnalysis /></Suspense>
-          },
-          {
-            path: 'saved',
-            element: <Suspense fallback={<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>}><SavedAnalyses /></Suspense>
-          },
-          {
-            path: 'charts',
-            element: <Suspense fallback={<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>}><Charts /></Suspense>
-          },
-          {
-            path: 'compare',
-            element: <Suspense fallback={<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>}><Compare /></Suspense>
-          },
-          {
-            path: 'advanced-analytics',
-            element: <Suspense fallback={<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>}><AdvancedAnalytics /></Suspense>
-          },
-          {
-            path: 'financial-goals',
-            element: <Suspense fallback={<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>}><FinancialGoals /></Suspense>
-          },
-          {
-            path: 'ai-advisor',
-            element: <Suspense fallback={<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>}><AIFinancialAdvisor /></Suspense>
-          },
-          {
-            path: 'transactions',
-            element: <Suspense fallback={<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>}><Transactions /></Suspense>
-          },
-          {
-            path: 'budgets',
-            element: <Suspense fallback={<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>}><BudgetDashboard /></Suspense>
-          },
-          {
-            path: 'budgets/:id',
-            element: <Suspense fallback={<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>}><BudgetForm /></Suspense>
-          }
-        ]
-      },
-      {
-        path: 'paystack-test',
-        element: <PaystackTest />
-      },
-      {
-        path: 'expense-tracker',
-        element: <ProtectedRoute><ExpenseTracker /></ProtectedRoute>
-      },
-      {
-        path: '*',
-        element: <NotFound />
-      }
-    ]
-  },
-
-  // Admin routes - separate router branch
-  {
-    path: '/admin',
-    element: (
-      <RootWrapper>
-        <AdminRoot />
-      </RootWrapper>
-    ),
-    children: [
-      {
-        path: 'login',
-        element: <AdminLogin />,
-      },
-      {
-        path: '',
-        element: (
-          <AdminProtectedRoute>
-            <AdminLayout />
-          </AdminProtectedRoute>
-        ),
-        children: [
-          {
-            index: true,
-            element: <AdminDashboard />,
-          },
-          {
-            path: 'users',
-            element: <AdminUsers />,
-          },
-          {
-            path: 'users/:userId',
-            element: <AdminUserDetails />,
-          },
-          {
-            path: 'subscriptions',
-            element: <AdminSubscriptions />,
-          },
-          {
-            path: 'subscriptions/:subscriptionId',
-            element: <AdminSubscriptionDetails />,
-          },
-          {
-            path: 'plans',
-            element: <AdminPlans />,
-          },
-          {
-            path: 'documents',
-            element: <AdminDocuments />,
-          },
-          {
-            path: 'analytics',
-            element: <Suspense fallback={<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>}><AdminAnalytics /></Suspense>,
-          },
-          {
-            path: 'reports',
-            element: <Suspense fallback={<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>}><AdminReports /></Suspense>,
-          },
-          {
-            path: 'settings',
-            element: <Suspense fallback={<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>}><AdminSettings /></Suspense>,
-          },
-          {
-            path: 'notifications',
-            element: <Suspense fallback={<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>}><AdminNotifications /></Suspense>,
-          },
-          {
-            path: 'email-templates',
-            element: <Suspense fallback={<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>}><EmailTemplates /></Suspense>,
-          },
-          {
-            path: 'campaigns',
-            element: <Suspense fallback={<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>}><Campaigns /></Suspense>,
-          },
-          {
-            path: 'user-segments',
-            element: <Suspense fallback={<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>}><UserSegments /></Suspense>,
-          },
-          {
-            path: 'backups',
-            element: <Suspense fallback={<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>}><Backups /></Suspense>,
-          },
-          {
-            path: 'data-cleanup',
-            element: <Suspense fallback={<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>}><DataCleanup /></Suspense>,
-          },
-          {
-            path: 'release-notes',
-            element: <Suspense fallback={<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>}><ReleaseNotes /></Suspense>,
-          },
-          {
-            path: 'system-updates',
-            element: <Suspense fallback={<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>}><SystemUpdates /></Suspense>,
-          }
-        ]
-      }
-    ]
-  }
-]);
-
-export default router;
+    </AuthProvider>
+  );
+}
