@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
@@ -40,7 +41,7 @@ interface NavItem {
 }
 
 const Navbar = () => {
-  const { user, logout } = useAuth();
+  const { user, signOut } = useAuth();
   const { subscription } = useSubscription();
   const { isAdmin } = useAdmin();
   const navigate = useNavigate();
@@ -48,7 +49,7 @@ const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   const handleLogout = async () => {
-    await logout();
+    await signOut();
     navigate('/auth');
   };
 
@@ -59,7 +60,7 @@ const Navbar = () => {
     { label: 'Charts', href: '/charts', icon: PieChart },
     { label: 'Compare', href: '/compare', icon: GitCompare },
     { label: 'Budgets', href: '/budgets', icon: Target },
-    { label: 'Budget Dashboard', href: '/budgets/dashboard', icon: BarChart },
+    { label: 'Budget Dashboard', href: '/dashboard/budgets', icon: BarChart },
     { label: 'Goals', href: '/goals', icon: Trophy },
     { label: 'Transactions', href: '/transactions', icon: CreditCard },
     { label: 'AI Advisor', href: '/ai-financial-advisor', icon: Brain },
