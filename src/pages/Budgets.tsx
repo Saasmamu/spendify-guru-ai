@@ -1,35 +1,44 @@
 
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
+import { budgetService, BudgetWithCategories } from '@/services/budgetService';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
-import { Plus, Wallet, AlertTriangle, CheckCircle, BarChart } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { 
+  TrendingUp, 
+  TrendingDown, 
+  AlertTriangle, 
+  DollarSign, 
+  PieChart, 
+  BarChart3,
+  Target,
+  Calendar,
+  Plus,
+  CheckCircle,
+  Wallet
+} from 'lucide-react';
+import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { formatCurrency } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import Navbar from '@/components/Navbar';
+import BudgetInsights from '@/components/BudgetInsights';
+import BudgetSpendingChart from '@/components/BudgetSpendingChart';
 
-interface Budget {
-  id: string;
-  name: string;
-  amount: number;
-  period: string;
-  start_date: string;
-  end_date: string | null;
-  created_at: string;
-  budget_categories: {
-    id: string;
-    category: string;
-    allocated_amount: number;
-  }[];
-}
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D', '#FFC658', '#FF7300'];
 
 const Budgets = () => {
-  const [budgets, setBudgets] = useState<Budget[]>([]);
-  const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
+  
+  const [budgets, setBudgets] = useState<BudgetWithCategories[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedBudget, setSelectedBudget] = useState<string>('all');
+  const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
     if (user) {
@@ -39,26 +48,15 @@ const Budgets = () => {
 
   const fetchBudgets = async () => {
     try {
-      const { data, error } = await supabase
-        .from('budgets')
-        .select(`
-          *,
-          budget_categories (
-            id,
-            category,
-            allocated_amount
-          )
-        `)
-        .eq('user_id', user?.id)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setBudgets(data || []);
+      setLoading(true);
+      const data = await budgetService.getBudgets(user!.id);
+      setBudgets(data);
+      console.log('Budgets loaded:', data);
     } catch (error) {
       console.error('Error fetching budgets:', error);
       toast({
         title: 'Error',
-        description: 'Failed to load budgets',
+        description: 'Failed to load budget data',
         variant: 'destructive',
       });
     } finally {
@@ -66,26 +64,15 @@ const Budgets = () => {
     }
   };
 
-  const getBudgetProgress = (budget: Budget) => {
-    // This would calculate actual spending vs budget
-    // For now, returning mock data
-    const totalAllocated = budget.budget_categories.reduce((sum, cat) => sum + cat.allocated_amount, 0);
-    const spent = Math.random() * totalAllocated; // Mock spent amount
-    const progress = (spent / totalAllocated) * 100;
+  const calculateOverallMetrics = () => {
+    const totalBudgeted = budgets.reduce((sum, budget) => sum + budget.amount, 0);
+    const totalSpent = budgets.reduce((sum, budget) => 
+      sum + budget.categories.reduce((catSum, cat) => catSum + cat.spent_amount, 0), 0
+    );
+    const totalRemaining = totalBudgeted - totalSpent;
+    const overallPercentage = totalBudgeted > 0 ? (totalSpent / totalBudgeted) * 100 : 0;
     
-    return {
-      spent,
-      remaining: totalAllocated - spent,
-      progress: Math.min(progress, 100),
-      isOverBudget: spent > totalAllocated
-    };
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
+    return { totalBudgeted, totalSpent, totalRemaining, overallPercentage };
   };
 
   if (loading) {
@@ -94,103 +81,209 @@ const Budgets = () => {
         <Navbar />
         <div className="container mx-auto pt-24 px-4">
           <div className="flex items-center justify-center h-64">
-            <div className="text-lg">Loading budgets...</div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
           </div>
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen">
-      <Navbar />
-      <div className="container mx-auto pt-24 px-4">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">Budget Tracking</h1>
-            <p className="text-muted-foreground">
-              Manage your budgets and track spending across categories
+  if (budgets.length === 0) {
+    return (
+      <div className="min-h-screen">
+        <Navbar />
+        <div className="container mx-auto pt-24 px-4">
+          <div className="text-center py-12">
+            <PieChart className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+            <h2 className="text-2xl font-semibold mb-2">No Budgets Found</h2>
+            <p className="text-muted-foreground mb-6">
+              Create your first budget to start tracking your spending and get insights.
             </p>
+            <Button onClick={() => navigate('/budgets/create')}>
+              <Plus className="w-4 h-4 mr-2" />
+              Create Budget
+            </Button>
           </div>
-          <div className="flex gap-3">
-            <Link to="/budgets/dashboard">
-              <Button variant="outline" size="lg">
-                <BarChart className="w-5 h-5 mr-2" />
-                Dashboard
+        </div>
+      </div>
+    );
+  }
+
+  const metrics = calculateOverallMetrics();
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Navbar />
+      <div className="container mx-auto pt-24 px-4 pb-8">
+        <div className="mb-8">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h1 className="text-3xl font-bold mb-2">Budget Management</h1>
+              <p className="text-muted-foreground">
+                Track your spending, analyze trends, and get AI-powered insights
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={() => navigate('/budgets/create')}>
+                <Plus className="w-4 h-4 mr-2" />
+                New Budget
               </Button>
-            </Link>
-            <Link to="/budgets/create">
-              <Button size="lg">
-                <Plus className="w-5 h-5 mr-2" />
-                Create Budget
-              </Button>
-            </Link>
+            </div>
           </div>
         </div>
 
-        {budgets.length === 0 ? (
-          <Card className="text-center py-12">
-            <CardContent>
-              <Wallet className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-lg font-semibold mb-2">No budgets yet</h3>
-              <p className="text-muted-foreground mb-6">
-                Create your first budget to start tracking your spending
-              </p>
-              <Link to="/budgets/create">
-                <Button>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create Your First Budget
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {budgets.map((budget) => {
-              const progress = getBudgetProgress(budget);
-              
-              return (
-                <Link key={budget.id} to={`/budgets/${budget.id}`}>
-                  <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-lg">{budget.name}</CardTitle>
-                        {progress.isOverBudget ? (
-                          <AlertTriangle className="w-5 h-5 text-destructive" />
-                        ) : (
-                          <CheckCircle className="w-5 h-5 text-green-500" />
-                        )}
-                      </div>
-                      <CardDescription>
-                        {budget.period} • {budget.budget_categories.length} categories
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        <div>
-                          <div className="flex justify-between text-sm mb-2">
-                            <span>Spent</span>
-                            <span className={progress.isOverBudget ? 'text-destructive' : ''}>
-                              {formatCurrency(progress.spent)}
-                            </span>
-                          </div>
-                          <Progress 
-                            value={progress.progress} 
-                            className={`h-2 ${progress.isOverBudget ? 'bg-destructive/20' : ''}`}
-                          />
-                          <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                            <span>Remaining: {formatCurrency(progress.remaining)}</span>
-                            <span>Total: {formatCurrency(budget.amount)}</span>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            <TabsTrigger value="budgets">Budgets</TabsTrigger>
+            <TabsTrigger value="insights">AI Insights</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className="space-y-6">
+            {/* Overview Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Budgeted</CardTitle>
+                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{formatCurrency(metrics.totalBudgeted)}</div>
+                  <p className="text-xs text-muted-foreground">
+                    Across {budgets.length} budget{budgets.length !== 1 ? 's' : ''}
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Spent</CardTitle>
+                  <TrendingDown className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{formatCurrency(metrics.totalSpent)}</div>
+                  <p className="text-xs text-muted-foreground">
+                    {metrics.overallPercentage.toFixed(1)}% of total budget
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Remaining</CardTitle>
+                  <Target className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className={`text-2xl font-bold ${metrics.totalRemaining < 0 ? 'text-red-500' : 'text-green-500'}`}>
+                    {formatCurrency(metrics.totalRemaining)}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {metrics.totalRemaining < 0 ? 'Over budget' : 'Within budget'}
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Active Budgets</CardTitle>
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{budgets.length}</div>
+                  <p className="text-xs text-muted-foreground">
+                    Currently tracking
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Progress Overview */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Overall Budget Progress</CardTitle>
+                <CardDescription>
+                  Your spending progress across all budgets
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex justify-between text-sm">
+                    <span>Total Progress</span>
+                    <span>{metrics.overallPercentage.toFixed(1)}%</span>
+                  </div>
+                  <Progress value={Math.min(metrics.overallPercentage, 100)} className="h-3" />
+                  <div className="flex justify-between text-sm text-muted-foreground">
+                    <span>Spent: {formatCurrency(metrics.totalSpent)}</span>
+                    <span>Budget: {formatCurrency(metrics.totalBudgeted)}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="analytics" className="space-y-6">
+            <BudgetSpendingChart 
+              budgets={budgets}
+              selectedBudget={selectedBudget}
+              onBudgetChange={setSelectedBudget}
+            />
+          </TabsContent>
+
+          <TabsContent value="budgets" className="space-y-6">
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {budgets.map((budget) => {
+                const totalSpent = budget.categories.reduce((sum, cat) => sum + cat.spent_amount, 0);
+                const percentage = (totalSpent / budget.amount) * 100;
+                const remaining = budget.amount - totalSpent;
+                
+                return (
+                  <Link key={budget.id} to={`/budgets/${budget.id}`}>
+                    <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-lg">{budget.name}</CardTitle>
+                          {percentage > 90 ? (
+                            <AlertTriangle className="w-5 h-5 text-destructive" />
+                          ) : (
+                            <CheckCircle className="w-5 h-5 text-green-500" />
+                          )}
+                        </div>
+                        <CardDescription>
+                          {budget.period} • {budget.categories.length} categories
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          <div>
+                            <div className="flex justify-between text-sm mb-2">
+                              <span>Spent</span>
+                              <span className={percentage > 90 ? 'text-destructive' : ''}>
+                                {formatCurrency(totalSpent)}
+                              </span>
+                            </div>
+                            <Progress 
+                              value={Math.min(percentage, 100)} 
+                              className={`h-2 ${percentage > 90 ? 'bg-destructive/20' : ''}`}
+                            />
+                            <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                              <span>Remaining: {formatCurrency(remaining)}</span>
+                              <span>Total: {formatCurrency(budget.amount)}</span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              );
-            })}
-          </div>
-        )}
+                      </CardContent>
+                    </Card>
+                  </Link>
+                );
+              })}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="insights" className="space-y-6">
+            <BudgetInsights budgets={budgets} />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
