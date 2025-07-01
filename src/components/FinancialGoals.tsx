@@ -72,10 +72,10 @@ const FinancialGoals: React.FC = () => {
         target_amount: parseFloat(formData.targetAmount),
         current_amount: parseFloat(formData.currentAmount) || 0,
         deadline: formData.deadline,
-        type: formData.type,
+        type: formData.type as 'savings' | 'budget' | 'emergency' | 'retirement',
         category_id: formData.category_id,
         notes: formData.notes,
-        status: 'in_progress',
+        status: 'in_progress' as const,
         progress_percentage: 0
       };
 
@@ -173,9 +173,9 @@ const FinancialGoals: React.FC = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="savings">Savings</SelectItem>
-                    <SelectItem value="investment">Investment</SelectItem>
-                    <SelectItem value="debt">Debt Repayment</SelectItem>
-                    <SelectItem value="purchase">Major Purchase</SelectItem>
+                    <SelectItem value="budget">Budget</SelectItem>
+                    <SelectItem value="emergency">Emergency</SelectItem>
+                    <SelectItem value="retirement">Retirement</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -232,9 +232,9 @@ const FinancialGoals: React.FC = () => {
                     <h4 className="font-medium">{suggestion.name}</h4>
                     <span className="text-sm text-gray-500">{suggestion.type}</span>
                   </div>
-                  <Progress value={(suggestion.current_amount / suggestion.target_amount) * 100} className="mb-2" />
+                  <Progress value={(0 / suggestion.suggested_amount) * 100} className="mb-2" />
                   <p className="text-sm text-gray-600">
-                    Target: ${suggestion.target_amount.toLocaleString()}
+                    Target: ${suggestion.suggested_amount.toLocaleString()}
                   </p>
                 </div>
               ))}

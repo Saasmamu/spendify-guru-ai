@@ -10,6 +10,8 @@ export interface GoalSuggestion {
   category_id: string;
   type: string;
   tips: string[];
+  current_amount: number;
+  target_amount: number;
 }
 
 export interface GoalProgress {
@@ -212,6 +214,8 @@ export const financialGoalsService = {
           name: 'Emergency Fund',
           description: `Build ${Math.round(monthlyExpenses * 6)} as a 6-month emergency fund`,
           suggested_amount: Math.round(monthlyExpenses * 6),
+          target_amount: Math.round(monthlyExpenses * 6),
+          current_amount: 0,
           suggested_deadline: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(), // 1 year
           category_id: '1',
           type: 'emergency',
@@ -226,6 +230,8 @@ export const financialGoalsService = {
           name: 'Retirement Fund',
           description: 'Start building your retirement nest egg',
           suggested_amount: Math.round(monthlyIncome * 12 * 1), // 1 year of income
+          target_amount: Math.round(monthlyIncome * 12 * 1),
+          current_amount: 0,
           suggested_deadline: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
           category_id: '2',
           type: 'retirement',
@@ -244,6 +250,8 @@ export const financialGoalsService = {
           name: 'Debt Reduction',
           description: 'Reduce your monthly expenses by paying off high-interest debt',
           suggested_amount: Math.round(monthlyExpenses * 3),
+          target_amount: Math.round(monthlyExpenses * 3),
+          current_amount: 0,
           suggested_deadline: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString(), // 6 months
           category_id: '3',
           type: 'debt',
@@ -262,6 +270,8 @@ export const financialGoalsService = {
           name: 'Investment Portfolio',
           description: 'Build a diversified investment portfolio',
           suggested_amount: Math.round(monthlySavings * 12), // 1 year of savings
+          target_amount: Math.round(monthlySavings * 12),
+          current_amount: 0,
           suggested_deadline: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
           category_id: '4',
           type: 'investment',

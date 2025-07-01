@@ -25,7 +25,7 @@ export const useGemini = () => {
   const [error, setError] = useState<string | null>(null);
   
   // Get Gemini API configuration from admin settings
-  const geminiIntegration = apiIntegrations.find(api => api.key === 'gemini');
+  const geminiIntegration = apiIntegrations.find(api => (api as any).key === 'gemini');
   
   // Default options for Gemini API calls
   const defaultOptions: GeminiOptions = {

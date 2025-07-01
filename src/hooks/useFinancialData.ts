@@ -174,25 +174,25 @@ export const useFinancialData = () => {
         const analysis = await getAnalysisById(selectedDocumentId);
         if (analysis) {
           setTransactions({
-            data: analysis.transactions,
+            data: analysis.transactions as any,
             total: analysis.transactions.length,
-            categorized: analysis.transactions.filter(t => t.category_id !== null).length,
+            categorized: analysis.transactions.filter((t: any) => t.category !== null).length,
           });
-          setCategories(analysis.categories || []);
+          setCategories(analysis.categories as any || []);
           setPatterns({
-            data: analysis.patterns || [],
-            count: analysis.patterns ? analysis.patterns.length : 0,
-            recurring: analysis.patterns ? analysis.patterns.filter(p => p.type === 'recurring').length : 0,
+            data: (analysis as any).patterns || [],
+            count: (analysis as any).patterns ? (analysis as any).patterns.length : 0,
+            recurring: (analysis as any).patterns ? (analysis as any).patterns.filter((p: any) => p.type === 'recurring').length : 0,
           });
           setAnomalies({
-            data: analysis.anomalies || [],
-            count: analysis.anomalies ? analysis.anomalies.length : 0,
-            highSeverity: analysis.anomalies ? analysis.anomalies.filter(a => a.severity === 'high').length : 0,
+            data: (analysis as any).anomalies || [],
+            count: (analysis as any).anomalies ? (analysis as any).anomalies.length : 0,
+            highSeverity: (analysis as any).anomalies ? (analysis as any).anomalies.filter((a: any) => a.severity === 'high').length : 0,
           });
           setPredictions({
-            data: analysis.predictions || [],
-            spendingTrend: analysis.predictions ? 'stable' : 'stable',
-            budgetStatus: analysis.predictions ? 'on_track' : 'on_track',
+            data: (analysis as any).predictions || [],
+            spendingTrend: (analysis as any).predictions ? 'stable' : 'stable',
+            budgetStatus: (analysis as any).predictions ? 'on_track' : 'on_track',
           });
         }
       } catch (err) {

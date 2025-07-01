@@ -33,7 +33,7 @@ interface ChartItem {
 const COMPARISON_COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#00C49F', '#FFBB28', '#FF8042'];
 
 const Charts = () => {
-  const [analyses, setAnalyses] = useState<AnalysisData[]>([]);
+  const [analyses, setAnalyses] = useState<RawAnalysisData[]>([]);
   const [rawTransactions, setRawTransactions] = useState<any[]>([]);
   // Add state to store the raw analyses data
   const [rawAnalysesData, setRawAnalysesData] = useState<RawAnalysisData[]>([]);
