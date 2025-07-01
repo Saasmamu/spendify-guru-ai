@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Plus, Wallet, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Plus, Wallet, AlertTriangle, CheckCircle, BarChart } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Navbar from '@/components/Navbar';
 
@@ -112,12 +112,20 @@ const Budgets = () => {
               Manage your budgets and track spending across categories
             </p>
           </div>
-          <Link to="/dashboard/budgets/create">
-            <Button size="lg">
-              <Plus className="w-5 h-5 mr-2" />
-              Create Budget
-            </Button>
-          </Link>
+          <div className="flex gap-3">
+            <Link to="/budgets/dashboard">
+              <Button variant="outline" size="lg">
+                <BarChart className="w-5 h-5 mr-2" />
+                Dashboard
+              </Button>
+            </Link>
+            <Link to="/budgets/create">
+              <Button size="lg">
+                <Plus className="w-5 h-5 mr-2" />
+                Create Budget
+              </Button>
+            </Link>
+          </div>
         </div>
 
         {budgets.length === 0 ? (
@@ -128,7 +136,7 @@ const Budgets = () => {
               <p className="text-muted-foreground mb-6">
                 Create your first budget to start tracking your spending
               </p>
-              <Link to="/dashboard/budgets/create">
+              <Link to="/budgets/create">
                 <Button>
                   <Plus className="w-4 h-4 mr-2" />
                   Create Your First Budget
@@ -142,7 +150,7 @@ const Budgets = () => {
               const progress = getBudgetProgress(budget);
               
               return (
-                <Link key={budget.id} to={`/dashboard/budgets/${budget.id}`}>
+                <Link key={budget.id} to={`/budgets/${budget.id}`}>
                   <Card className="hover:shadow-lg transition-shadow cursor-pointer">
                     <CardHeader>
                       <div className="flex items-center justify-between">

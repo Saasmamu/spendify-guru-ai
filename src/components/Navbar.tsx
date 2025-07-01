@@ -59,7 +59,7 @@ const Navbar = () => {
     { label: 'Charts', href: '/charts', icon: PieChart },
     { label: 'Compare', href: '/compare', icon: GitCompare },
     { label: 'Budgets', href: '/budgets', icon: Target },
-    { label: 'Budget Dashboard', href: '/budgets/dashboard', icon: BarChart3 },
+    { label: 'Budget Dashboard', href: '/budgets/dashboard', icon: BarChart },
     { label: 'Goals', href: '/goals', icon: Trophy },
     { label: 'Transactions', href: '/transactions', icon: CreditCard },
     { label: 'AI Advisor', href: '/ai-financial-advisor', icon: Brain },
