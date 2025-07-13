@@ -1,432 +1,261 @@
-import React, { useState, useCallback, useRef } from 'react';
+
+import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { 
   Upload, 
   FileText, 
-  AlertCircle, 
-  CheckCircle, 
-  Loader2, 
+  BarChart3, 
+  PieChart, 
   TrendingUp, 
-  TrendingDown,
-  DollarSign,
-  Calendar,
-  Pie,
-  BarChart3,
-  Download,
-  Eye,
-  Trash2,
-  Zap,
-  Brain,
-  Target,
-  Shield
+  AlertTriangle,
+  CheckCircle,
+  Clock,
+  Zap
 } from 'lucide-react';
+import { BankStatementUpload } from '@/components/BankStatementUpload';
+import { SavedAnalyses } from '@/components/SavedAnalyses';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
-import { BankTransaction, ProcessedStatement } from '@/types';
-import { useSubscription } from '@/contexts/SubscriptionContext';
+import { SavedAnalysis } from '@/types';
 
-interface AnalysisResult {
-  totalIncome: number;
-  totalExpense: number;
-  netBalance: number;
-  incomeVsExpense: number;
-  topCategories: { category: string; amount: number }[];
-  insights: string[];
-}
-
-const Analyze = () => {
-  const { user } = useAuth();
+export default function Analyze() {
   const { toast } = useToast();
-  const { activePlan, isTrialActive } = useSubscription();
-
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysisProgress, setAnalysisProgress] = useState(0);
-  const [analysisResult, setAnalysisResult] = useState<ProcessedStatement | null>(null);
   const [activeTab, setActiveTab] = useState('upload');
-  const [demoMode, setDemoMode] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [currentAnalysis, setCurrentAnalysis] = useState<SavedAnalysis | null>(null);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      setSelectedFile(file);
-    }
-  };
-
-  const handleDrop = useCallback((event: React.DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    const file = event.dataTransfer.files?.[0];
-    if (file) {
-      setSelectedFile(file);
-    }
-  }, []);
-
-  const handleDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-  }, []);
-
-  const handleDemoMode = () => {
-    setDemoMode(true);
+  const handleAnalysisComplete = useCallback((analysis: any) => {
+    setCurrentAnalysis(analysis);
+    setIsAnalyzing(false);
+    
+    toast({
+      title: "Analysis Complete!",
+      description: "Your bank statement has been successfully analyzed.",
+    });
+    
+    // Switch to results tab
     setActiveTab('results');
-  };
+  }, [toast]);
 
-  const mockTransactions: BankTransaction[] = [
-    {
-      id: "1",
-      date: "2024-01-15",
-      description: "GROCERY STORE PURCHASE",
-      amount: -85.32,
-      type: "debit",
-      category: "Groceries"
-    },
-    {
-      id: "2", 
-      date: "2024-01-14",
-      description: "SALARY DEPOSIT",
-      amount: 3200.00,
-      type: "credit",
-      category: "Income"
-    },
-    {
-      id: "3",
-      date: "2024-01-13", 
-      description: "UTILITY BILL PAYMENT",
-      amount: -120.50,
-      type: "debit",
-      category: "Utilities"
-    },
-    {
-      id: "4",
-      date: "2024-01-12",
-      description: "RESTAURANT CHARGE",
-      amount: -45.75,
-      type: "debit", 
-      category: "Dining"
-    },
-    {
-      id: "5",
-      date: "2024-01-11",
-      description: "GAS STATION PURCHASE",
-      amount: -52.20,
-      type: "debit",
-      category: "Transportation"
-    }
-  ];
+  const handleLoadAnalysis = useCallback((analysis: SavedAnalysis) => {
+    setCurrentAnalysis(analysis);
+    setActiveTab('results');
+    
+    toast({
+      title: "Analysis Loaded",
+      description: `Loaded analysis: ${analysis.name}`,
+    });
+  }, [toast]);
 
-  const handleAnalyze = async () => {
-    if (!selectedFile && !demoMode) {
-      toast({
-        title: "No file selected",
-        description: "Please select a bank statement file to analyze.",
-        variant: "destructive",
-      });
-      return;
-    }
-
+  const handleStartAnalysis = useCallback(() => {
     setIsAnalyzing(true);
-    setAnalysisProgress(0);
-
-    try {
-      // Simulate analysis progress
-      const progressInterval = setInterval(() => {
-        setAnalysisProgress(prev => {
-          if (prev >= 90) {
-            clearInterval(progressInterval);
-            return 90;
-          }
-          return prev + Math.random() * 15;
-        });
-      }, 500);
-
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      clearInterval(progressInterval);
-      setAnalysisProgress(100);
-
-      // Process the statement (mock data for demo)
-      const processedData: ProcessedStatement = {
-        transactions: mockTransactions,
-        totalIncome: 3200.00,
-        totalExpense: 303.77,
-        balance: 2896.23,
-        categories: [
-          { category: "Income", amount: 3200.00, count: 1 },
-          { category: "Groceries", amount: 85.32, count: 1 },
-          { category: "Utilities", amount: 120.50, count: 1 },
-          { category: "Dining", amount: 45.75, count: 1 },
-          { category: "Transportation", amount: 52.20, count: 1 }
-        ],
-        insights: [
-          "Your monthly income covers expenses with a healthy 90% surplus",
-          "Largest expense category is Utilities at $120.50",
-          "Consider setting up automatic savings with your surplus"
-        ]
-      };
-
-      setAnalysisResult(processedData);
-      setActiveTab('results');
-      
-      toast({
-        title: "Analysis Complete!",
-        description: "Your bank statement has been successfully analyzed.",
-      });
-
-    } catch (error) {
-      console.error('Analysis error:', error);
-      toast({
-        title: "Analysis Failed",
-        description: "There was an error analyzing your statement. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsAnalyzing(false);
-      setAnalysisProgress(0);
-    }
-  };
-
-  const handleSaveAnalysis = async () => {
-    if (!analysisResult) {
-      toast({
-        title: "No analysis to save",
-        description: "Please analyze a statement before saving.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      const { saveAnalysis } = await import('@/services/storageService');
-      await saveAnalysis(`Analysis ${new Date().toLocaleDateString()}`, analysisResult);
-      toast({
-        title: "Analysis Saved!",
-        description: "Your analysis has been successfully saved.",
-      });
-    } catch (error) {
-      console.error('Save analysis error:', error);
-      toast({
-        title: "Save Failed",
-        description: "There was an error saving your analysis. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
+  }, []);
 
   return (
     <div className="container mx-auto py-6 space-y-6">
-      <div className="flex flex-col md:flex-row items-center justify-between space-y-2 md:space-y-0 md:space-x-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Statement Analyzer</h1>
-          <p className="text-muted-foreground">
-            Upload your bank statement to get detailed insights into your finances
-          </p>
-        </div>
-        <div className="flex items-center space-x-2">
-          <Button variant="secondary" onClick={handleDemoMode}>
-            <Zap className="mr-2 h-4 w-4" />
-            Demo Mode
-          </Button>
-          <Button onClick={() => fileInputRef.current?.click()}>
-            <Upload className="mr-2 h-4 w-4" />
-            Select File
-          </Button>
-          <Input
-            type="file"
-            ref={fileInputRef}
-            className="hidden"
-            onChange={handleFileSelect}
-          />
-        </div>
+      <div className="text-center space-y-2">
+        <h1 className="text-3xl font-bold tracking-tight">Financial Analysis</h1>
+        <p className="text-muted-foreground">
+          Upload your bank statements and get AI-powered insights into your financial patterns
+        </p>
       </div>
-      
+
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid grid-cols-2">
-          <TabsTrigger value="upload">
-            <FileText className="mr-2 h-4 w-4" />
-            Upload Statement
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="upload" className="flex items-center gap-2">
+            <Upload className="h-4 w-4" />
+            Upload & Analyze
           </TabsTrigger>
-          <TabsTrigger value="results" disabled={!analysisResult && !demoMode}>
-            <BarChart3 className="mr-2 h-4 w-4" />
-            Analysis Results
+          <TabsTrigger value="saved" className="flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            Saved Analyses
+          </TabsTrigger>
+          <TabsTrigger value="results" className="flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            Results
           </TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="upload" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Upload Your Bank Statement</CardTitle>
-              <CardDescription>
-                We support PDF, CSV, and TXT formats.
-              </CardDescription>
-            </CardHeader>
-            <CardContent
-              className="flex flex-col items-center justify-center p-8 border-dashed border-2 rounded-lg cursor-pointer"
-              onDrop={handleDrop}
-              onDragOver={handleDragOver}
-              onClick={() => fileInputRef.current?.click()}
-            >
-              {selectedFile ? (
-                <>
-                  <CheckCircle className="h-10 w-10 text-green-500 mb-4" />
-                  <p className="text-lg font-semibold">
-                    {selectedFile.name}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Ready to analyze
-                  </p>
-                </>
-              ) : (
-                <>
-                  <Upload className="h-10 w-10 text-muted-foreground mb-4" />
-                  <p className="text-lg font-semibold">
-                    Drag and drop your file here
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Or click to select a file
-                  </p>
-                </>
-              )}
-            </CardContent>
-          </Card>
-
-          {selectedFile && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
             <Card>
-              <CardContent className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">
-                  Selected file: {selectedFile.name}
-                </p>
-                <Button onClick={handleAnalyze} disabled={isAnalyzing}>
-                  {isAnalyzing ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Analyzing...
-                    </>
-                  ) : (
-                    <>
-                      <Brain className="mr-2 h-4 w-4" />
-                      Analyze Statement
-                    </>
-                  )}
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-
-          {isAnalyzing && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Analysis Progress</CardTitle>
-                <CardDescription>
-                  Analyzing your bank statement to extract key insights
-                </CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Step 1</CardTitle>
+                <Upload className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  <div className="flex justify-between text-sm">
-                    <span>Progress</span>
-                    <span>{analysisProgress.toFixed(0)}%</span>
-                  </div>
-                  <Progress value={analysisProgress} />
-                </div>
+                <div className="text-2xl font-bold">Upload</div>
+                <p className="text-xs text-muted-foreground">
+                  Upload your bank statement PDF or CSV file
+                </p>
               </CardContent>
             </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Step 2</CardTitle>
+                <Zap className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">Process</div>
+                <p className="text-xs text-muted-foreground">
+                  AI analyzes your transactions and spending patterns
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Step 3</CardTitle>
+                <BarChart3 className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">Insights</div>
+                <p className="text-xs text-muted-foreground">
+                  Get detailed insights and recommendations
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {isAnalyzing && (
+            <Alert>
+              <Clock className="h-4 w-4" />
+              <AlertDescription>
+                Your bank statement is being analyzed. This may take a few moments...
+              </AlertDescription>
+            </Alert>
           )}
+
+          <BankStatementUpload 
+            onAnalysisComplete={handleAnalysisComplete}
+            onAnalysisStart={handleStartAnalysis}
+          />
         </TabsContent>
-        
+
+        <TabsContent value="saved" className="space-y-6">
+          <SavedAnalyses onLoadAnalysis={handleLoadAnalysis} />
+        </TabsContent>
+
         <TabsContent value="results" className="space-y-6">
-          {analysisResult && (
-            <>
-              {/* Overview Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          {currentAnalysis ? (
+            <div className="grid gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <CheckCircle className="h-5 w-5 text-green-500" />
+                    Analysis Results: {currentAnalysis.name}
+                  </CardTitle>
+                  <CardDescription>
+                    Analysis completed on {new Date(currentAnalysis.date).toLocaleDateString()}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <div className="text-sm text-muted-foreground">Total Income</div>
+                      <div className="text-2xl font-bold text-green-500">
+                        ${currentAnalysis.totalIncome.toLocaleString()}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="text-sm text-muted-foreground">Total Expenses</div>
+                      <div className="text-2xl font-bold text-red-500">
+                        ${currentAnalysis.totalExpense.toLocaleString()}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="text-sm text-muted-foreground">Net Balance</div>
+                      <div className={`text-2xl font-bold ${(currentAnalysis.totalIncome - currentAnalysis.totalExpense) >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                        ${(currentAnalysis.totalIncome - currentAnalysis.totalExpense).toLocaleString()}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Total Income</CardTitle>
-                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <PieChart className="h-5 w-5" />
+                      Category Breakdown
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold text-green-600">
-                      ${analysisResult.totalIncome.toFixed(2)}
+                    <div className="space-y-4">
+                      {currentAnalysis.categories?.slice(0, 5).map((category, index) => (
+                        <div key={index} className="flex justify-between items-center">
+                          <span className="text-sm">{category.category}</span>
+                          <span className="font-medium">${Math.abs(category.amount).toLocaleString()}</span>
+                        </div>
+                      ))}
                     </div>
                   </CardContent>
                 </Card>
 
                 <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
-                    <TrendingDown className="h-4 w-4 text-muted-foreground" />
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <TrendingUp className="h-5 w-5" />
+                      Transaction Summary
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold text-red-600">
-                      ${analysisResult.totalExpense.toFixed(2)}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Net Balance</CardTitle>
-                    <DollarSign className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className={`text-2xl font-bold ${analysisResult.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      ${analysisResult.balance.toFixed(2)}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Transactions</CardTitle>
-                    <FileText className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">
-                      {analysisResult.transactions.length}
+                    <div className="space-y-4">
+                      <div className="flex justify-between">
+                        <span>Total Transactions</span>
+                        <span className="font-medium">{currentAnalysis.transactions.length}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Categories</span>
+                        <span className="font-medium">{currentAnalysis.categories?.length || 0}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Patterns Found</span>
+                        <span className="font-medium">{currentAnalysis.patterns?.length || 0}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Anomalies</span>
+                        <span className="font-medium">{currentAnalysis.anomalies?.length || 0}</span>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
               </div>
 
-              {/* Transactions Table */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Transaction Details</CardTitle>
-                  <CardDescription>
-                    All transactions found in your statement
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {analysisResult.transactions.map((transaction) => (
-                      <div key={transaction.id} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div className="flex-1">
-                          <div className="font-medium">{transaction.description}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {transaction.date} • {transaction.category}
-                          </div>
-                        </div>
-                        <div className={`font-bold ${transaction.amount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          ${Math.abs(transaction.amount).toFixed(2)}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </>
+              <div className="flex gap-4">
+                <Button onClick={() => window.location.href = '/charts'}>
+                  <BarChart3 className="h-4 w-4 mr-2" />
+                  View Charts
+                </Button>
+                <Button variant="outline" onClick={() => window.location.href = '/dashboard/advanced-analytics'}>
+                  <TrendingUp className="h-4 w-4 mr-2" />
+                  Advanced Analysis
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <AlertTriangle className="h-12 w-12 text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No Analysis Selected</h3>
+                <p className="text-muted-foreground text-center mb-4">
+                  Upload a new bank statement or select a saved analysis to view results.
+                </p>
+                <div className="flex gap-2">
+                  <Button onClick={() => setActiveTab('upload')}>
+                    Upload New Statement
+                  </Button>
+                  <Button variant="outline" onClick={() => setActiveTab('saved')}>
+                    View Saved Analyses
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           )}
         </TabsContent>
       </Tabs>
     </div>
   );
-};
-
-export default Analyze;
+}
