@@ -1,863 +1,432 @@
-import React, { useState, useEffect } from 'react';
-import { cn } from '@/lib/utils';
+import React, { useState, useCallback, useRef } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import StatCard from '@/components/StatCard';
-import { PieChart as PieChartIcon, ArrowDown, ArrowUp, DollarSign, ShoppingBag, Home, Car, Coffee, Tag, SparkleIcon, Save, TrendingUp, CheckCircle, AlertTriangle } from 'lucide-react';
-import { useStatement } from '@/contexts/StatementContext';
-import ApiKeyInput from '@/components/ApiKeyInput';
-import { generateInsights, hasGeminiApiKey } from '@/services/insightService';
-import { useToast } from '@/components/ui/use-toast';
-import { BankTransaction } from '@/services/pdfService';
-import { useNavigate } from 'react-router-dom';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { AiChat } from '@/components/AiChat';
-import { SaveAnalysisDialog } from '@/components/SaveAnalysisDialog';
-import { SavedAnalyses } from '@/components/SavedAnalyses';
-import Navbar from '@/components/Navbar';
-import { MerchantAnalytics } from '@/components/MerchantAnalytics';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { 
+  Upload, 
+  FileText, 
+  AlertCircle, 
+  CheckCircle, 
+  Loader2, 
+  TrendingUp, 
+  TrendingDown,
+  DollarSign,
+  Calendar,
+  Pie,
+  BarChart3,
+  Download,
+  Eye,
+  Trash2,
+  Zap,
+  Brain,
+  Target,
+  Shield
+} from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { BankTransaction, ProcessedStatement } from '@/types';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 
-const processCategoriesFromTransactions = (transactions: BankTransaction[]) => {
-  const categoryMap = new Map();
-  const totalAmount = transactions.reduce((sum, t) => sum + Math.abs(t.amount), 0);
+interface AnalysisResult {
+  totalIncome: number;
+  totalExpense: number;
+  netBalance: number;
+  incomeVsExpense: number;
+  topCategories: { category: string; amount: number }[];
+  insights: string[];
+}
 
-  transactions.forEach(t => {
-    let finalCategory = t.category || 'Miscellaneous';
-    const descriptionLower = t.description.toLowerCase();
-
-    if (finalCategory === 'Transfer from' || finalCategory === 'Transfer to') {
-      // Keep the specific category
-    } 
-    else if (finalCategory.toLowerCase().includes('transfer') || descriptionLower.includes('transfer from') || descriptionLower.includes('transfer to')) {
-      if (descriptionLower.includes('transfer from')) {
-        finalCategory = 'Transfer from';
-      } else if (descriptionLower.includes('transfer to')) {
-        finalCategory = 'Transfer to';
-      } else {
-        if (!t.category?.toLowerCase().includes('transfer')) {
-             finalCategory = 'Miscellaneous';
-        } else {
-             finalCategory = t.category || 'Miscellaneous';
-        }
-      }
-    }
-
-    const currentAmount = categoryMap.get(finalCategory)?.amount || 0;
-    categoryMap.set(finalCategory, {
-      amount: currentAmount + t.amount,
-    });
-  });
-
-  return Array.from(categoryMap.entries()).map(([name, data]: [string, any]) => {
-    const amount = data.amount;
-    return {
-      name,
-      amount,
-    };
-  }).sort((a, b) => b.amount - a.amount);
-};
-
-const processMerchantsFromTransactions = (transactions: BankTransaction[], categoryIcons: Record<string, any>) => {
-  const merchantMap = new Map<string, { amount: number; count: number; categories: Set<string> }>();
-
-  transactions.forEach(t => {
-    const amount = typeof t.amount === 'number' ? t.amount : 0;
-    if (amount === 0) return;
-
-    let merchantName = t.description;
-    const separators = [' - ', ' / ', ' AT ', ' TO ', ' FROM '];
-    for (const sep of separators) {
-        if (t.description.toUpperCase().includes(sep)) {
-            const parts = t.description.split(new RegExp(sep, 'i'));
-            if (sep === ' TO ' || sep === ' FROM ') {
-                merchantName = parts[1]?.trim() || parts[0]?.trim();
-            } else {
-                merchantName = parts[0]?.trim();
-            }
-            if (merchantName.toLowerCase().includes('transfer')) {
-                merchantName = t.description;
-            } else {
-                 break;
-            }
-        }
-    }
-
-    merchantName = merchantName.replace(/[\d\/\s-]{6,}$/, '').trim();
-    merchantName = merchantName || t.description;
-
-    const normalizedMerchant = merchantName.toLowerCase().replace(/\s+/g, ' ').trim();
-
-    const ignoreList = ['transfer', 'payment', 'deposit', 'withdrawal', 'reversal', 'charge', 'fee'];
-    if (!normalizedMerchant || ignoreList.some(term => normalizedMerchant.includes(term))) {
-        return;
-    }
-
-    const current = merchantMap.get(normalizedMerchant) || { amount: 0, count: 0, categories: new Set<string>() };
-    current.amount += Math.abs(amount);
-    current.count += 1;
-    if (t.category && t.category !== 'Miscellaneous') {
-        current.categories.add(t.category);
-    }
-    merchantMap.set(normalizedMerchant, current);
-  });
-
-  return Array.from(merchantMap.entries()).map(([name, data]) => {
-    const primaryCategory = data.categories.size > 0 ? [...data.categories][0] : 'Miscellaneous';
-    const displayName = name.split(' ')
-                            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-                            .join(' ');
-
-    const { icon, color, pieColor } = categoryIcons[primaryCategory] || categoryIcons['Miscellaneous'];
-
-    return {
-      name: displayName,
-      category: primaryCategory,
-      totalSpent: data.amount,
-      frequency: data.count,
-      averageSpent: data.amount / data.count,
-      icon: icon,
-      color: color,
-      pieColor: pieColor
-    };
-  }).sort((a, b) => b.totalSpent - a.totalSpent);
-};
-
-const mockCategories = [
-  { name: 'Shopping', amount: 1240, percentage: 20, icon: ShoppingBag, color: 'bg-blue-500', pieColor: '#4285F4' },
-  { name: 'Housing', amount: 1500, percentage: 24, icon: Home, color: 'bg-green-500', pieColor: '#34A853' },
-  { name: 'Transportation', amount: 450, percentage: 7, icon: Car, color: 'bg-amber-500', pieColor: '#FBBC05' },
-  { name: 'Food & Dining', amount: 680, percentage: 11, icon: Coffee, color: 'bg-red-500', pieColor: '#EA4335' },
-  { name: 'Airtime', amount: 250, percentage: 4, icon: SparkleIcon, color: 'bg-sky-500', pieColor: '#0EA5E9' },
-  { name: 'Electricity', amount: 320, percentage: 5, icon: Home, color: 'bg-yellow-500', pieColor: '#EAB308' },
-  { name: 'Online Payment', amount: 280, percentage: 4, icon: ShoppingBag, color: 'bg-blue-700', pieColor: '#1D4ED8' },
-  { name: 'TV', amount: 250, percentage: 4, icon: Home, color: 'bg-purple-600', pieColor: '#9333EA' },
-  { name: 'Bank Deposit', amount: 180, percentage: 3, icon: ArrowDown, color: 'bg-emerald-500', pieColor: '#10B981' },
-  { name: 'Transfer from', amount: 220, percentage: 3, icon: ArrowDown, color: 'bg-indigo-500', pieColor: '#6366F1' },
-  { name: 'Transfer to', amount: 190, percentage: 3, icon: ArrowUp, color: 'bg-rose-500', pieColor: '#F43F5E' },
-  { name: 'Betting', amount: 150, percentage: 2, icon: Tag, color: 'bg-orange-500', pieColor: '#F97316' },
-  { name: 'Mobile Data', amount: 120, percentage: 2, icon: SparkleIcon, color: 'bg-cyan-500', pieColor: '#06B6D4' },
-  { name: 'Cash Withdraw', amount: 200, percentage: 3, icon: ArrowUp, color: 'bg-red-600', pieColor: '#DC2626' },
-  { name: 'Targets', amount: 170, percentage: 3, icon: DollarSign, color: 'bg-amber-600', pieColor: '#D97706' },
-  { name: 'USSD Charge', amount: 100, percentage: 2, icon: Tag, color: 'bg-slate-500', pieColor: '#64748B' }
-];
-
-const mockTransactions: BankTransaction[] = [
-  { id: '1', date: '2023-06-15', description: 'Whole Foods Market', amount: 78.35, category: 'Food & Dining', type: 'debit', balance: 1000, reference: 'TXN001', channel: 'POS' },
-  { id: '2', date: '2023-06-14', description: 'Amazon.com', amount: 124.99, category: 'Shopping', type: 'debit', balance: 1078.35, reference: 'TXN002', channel: 'Online' },
-  { id: '3', date: '2023-06-13', description: 'Uber', amount: 24.50, category: 'Transportation', type: 'debit', balance: 1203.34, reference: 'TXN003', channel: 'Mobile' },
-  { id: '4', date: '2023-06-10', description: 'Rent Payment', amount: 1500, category: 'Housing', type: 'debit', balance: 1227.84, reference: 'TXN004', channel: 'Transfer' },
-  { id: '5', date: '2023-06-08', description: 'Starbucks', amount: 5.65, category: 'Food & Dining', type: 'debit', balance: 2727.84, reference: 'TXN005', channel: 'POS' }
-];
-
-const COLORS = ['#8e44ad', '#00C49F', '#FFBB28', '#FF8042', '#4285F4', '#EA4335', '#34A853', '#F97316', '#6366F1', '#10B981', '#DC2626', '#EAB308', '#9333EA', '#06B6D4', '#D97706', '#64748B'];
-const RADIAN = Math.PI / 180;
-
-const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, index, name }: any) => {
-  const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-  const x = cx + radius * Math.cos(-midAngle * RADIAN);
-  const y = cy + radius * Math.sin(-midAngle * RADIAN);
-
-  return (
-    <text 
-      x={x} 
-      y={y} 
-      fill="white" 
-      textAnchor={x > cx ? 'start' : 'end'} 
-      dominantBaseline="central"
-      className="text-xs font-medium"
-    >
-      {`${(percent * 100).toFixed(0)}%`}
-    </text>
-  );
-};
-
-export default function Analyze() {
+const Analyze = () => {
+  const { user } = useAuth();
   const { toast } = useToast();
-  const navigate = useNavigate();
-  const { statementData } = useStatement();
-  const [loaded, setLoaded] = useState(false);
-  const [insights, setInsights] = useState<string[]>([]);
-  const [isGeneratingInsights, setIsGeneratingInsights] = useState(false);
-  const [useRealData, setUseRealData] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [showSaveDialog, setShowSaveDialog] = useState(false);
-  
-  useEffect(() => {
-    if (statementData && statementData.transactions && statementData.transactions.length > 0) {
-      console.log("Using real statement data with", statementData.transactions.length, "transactions");
-      setUseRealData(true);
-    } else {
-      console.log("No statement data available, using mock data");
-      setUseRealData(false);
-    }
-  }, [statementData]);
+  const { activePlan, isTrialActive } = useSubscription();
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setLoaded(true);
-    }, 800);
-    
-    return () => clearTimeout(timer);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisProgress, setAnalysisProgress] = useState(0);
+  const [analysisResult, setAnalysisResult] = useState<ProcessedStatement | null>(null);
+  const [activeTab, setActiveTab] = useState('upload');
+  const [demoMode, setDemoMode] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+    }
+  };
+
+  const handleDrop = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const file = event.dataTransfer.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+    }
   }, []);
 
-  useEffect(() => {
-    if (statementData && statementData.transactions.length > 0) {
-      generateAIInsights();
-    }
-  }, [statementData]);
+  const handleDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+  }, []);
 
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      setActiveIndex(prevIndex => {
-        const categories = useRealData && statementData?.transactions 
-          ? processCategoriesFromTransactions(statementData.transactions)
-          : mockCategories;
-          
-        return (prevIndex + 1) % categories.length;
-      });
-    }, 3000);
-
-    return () => clearInterval(intervalId);
-  }, [statementData, useRealData]);
-
-  const categoryIcons: Record<string, any> = {
-    'Shopping': { icon: ShoppingBag, color: 'bg-blue-500', pieColor: '#4285F4' },
-    'Housing': { icon: Home, color: 'bg-green-500', pieColor: '#34A853' },
-    'Transportation': { icon: Car, color: 'bg-amber-500', pieColor: '#FBBC05' },
-    'Food & Dining': { icon: Coffee, color: 'bg-red-500', pieColor: '#EA4335' },
-    'Miscellaneous': { icon: Tag, color: 'bg-purple-500', pieColor: '#9334EA' },
-    'TV': { icon: Home, color: 'bg-purple-600', pieColor: '#9333EA' },
-    'Bank Deposit': { icon: ArrowDown, color: 'bg-emerald-500', pieColor: '#10B981' },
-    'Transfer from': { icon: ArrowDown, color: 'bg-indigo-500', pieColor: '#6366F1' },
-    'Transfer to': { icon: ArrowUp, color: 'bg-rose-500', pieColor: '#F43F5E' },
-    'Betting': { icon: Tag, color: 'bg-orange-500', pieColor: '#F97316' },
-    'Mobile Data': { icon: SparkleIcon, color: 'bg-cyan-500', pieColor: '#06B6D4' },
-    'Cash Withdraw': { icon: ArrowUp, color: 'bg-red-600', pieColor: '#DC2626' },
-    'Targets': { icon: DollarSign, color: 'bg-amber-600', pieColor: '#D97706' },
-    'USSD Charge': { icon: Tag, color: 'bg-slate-500', pieColor: '#64748B' }
+  const handleDemoMode = () => {
+    setDemoMode(true);
+    setActiveTab('results');
   };
 
-  const processedCategoriesData = useRealData && statementData?.transactions
-    ? processCategoriesFromTransactions(statementData.transactions)
-    : mockCategories.map(c => ({ name: c.name, amount: c.amount }));
-
-  const totalAmountForPercentage = useRealData && statementData?.transactions
-    ? statementData.transactions.reduce((sum, t) => sum + Math.abs(t.amount), 0)
-    : mockCategories.reduce((sum, c) => sum + c.amount, 0);
-
-  const categories = processedCategoriesData.map(cat => {
-    const { icon, color, pieColor } = categoryIcons[cat.name] || categoryIcons['Miscellaneous'];
-    const percentage = totalAmountForPercentage > 0 ? Math.round((Math.abs(cat.amount) / totalAmountForPercentage) * 100) : 0;
-    return {
-      ...cat,
-      icon,
-      color,
-      pieColor,
-      percentage
-    };
-  }).sort((a, b) => b.amount - a.amount);
-
-  const transactions = useRealData && statementData?.transactions
-    ? statementData.transactions
-    : mockTransactions;
-
-  const merchants = processMerchantsFromTransactions(transactions, categoryIcons);
-
-  const totalSpent = useRealData && statementData?.totalExpense
-    ? statementData.totalExpense
-    : mockCategories.reduce((sum, category) => sum + (category.amount > 0 ? category.amount : 0), 0);
-
-  const expenseCategoriesChartData = categories
-    .filter(category => category.amount > 0 && category.name !== 'Income' && !category.name.includes('Transfer from') && !category.name.includes('Deposit'))
-    .map(category => ({
-      name: category.name,
-      value: category.amount,
-      color: category.pieColor
-  }));
-
-  const topMerchantsChartData = merchants.slice(0, 8).map((m, idx) => ({
-    name: m.name,
-    totalSpent: m.totalSpent,
-    fill: COLORS[idx % COLORS.length]
-  }));
-
-  const chartData = categories.map(category => ({
-    name: category.name,
-    value: category.amount,
-    color: category.pieColor
-  }));
-
-  const CHART_CONFIG = {
-    expenses: {
-      label: "Expenses",
-      theme: {
-        light: "hsl(var(--chart-1))",
-        dark: "hsl(var(--chart-1))"
-      }
+  const mockTransactions: BankTransaction[] = [
+    {
+      id: "1",
+      date: "2024-01-15",
+      description: "GROCERY STORE PURCHASE",
+      amount: -85.32,
+      type: "debit",
+      category: "Groceries"
+    },
+    {
+      id: "2", 
+      date: "2024-01-14",
+      description: "SALARY DEPOSIT",
+      amount: 3200.00,
+      type: "credit",
+      category: "Income"
+    },
+    {
+      id: "3",
+      date: "2024-01-13", 
+      description: "UTILITY BILL PAYMENT",
+      amount: -120.50,
+      type: "debit",
+      category: "Utilities"
+    },
+    {
+      id: "4",
+      date: "2024-01-12",
+      description: "RESTAURANT CHARGE",
+      amount: -45.75,
+      type: "debit", 
+      category: "Dining"
+    },
+    {
+      id: "5",
+      date: "2024-01-11",
+      description: "GAS STATION PURCHASE",
+      amount: -52.20,
+      type: "debit",
+      category: "Transportation"
     }
-  };
+  ];
 
-  const generateAIInsights = async () => {
-    if (!statementData || !statementData.transactions || statementData.transactions.length === 0) {
+  const handleAnalyze = async () => {
+    if (!selectedFile && !demoMode) {
       toast({
+        title: "No file selected",
+        description: "Please select a bank statement file to analyze.",
         variant: "destructive",
-        title: "No data available",
-        description: "Please upload a bank statement with valid transactions to generate insights."
       });
       return;
     }
 
-    setIsGeneratingInsights(true);
+    setIsAnalyzing(true);
+    setAnalysisProgress(0);
 
     try {
-      console.log('Attempting to generate insights with raw statementData:', JSON.stringify(statementData, null, 2));
+      // Simulate analysis progress
+      const progressInterval = setInterval(() => {
+        setAnalysisProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
+          }
+          return prev + Math.random() * 15;
+        });
+      }, 500);
 
-      const sanitizedTransactions = statementData.transactions.map(t => ({
-        ...t,
-        amount: typeof t.amount === 'string'
-                  ? parseFloat(t.amount.replace(/[^0-9.-]+/g,""))
-                  : (typeof t.amount === 'number' ? t.amount : 0),
-        category: typeof t.category === 'string' && t.category.trim() !== '' ? t.category : 'Miscellaneous',
-        description: typeof t.description === 'string' ? t.description : '',
-        date: typeof t.date === 'string' ? t.date : '',
-      })).filter(t => !isNaN(t.amount));
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      clearInterval(progressInterval);
+      setAnalysisProgress(100);
 
-      if (sanitizedTransactions.length === 0) {
-         throw new Error("No valid transactions found after sanitization. Check data quality.");
-      }
-
-      const dataToSend = {
-        ...statementData,
-        transactions: sanitizedTransactions,
-        totalIncome: typeof statementData.totalIncome === 'number' ? statementData.totalIncome : 0,
-        totalExpense: typeof statementData.totalExpense === 'number' ? statementData.totalExpense : 0,
+      // Process the statement (mock data for demo)
+      const processedData: ProcessedStatement = {
+        transactions: mockTransactions,
+        totalIncome: 3200.00,
+        totalExpense: 303.77,
+        balance: 2896.23,
+        categories: [
+          { category: "Income", amount: 3200.00, count: 1 },
+          { category: "Groceries", amount: 85.32, count: 1 },
+          { category: "Utilities", amount: 120.50, count: 1 },
+          { category: "Dining", amount: 45.75, count: 1 },
+          { category: "Transportation", amount: 52.20, count: 1 }
+        ],
+        insights: [
+          "Your monthly income covers expenses with a healthy 90% surplus",
+          "Largest expense category is Utilities at $120.50",
+          "Consider setting up automatic savings with your surplus"
+        ]
       };
 
-      console.log('Sending sanitized data to generateInsights:', JSON.stringify(dataToSend, null, 2));
-
-      const generatedInsights = await generateInsights(dataToSend);
-      setInsights(generatedInsights);
-
+      setAnalysisResult(processedData);
+      setActiveTab('results');
+      
       toast({
-        title: "Insights Generated",
-        description: "AI analysis of your statement is complete!",
+        title: "Analysis Complete!",
+        description: "Your bank statement has been successfully analyzed.",
       });
+
     } catch (error) {
-      console.error('Error generating insights:', error);
-      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
-      console.error('Error details:', errorMessage);
-
-      setInsights([
-        `Failed to generate AI insights. Error: ${errorMessage}`,
-        'Consider reviewing your largest transactions for savings opportunities.',
-        'Try categorizing your transactions to better understand spending patterns.'
-      ]);
-
+      console.error('Analysis error:', error);
       toast({
+        title: "Analysis Failed",
+        description: "There was an error analyzing your statement. Please try again.",
         variant: "destructive",
-        title: "Error Generating Insights",
-        description: `Failed: ${errorMessage}. Please check console logs for details.`,
       });
     } finally {
-      setIsGeneratingInsights(false);
+      setIsAnalyzing(false);
+      setAnalysisProgress(0);
     }
   };
 
-  const handleNoDataRedirect = () => {
-    toast({
-      title: "No Statement Data",
-      description: "Please upload a bank statement first.",
-    });
-    navigate('/dashboard/upload');
-  };
-
-  const onPieEnter = (_: any, index: number) => {
-    setActiveIndex(index);
-  };
-
-  const handleLoadAnalysis = async (analysis: any) => {
-    if (statementData) {
-      const typedTransactions = analysis.transactions.map((t: any) => ({
-        ...t,
-        type: t.type || (t.amount < 0 ? 'expense' : 'income')
-      }));
-
-      statementData.transactions = typedTransactions;
-      statementData.totalIncome = analysis.totalIncome;
-      statementData.totalExpense = analysis.totalExpense;
-      
-      setInsights(analysis.insights || []);
-      setUseRealData(true);
-      
+  const handleSaveAnalysis = async () => {
+    if (!analysisResult) {
       toast({
-        title: "Analysis Loaded",
-        description: "Your saved analysis has been loaded successfully.",
-      });
-    }
-  };
-
-  const handleViewAdvancedAnalysis = () => {
-    if (!useRealData || !statementData) {
-      toast({
-        title: "No Statement Data",
-        description: "Please upload a bank statement first to view advanced analysis.",
-        variant: "destructive"
+        title: "No analysis to save",
+        description: "Please analyze a statement before saving.",
+        variant: "destructive",
       });
       return;
     }
-    navigate('/dashboard/advanced-financial-analysis');
+
+    try {
+      const { saveAnalysis } = await import('@/services/storageService');
+      await saveAnalysis(`Analysis ${new Date().toLocaleDateString()}`, analysisResult);
+      toast({
+        title: "Analysis Saved!",
+        description: "Your analysis has been successfully saved.",
+      });
+    } catch (error) {
+      console.error('Save analysis error:', error);
+      toast({
+        title: "Save Failed",
+        description: "There was an error saving your analysis. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
-    <div className="container mx-auto p-6">
-      <Navbar />
-      <div className="max-w-6xl mx-auto pt-32 px-6 pb-20">
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-10 animate-slide-down">
-          <div>
-            <h1 className="text-3xl md:text-4xl font-bold mb-2">Spending Analysis</h1>
-            <p className="text-muted-foreground">
-              {useRealData 
-                ? `Analysis of your uploaded statement with ${statementData?.transactions.length} transactions`
-                : 'Example data shown. Please upload a statement for real insights.'}
-            </p>
-          </div>
-          <div className="mt-4 md:mt-0 flex gap-2">
-            {!useRealData && (
-              <Button 
-                variant="default" 
-                className="gap-2 text-sm"
-                onClick={handleNoDataRedirect}
-              >
-                <DollarSign className="w-4 h-4" />
-                Upload Statement
-              </Button>
-            )}
-            {useRealData && (
-              <>
-                <Button 
-                  variant="outline" 
-                  className="gap-2 text-sm"
-                >
-                  <DollarSign className="w-4 h-4" />
-                  Your Statement
-                </Button>
-                <Button 
-                  variant="default" 
-                  className="gap-2 text-sm"
-                  onClick={() => setShowSaveDialog(true)}
-                >
-                  <Save className="w-4 h-4" />
-                  Save Analysis
-                </Button>
-                <Button 
-                  variant="default" 
-                  className="gap-2 text-sm bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-                  onClick={handleViewAdvancedAnalysis}
-                >
-                  <TrendingUp className="w-4 h-4" />
-                  View Advanced Analysis
-                </Button>
-              </>
-            )}
-          </div>
+    <div className="container mx-auto py-6 space-y-6">
+      <div className="flex flex-col md:flex-row items-center justify-between space-y-2 md:space-y-0 md:space-x-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Statement Analyzer</h1>
+          <p className="text-muted-foreground">
+            Upload your bank statement to get detailed insights into your finances
+          </p>
         </div>
+        <div className="flex items-center space-x-2">
+          <Button variant="secondary" onClick={handleDemoMode}>
+            <Zap className="mr-2 h-4 w-4" />
+            Demo Mode
+          </Button>
+          <Button onClick={() => fileInputRef.current?.click()}>
+            <Upload className="mr-2 h-4 w-4" />
+            Select File
+          </Button>
+          <Input
+            type="file"
+            ref={fileInputRef}
+            className="hidden"
+            onChange={handleFileSelect}
+          />
+        </div>
+      </div>
+      
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList className="grid grid-cols-2">
+          <TabsTrigger value="upload">
+            <FileText className="mr-2 h-4 w-4" />
+            Upload Statement
+          </TabsTrigger>
+          <TabsTrigger value="results" disabled={!analysisResult && !demoMode}>
+            <BarChart3 className="mr-2 h-4 w-4" />
+            Analysis Results
+          </TabsTrigger>
+        </TabsList>
         
-        {/* Add data source indicator */}
-        <div className="mb-6">
-          {useRealData ? (
-            <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-              <CheckCircle className="w-4 h-4 text-green-600" />
-              <span className="text-sm text-green-700 dark:text-green-300">
-                Showing real data from your uploaded bank statement
-              </span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-              <AlertTriangle className="w-4 h-4 text-amber-600" />
-              <span className="text-sm text-amber-700 dark:text-amber-300">
-                Showing sample data for demonstration. Upload your statement to see real insights.
-              </span>
-            </div>
+        <TabsContent value="upload" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Upload Your Bank Statement</CardTitle>
+              <CardDescription>
+                We support PDF, CSV, and TXT formats.
+              </CardDescription>
+            </CardHeader>
+            <CardContent
+              className="flex flex-col items-center justify-center p-8 border-dashed border-2 rounded-lg cursor-pointer"
+              onDrop={handleDrop}
+              onDragOver={handleDragOver}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {selectedFile ? (
+                <>
+                  <CheckCircle className="h-10 w-10 text-green-500 mb-4" />
+                  <p className="text-lg font-semibold">
+                    {selectedFile.name}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Ready to analyze
+                  </p>
+                </>
+              ) : (
+                <>
+                  <Upload className="h-10 w-10 text-muted-foreground mb-4" />
+                  <p className="text-lg font-semibold">
+                    Drag and drop your file here
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Or click to select a file
+                  </p>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          {selectedFile && (
+            <Card>
+              <CardContent className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">
+                  Selected file: {selectedFile.name}
+                </p>
+                <Button onClick={handleAnalyze} disabled={isAnalyzing}>
+                  {isAnalyzing ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Analyzing...
+                    </>
+                  ) : (
+                    <>
+                      <Brain className="mr-2 h-4 w-4" />
+                      Analyze Statement
+                    </>
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
           )}
-        </div>
-        
-        {!loaded ? (
-          <div className="space-y-6 animate-pulse">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {[1, 2, 3].map((i) => (
-                <Card key={i} className="h-28">
-                  <CardContent className="p-6">
-                    <div className="h-5 w-24 bg-muted/50 rounded-md mb-4"></div>
-                    <div className="h-6 w-16 bg-muted/50 rounded-md"></div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-            <Card className="h-96">
-              <CardContent className="p-6">
-                <div className="h-full w-full flex flex-col items-center justify-center">
-                  <div className="w-20 h-20 rounded-full bg-muted/50 mb-4"></div>
-                  <div className="h-4 w-32 bg-muted/50 rounded-md"></div>
+
+          {isAnalyzing && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Analysis Progress</CardTitle>
+                <CardDescription>
+                  Analyzing your bank statement to extract key insights
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex justify-between text-sm">
+                    <span>Progress</span>
+                    <span>{analysisProgress.toFixed(0)}%</span>
+                  </div>
+                  <Progress value={analysisProgress} />
                 </div>
               </CardContent>
             </Card>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-slide-up">
-              <StatCard
-                title="Total Expenses"
-                value={`$${totalSpent.toLocaleString()}`}
-                icon={<DollarSign className="w-4 h-4 text-primary" />}
-                trend="up"
-                trendValue={statementData ? `${statementData.transactions.length} items` : "+12%"}
-              />
-              <StatCard
-                title="Top Category"
-                value={categories[0]?.name || "N/A"}
-                icon={categories[0]?.icon ? React.createElement(categories[0].icon, { className: "w-4 h-4 text-green-500" }) : <Tag className="w-4 h-4 text-green-500" />}
-                trend="neutral"
-                trendValue={categories[0] ? `${categories[0].percentage}%` : "0%"}
-              />
-              <StatCard
-                title="Transactions"
-                value={transactions.length}
-                icon={<Tag className="w-4 h-4 text-amber-500" />}
-                trend="down"
-                trendValue={statementData ? `From ${statementData.startDate || 'unknown'}` : "-3%"}
-              />
-            </div>
-            
-            <Tabs defaultValue="categories" className="animate-blur-in" style={{ animationDelay: '200ms' }}>
-              <TabsList className="mb-6">
-                <TabsTrigger value="categories">Categories</TabsTrigger>
-                <TabsTrigger value="transactions">Transactions</TabsTrigger>
-                <TabsTrigger value="merchants">Merchants</TabsTrigger>
-                <TabsTrigger value="merchant-analytics">Merchant Analytics</TabsTrigger>
-                <TabsTrigger value="insights">AI Insights</TabsTrigger>
-                <TabsTrigger value="saved">Saved Analyses</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="categories">
+          )}
+        </TabsContent>
+        
+        <TabsContent value="results" className="space-y-6">
+          {analysisResult && (
+            <>
+              {/* Overview Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <Card>
-                  <CardContent className="p-6">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      <div>
-                        <h3 className="text-lg font-medium mb-4">Spending by Category</h3>
-                        
-                        <div className="space-y-4 mt-6 max-h-[500px] overflow-y-auto pr-2">
-                          {categories.map((category, index) => (
-                            <div key={index} className={cn(
-                              "animate-fade-in",
-                              index === activeIndex ? "scale-105 transition-transform" : ""
-                            )} style={{ animationDelay: `${index * 100}ms` }}>
-                              <div className="flex items-center justify-between mb-1">
-                                <div className="flex items-center">
-                                  <div className={cn("p-1.5 rounded-md mr-2", category.color)}>
-                                    {React.createElement(category.icon, { className: "w-3.5 h-3.5 text-white" })}
-                                  </div>
-                                  <span className="text-sm font-medium">{category.name}</span>
-                                </div>
-                                <span className="text-sm font-medium">${category.amount.toFixed(2)}</span>
-                              </div>
-                              <div className="w-full h-2 bg-muted/50 rounded-full overflow-hidden">
-                                <div 
-                                  className={cn("h-full rounded-full", category.color)}
-                                  style={{ width: `${category.percentage}%`, transition: "width 1s ease-in-out" }}
-                                ></div>
-                              </div>
-                              <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                                <span>{category.percentage}%</span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center justify-center">
-                        <div className="h-64 w-full max-w-64">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                              <Pie
-                                data={chartData}
-                                cx="50%"
-                                cy="50%"
-                                innerRadius={60}
-                                outerRadius={80}
-                                paddingAngle={5}
-                                dataKey="value"
-                                labelLine={false}
-                                label={renderCustomizedLabel}
-                                animationBegin={0}
-                                animationDuration={1500}
-                                animationEasing="ease-out"
-                                onMouseEnter={onPieEnter}
-                              >
-                                {chartData.map((entry, index) => (
-                                  <Cell 
-                                    key={`cell-${index}`} 
-                                    fill={entry.color} 
-                                    className={cn(
-                                      "transition-opacity duration-300",
-                                      index === activeIndex ? "filter drop-shadow(0 0 8px rgba(0, 0, 0, 0.3))" : "opacity-70"
-                                    )}
-                                    stroke={index === activeIndex ? "#fff" : "none"}
-                                    strokeWidth={index === activeIndex ? 2 : 0}
-                                  />
-                                ))}
-                              </Pie>
-                              <Tooltip 
-                                content={({ active, payload }) => {
-                                  if (active && payload && payload.length) {
-                                    const data = payload[0].payload;
-                                    return (
-                                      <div className="bg-background border border-border p-2 rounded-md shadow-md">
-                                        <p className="font-medium">{data.name}</p>
-                                        <p className="text-sm">${data.value.toFixed(2)}</p>
-                                      </div>
-                                    );
-                                  }
-                                  return null;
-                                }}
-                              />
-                              <Legend 
-                                layout="horizontal" 
-                                verticalAlign="bottom" 
-                                align="center"
-                                wrapperStyle={{ paddingTop: "20px" }}
-                              />
-                            </PieChart>
-                          </ResponsiveContainer>
-                        </div>
-                      </div>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Income</CardTitle>
+                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-green-600">
+                      ${analysisResult.totalIncome.toFixed(2)}
                     </div>
                   </CardContent>
                 </Card>
-              </TabsContent>
-              
-              <TabsContent value="transactions">
-                <Card>
-                  <CardContent className="p-6">
-                    <h3 className="text-lg font-medium mb-4">Recent Transactions</h3>
-                    
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b">
-                            <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Date</th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Description</th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Category</th>
-                            <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Amount</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {transactions.map((transaction, index) => {
-                            // Determine the display category for the transaction list
-                            let displayCategory = transaction.category || "Uncategorized";
-                            if (displayCategory === 'Transfers') {
-                              const description = transaction.description.toLowerCase();
-                              if (description.includes('from')) {
-                                displayCategory = 'Transfer from';
-                              } else if (description.includes('to')) {
-                                displayCategory = 'Transfer to';
-                              }
-                            }
 
-                            return (
-                              <tr 
-                                key={transaction.id || index}
-                                className={cn(
-                                  "border-b border-border/50 hover:bg-muted/20 transition-colors",
-                                  "animate-fade-in"
-                                )}
-                                style={{ animationDelay: `${index * 50}ms` }}
-                              >
-                                <td className="py-3 px-4 text-sm">
-                                  {transaction.date}
-                                </td>
-                                <td className="py-3 px-4 text-sm font-medium">{transaction.description}</td>
-                                <td className="py-3 px-4 text-sm">
-                                  <span className="px-2 py-1 rounded-full text-xs bg-muted/50">
-                                    {displayCategory}
-                                  </span>
-                                </td>
-                                <td className="py-3 px-4 text-sm text-right font-medium">
-                                  ${transaction.amount.toFixed(2)}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
+                    <TrendingDown className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-red-600">
+                      ${analysisResult.totalExpense.toFixed(2)}
                     </div>
                   </CardContent>
                 </Card>
-              </TabsContent>
-              
-              <TabsContent value="merchants">
+
                 <Card>
-                  <CardContent className="p-6">
-                    <h3 className="text-lg font-medium mb-4">Top Merchants</h3>
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b">
-                            <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Merchant</th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Category</th>
-                            <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Total Spent</th>
-                            <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Frequency</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {merchants.map((merchant, index) => (
-                            <tr
-                              key={index}
-                              className={cn(
-                                "border-b border-border/50 hover:bg-muted/20 transition-colors",
-                                "animate-fade-in"
-                              )}
-                              style={{ animationDelay: `${index * 50}ms` }}
-                            >
-                              <td className="py-3 px-4 text-sm font-medium">{merchant.name}</td>
-                              <td className="py-3 px-4 text-sm">
-                                <span className="px-2 py-1 rounded-full text-xs bg-muted/50">
-                                  {merchant.category}
-                                </span>
-                              </td>
-                              <td className="py-3 px-4 text-sm text-right font-medium">
-                                ${merchant.totalSpent.toFixed(2)}
-                              </td>
-                              <td className="py-3 px-4 text-sm text-right font-medium">
-                                {merchant.frequency}x
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Net Balance</CardTitle>
+                    <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className={`text-2xl font-bold ${analysisResult.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      ${analysisResult.balance.toFixed(2)}
                     </div>
-                     {merchants.length === 0 && (
-                        <div className="text-center py-8 text-muted-foreground">
-                            No merchant data could be extracted from the transactions.
-                        </div>
-                    )}
                   </CardContent>
                 </Card>
-              </TabsContent>
 
-              <TabsContent value="merchant-analytics">
                 <Card>
-                  <CardContent className="p-6">
-                    <MerchantAnalytics
-                      merchants={merchants}
-                      topMerchantsChartData={topMerchantsChartData}
-                      COLORS={COLORS}
-                    />
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Transactions</CardTitle>
+                    <FileText className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {analysisResult.transactions.length}
+                    </div>
                   </CardContent>
                 </Card>
-              </TabsContent>
+              </div>
 
-              <TabsContent value="insights">
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      <div className="space-y-6">
-                        <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
-                          <h3 className="text-lg font-medium">AI-Powered Insights</h3>
-                          <div className="mt-2 md:mt-0">
-                            <Button 
-                              onClick={generateAIInsights} 
-                              disabled={isGeneratingInsights}
-                              className="gap-2"
-                            >
-                              <SparkleIcon className="w-4 h-4" />
-                              {isGeneratingInsights ? 'Generating...' : 'Generate Insights'}
-                            </Button>
+              {/* Transactions Table */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Transaction Details</CardTitle>
+                  <CardDescription>
+                    All transactions found in your statement
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {analysisResult.transactions.map((transaction) => (
+                      <div key={transaction.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex-1">
+                          <div className="font-medium">{transaction.description}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {transaction.date} • {transaction.category}
                           </div>
                         </div>
-                        
-                        {insights.length > 0 ? (
-                          <div className="space-y-6">
-                            <div className="p-4 rounded-md bg-primary/5 border border-primary/20 animate-slide-up">
-                              <h4 className="font-medium flex items-center gap-2 mb-2">
-                                <ArrowDown className="w-4 h-4 text-green-500" />
-                                {insights[0] ? 'Spending Opportunity' : 'No Insights Available'}
-                              </h4>
-                              <p className="text-muted-foreground">
-                                {insights[0] || 'Generate insights to see recommendations based on your spending patterns.'}
-                              </p>
-                            </div>
-                            
-                            {insights[1] && (
-                              <div className="p-4 rounded-md bg-amber-500/5 border border-amber-500/20 animate-slide-up" style={{ animationDelay: '100ms' }}>
-                                <h4 className="font-medium flex items-center gap-2 mb-2">
-                                  <PieChartIcon className="w-4 h-4 text-amber-500" />
-                                  Category Analysis
-                                </h4>
-                                <p className="text-muted-foreground">{insights[1]}</p>
-                              </div>
-                            )}
-                            
-                            {insights[2] && (
-                              <div className="p-4 rounded-md bg-green-500/5 border border-green-500/20 animate-slide-up" style={{ animationDelay: '200ms' }}>
-                                <h4 className="font-medium flex items-center gap-2 mb-2">
-                                  <ArrowUp className="w-4 h-4 text-green-500" />
-                                  Savings Recommendation
-                                </h4>
-                                <p className="text-muted-foreground">{insights[2]}</p>
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="flex flex-col items-center justify-center py-8 text-center">
-                            <div className="bg-muted/30 p-4 rounded-full mb-4">
-                              <SparkleIcon className="w-8 h-8 text-primary/50" />
-                            </div>
-                            <h4 className="text-lg font-medium mb-2">No insights generated yet</h4>
-                            <p className="text-muted-foreground max-w-md mb-6">
-                              Click the "Generate Insights" button to get AI-powered recommendations based on your financial data.
-                            </p>
-                            {!hasGeminiApiKey() && (
-                              <div className="mt-2 p-3 bg-amber-100 dark:bg-amber-900/20 text-amber-800 dark:text-amber-300 rounded-md text-sm max-w-md">
-                                <p className="font-medium mb-1">API Key Required</p>
-                                <p>Please set your Gemini API key in the settings to enable AI insights.</p>
-                              </div>
-                            )}
-                          </div>
-                        )}
+                        <div className={`font-bold ${transaction.amount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          ${Math.abs(transaction.amount).toFixed(2)}
+                        </div>
                       </div>
-                      
-                      <div className="space-y-4">
-                        <h3 className="text-lg font-medium">AI Chat Assistant</h3>
-                        <AiChat 
-                          transactions={transactions}
-                          totalIncome={useRealData && statementData?.totalIncome ? statementData.totalIncome : 0}
-                          totalExpense={totalSpent}
-                        />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-              
-              <TabsContent value="saved">
-                <SavedAnalyses onLoadAnalysis={handleLoadAnalysis} />
-              </TabsContent>
-            </Tabs>
-          </div>
-        )}
-
-        <SaveAnalysisDialog
-          isOpen={showSaveDialog}
-          onClose={() => setShowSaveDialog(false)}
-          transactions={transactions}
-          totalIncome={useRealData && statementData?.totalIncome ? statementData.totalIncome : 0}
-          totalExpense={totalSpent}
-          categories={categories}
-          insights={insights}
-        />
-      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
-}
+};
+
+export default Analyze;

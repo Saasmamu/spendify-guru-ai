@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,7 +16,7 @@ import {
   RefreshCw, 
   Zap
 } from 'lucide-react';
-import { useToast } from '@/hooks/useToast';
+import { useToast } from '@/hooks/use-toast';
 import CategoryManager from '@/components/analysis/CategoryManager';
 import SpendingPatterns from '@/components/analysis/SpendingPatterns';
 import AnomalyDetection from '@/components/analysis/AnomalyDetection';
@@ -208,14 +209,14 @@ export default function AdvancedAnalysis() {
             <TabsContent value="anomalies" className="mt-0">
               <AnomalyDetection 
                 anomalies={anomalies}
-                transactions={transactions}
+                transactions={transactions?.data || []}
               />
             </TabsContent>
 
             <TabsContent value="predictions" className="mt-0">
               <PredictiveAnalysis 
                 predictions={predictions}
-                transactions={transactions}
+                transactions={transactions?.data || []}
               />
             </TabsContent>
           </Tabs>
