@@ -1,269 +1,220 @@
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Progress } from '@/components/ui/progress';
-import { Upload, FileText, TrendingUp, AlertCircle } from 'lucide-react';
-import CategoryBreakdownChart from '@/components/CategoryBreakdownChart';
-import SpendingTrendsChart from '@/components/SpendingTrendsChart';
-import { Transaction, TransactionCategory } from '@/types';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { Upload, FileText, BarChart3, PieChart, TrendingUp, AlertCircle, CheckCircle, Download } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
+import { PdfUploader } from '@/components/PdfUploader';
+import { AnalysisResults } from '@/components/AnalysisResults';
+import { CategoryBreakdownChart } from '@/components/CategoryBreakdownChart';
+import { SpendingTrendsChart } from '@/components/SpendingTrendsChart';
+import type { BankTransaction, TransactionCategory } from '@/types';
+
+interface AnalysisData {
+  transactions: BankTransaction[];
+  totalIncome: number;
+  totalExpenses: number;
+  netFlow: number;
+  categories: TransactionCategory[];
+  insights: string[];
+}
 
 export default function Analyze() {
-  const [file, setFile] = useState<File | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [analysisResults, setAnalysisResults] = useState<{
-    transactions: Transaction[];
-    categories: TransactionCategory[];
-    summary: {
-      totalIncome: number;
-      totalExpenses: number;
-      netFlow: number;
-      transactionCount: number;
+  const { toast } = useToast();
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
+  const [activeTab, setActiveTab] = useState('upload');
+
+  const handleAnalysisComplete = useCallback((analysis: AnalysisData) => {
+    setAnalysisData(analysis);
+    setActiveTab('results');
+    toast({
+      title: 'Analysis Complete',
+      description: 'Your financial analysis is ready to view.',
+    });
+  }, [toast]);
+
+  const handleAnalysisStart = useCallback(() => {
+    setIsAnalyzing(true);
+  }, []);
+
+  const exportAnalysis = () => {
+    if (!analysisData) return;
+
+    const dataToExport = {
+      ...analysisData,
+      exportedAt: new Date().toISOString(),
     };
-  } | null>(null);
-  const [error, setError] = useState<string>('');
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
-      setError('');
-    }
-  };
+    const blob = new Blob([JSON.stringify(dataToExport, null, 2)], {
+      type: 'application/json',
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `financial-analysis-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
 
-  const handleAnalyze = async () => {
-    if (!file) {
-      setError('Please select a file first');
-      return;
-    }
-
-    setLoading(true);
-    setProgress(0);
-    setError('');
-
-    try {
-      // Simulate file processing
-      const progressInterval = setInterval(() => {
-        setProgress(prev => {
-          if (prev >= 90) {
-            clearInterval(progressInterval);
-            return 90;
-          }
-          return prev + 10;
-        });
-      }, 200);
-
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // Mock analysis results
-      const mockTransactions: Transaction[] = [
-        {
-          id: '1',
-          date: '2024-01-15',
-          description: 'Salary Payment',
-          amount: 3500,
-          type: 'credit',
-          category: 'Income',
-          balance: 3500
-        },
-        {
-          id: '2',
-          date: '2024-01-16',
-          description: 'Grocery Store',
-          amount: -85.50,
-          type: 'debit',
-          category: 'Food & Dining',
-          balance: 3414.50
-        },
-        {
-          id: '3',
-          date: '2024-01-17',
-          description: 'Gas Station',
-          amount: -45.00,
-          type: 'debit',
-          category: 'Transportation',
-          balance: 3369.50
-        }
-      ];
-
-      const mockCategories: TransactionCategory[] = [
-        {
-          name: 'Income',
-          amount: 3500,
-          count: 1,
-          percentage: 100,
-          color: '#10B981',
-          transactions: [mockTransactions[0]]
-        },
-        {
-          name: 'Food & Dining',
-          amount: 85.50,
-          count: 1,
-          percentage: 65.4,
-          color: '#F59E0B',
-          transactions: [mockTransactions[1]]
-        },
-        {
-          name: 'Transportation',
-          amount: 45.00,
-          count: 1,
-          percentage: 34.6,
-          color: '#EF4444',
-          transactions: [mockTransactions[2]]
-        }
-      ];
-
-      setProgress(100);
-      setAnalysisResults({
-        transactions: mockTransactions,
-        categories: mockCategories,
-        summary: {
-          totalIncome: 3500,
-          totalExpenses: 130.50,
-          netFlow: 3369.50,
-          transactionCount: 3
-        }
-      });
-    } catch (err) {
-      setError('Failed to analyze the file. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+    toast({
+      title: 'Export Complete',
+      description: 'Your analysis has been downloaded.',
+    });
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-2">Financial Document Analyzer</h1>
+    <div className="container mx-auto py-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Analyze Documents</h1>
           <p className="text-muted-foreground">
-            Upload your bank statements or financial documents for intelligent analysis
+            Upload and analyze your financial documents for insights
           </p>
         </div>
+        {analysisData && (
+          <Button onClick={exportAnalysis} variant="outline" className="gap-2">
+            <Download className="h-4 w-4" />
+            Export Analysis
+          </Button>
+        )}
+      </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Upload className="h-5 w-5" />
-              Upload Document
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="file">Select File</Label>
-              <Input
-                id="file"
-                type="file"
-                accept=".pdf,.csv,.xlsx,.xls"
-                onChange={handleFileChange}
-                disabled={loading}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="upload" className="gap-2">
+            <Upload className="h-4 w-4" />
+            Upload
+          </TabsTrigger>
+          <TabsTrigger value="results" className="gap-2" disabled={!analysisData}>
+            <BarChart3 className="h-4 w-4" />
+            Results
+          </TabsTrigger>
+          <TabsTrigger value="insights" className="gap-2" disabled={!analysisData}>
+            <TrendingUp className="h-4 w-4" />
+            Insights
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="upload" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Document Upload
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <PdfUploader
+                onAnalysisComplete={handleAnalysisComplete}
+                onAnalysisStart={handleAnalysisStart}
               />
-            </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-            {file && (
-              <div className="p-4 bg-muted rounded-lg">
-                <div className="flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  <span className="font-medium">{file.name}</span>
-                  <span className="text-sm text-muted-foreground">
-                    ({(file.size / 1024).toFixed(1)} KB)
-                  </span>
-                </div>
+        <TabsContent value="results" className="space-y-4">
+          {analysisData && (
+            <>
+              <div className="grid gap-4 md:grid-cols-4">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Income</CardTitle>
+                    <TrendingUp className="h-4 w-4 text-green-600" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-green-600">
+                      ${analysisData.totalIncome.toFixed(2)}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
+                    <TrendingUp className="h-4 w-4 text-red-600 rotate-180" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-red-600">
+                      ${Math.abs(analysisData.totalExpenses).toFixed(2)}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Net Flow</CardTitle>
+                    <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className={`text-2xl font-bold ${
+                      analysisData.netFlow >= 0 ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      ${analysisData.netFlow.toFixed(2)}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Transactions</CardTitle>
+                    <PieChart className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {analysisData.transactions.length}
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
-            )}
 
-            {loading && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span>Processing document...</span>
-                  <span>{progress}%</span>
-                </div>
-                <Progress value={progress} />
+              <div className="grid gap-6 md:grid-cols-2">
+                <CategoryBreakdownChart data={analysisData.categories} />
+                <SpendingTrendsChart data={analysisData.transactions} />
               </div>
-            )}
 
-            {error && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
+              <AnalysisResults data={analysisData} />
+            </>
+          )}
+        </TabsContent>
 
-            <Button 
-              onClick={handleAnalyze} 
-              disabled={!file || loading}
-              className="w-full"
-            >
-              {loading ? 'Analyzing...' : 'Analyze Document'}
-            </Button>
-          </CardContent>
-        </Card>
-
-        {analysisResults && (
-          <div className="space-y-6">
+        <TabsContent value="insights" className="space-y-4">
+          {analysisData && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <TrendingUp className="h-5 w-5" />
-                  Analysis Summary
+                  Financial Insights
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-green-600">
-                      ${analysisResults.summary.totalIncome.toFixed(2)}
+                <div className="space-y-4">
+                  {analysisData.insights.map((insight, index) => (
+                    <div key={index} className="flex items-start gap-3">
+                      <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
+                      <p className="text-sm">{insight}</p>
                     </div>
-                    <div className="text-sm text-muted-foreground">Total Income</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-red-600">
-                      ${analysisResults.summary.totalExpenses.toFixed(2)}
-                    </div>
-                    <div className="text-sm text-muted-foreground">Total Expenses</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-blue-600">
-                      ${analysisResults.summary.netFlow.toFixed(2)}
-                    </div>
-                    <div className="text-sm text-muted-foreground">Net Flow</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold">
-                      {analysisResults.summary.transactionCount}
-                    </div>
-                    <div className="text-sm text-muted-foreground">Transactions</div>
-                  </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>
+          )}
+        </TabsContent>
+      </Tabs>
 
-            <div className="grid md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Spending by Category</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <CategoryBreakdownChart categories={analysisResults.categories} />
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Spending Trends</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <SpendingTrendsChart transactions={analysisResults.transactions} />
-                </CardContent>
-              </Card>
+      {isAnalyzing && (
+        <Card>
+          <CardContent className="py-6">
+            <div className="flex items-center justify-center space-x-2">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+              <span>Analyzing your document...</span>
             </div>
-          </div>
-        )}
-      </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
