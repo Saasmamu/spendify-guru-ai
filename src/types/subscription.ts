@@ -13,6 +13,10 @@ export interface SubscriptionLimits {
   financialGoals: boolean;
   aiAdvisor: boolean;
   budgetPlanner: boolean;
+  canCompare: boolean;
+  hasAdvancedAnalytics: boolean;
+  hasFinancialGoals: boolean;
+  hasAIFinancialAdvisor: boolean;
 }
 
 export interface SubscriptionPlan {

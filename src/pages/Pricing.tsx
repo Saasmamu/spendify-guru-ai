@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Check, X, Crown, Loader2 } from 'lucide-react';
@@ -200,9 +201,6 @@ export default function Pricing() {
             });
             setIsProcessing(false); // Ensure processing is reset on payment init error
         }
-        // setIsProcessing(false) generally handled by callbacks now, but if initPayment itself is synchronous and fails, it's caught.
-        // If initializePayment doesn't throw for all its failure modes and doesn't call a callback, then setIsProcessing(false) might need to be here too.
-        // For now, assuming callbacks or catch will handle it.
     }
   };
 
