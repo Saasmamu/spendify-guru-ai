@@ -17,9 +17,9 @@ import { useToast } from '@/hooks/use-toast';
 import { SavedAnalysis } from '@/types';
 import { getSavedAnalyses } from '@/services/storageService';
 
-// Chart components - using default imports
-import CategoryBreakdownChart from '@/components/CategoryBreakdownChart';
-import SpendingTrendsChart from '@/components/SpendingTrendsChart';
+// Chart components
+import { CategoryBreakdownChart } from '@/components/CategoryBreakdownChart';
+import { SpendingTrendsChart } from '@/components/SpendingTrendsChart';
 
 export default function Charts() {
   const { toast } = useToast();
@@ -155,7 +155,7 @@ export default function Charts() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <CategoryBreakdownChart data={selectedAnalysis.categories || []} />
+                  <CategoryBreakdownChart data={selectedAnalysis} />
                 </CardContent>
               </Card>
               
@@ -192,7 +192,7 @@ export default function Charts() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <SpendingTrendsChart data={selectedAnalysis.transactions || []} />
+                <SpendingTrendsChart data={selectedAnalysis} />
               </CardContent>
             </Card>
           </TabsContent>
