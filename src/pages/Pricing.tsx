@@ -36,13 +36,15 @@ export default function Pricing() {
 
     setIsProcessing(true);
     try {
+      // Initialize payment to verify card (amount = 0)
       await initializePayment(
         plan,
-        DURATIONS[0],
+        DURATIONS[0], // Monthly duration for card verification
         user.email!,
         { user_id: user.id, user_email: user.email!, is_card_verification: 'true' },
         async (reference) => {
           try {
+            // Card verification successful, start 30-day trial
             await updateSubscription(plan.id, { isTrialStart: true, withCard: true });
             toast({
               title: "30-day Trial Started!",
@@ -94,24 +96,28 @@ export default function Pricing() {
     const isUserOnActiveTrial = trialEndsAt && trialEndsAt > new Date();
     const isSelectedPlanTheCurrentActivePlan = activePlan === plan.id;
 
+    // Scenario 1: User is already on the selected plan as a paid subscriber (not a trial).
     if (isSelectedPlanTheCurrentActivePlan && activePlan && !isUserOnActiveTrial) {
         toast({ title: "Current Plan", description: "You are already subscribed to this plan." });
         return;
     }
 
+    // Scenario 2: Determine if we should attempt to start a new trial for the selected plan.
+    // A new trial is only offered if the user has no existing active plan (paid or trial).
     let attemptNewTrial = false;
-    if (!activePlan) {
+    if (!activePlan) { // No plan at all, user is completely free.
         attemptNewTrial = true;
     } else if (isUserOnActiveTrial) {
+        // User is on an active trial. Clicking any plan means they intend to pay, not start another trial.
         attemptNewTrial = false; 
-    } else {
-        attemptNewTrial = false;
+    } else { // User has an active *paid* plan.
+        attemptNewTrial = false; // Cannot start a new trial if already on a paid plan.
     }
 
     if (attemptNewTrial) {
         setIsProcessing(true);
         try {
-            await updateSubscription(plan.id, { isTrialStart: true, withCard: false });
+            await updateSubscription(plan.id, { isTrialStart: true, withCard: false }); // 7-day trial without card
             toast({
                 title: "Trial Started!",
                 description: `Your 7-day free trial for the ${plan.name} plan has begun. Add your card anytime to extend to 30 days!`,
@@ -129,6 +135,9 @@ export default function Pricing() {
             setIsProcessing(false);
         }
     } else {
+        // Scenario 3: Proceed to payment for the selected plan.
+        // This covers: Converting an active trial (for this plan or another) to this paid plan,
+        // switching from one paid plan to another, or subscribing after a trial has expired.
         setIsProcessing(true);
         try {
             if (isUserOnActiveTrial) {
@@ -153,10 +162,10 @@ export default function Pricing() {
                 selectedDuration,
                 user.email!, 
                 { user_id: user.id, user_email: user.email! },
-                async (reference) => {
+                async (reference) => { // onSuccess callback
                     try {
                         console.log('Payment successful, reference:', reference, 'Updating subscription...');
-                        await updateSubscription(plan.id, { isTrialStart: false });
+                        await updateSubscription(plan.id, { isTrialStart: false }); // Start paid subscription
                         toast({
                             title: "Payment Successful",
                             description: "Your subscription has been activated.",
@@ -169,16 +178,18 @@ export default function Pricing() {
                             description: "Payment was successful but subscription update failed. Please contact support.",
                             variant: "destructive",
                         });
+                    } finally {
+                         // setIsProcessing(false); // Will be set by the outer finally or onClosed
                     }
                 },
-                () => {
+                () => { // onClosed callback (payment window closed by user)
                     console.log('Payment window closed by user');
                     toast({
                         title: "Payment Cancelled",
                         description: "You chose to cancel the payment. You can subscribe anytime!",
                         variant: "default",
                     });
-                    setIsProcessing(false);
+                    setIsProcessing(false); // Ensure processing is reset here
                 }
             );
         } catch (error) {
@@ -188,7 +199,7 @@ export default function Pricing() {
                 description: error instanceof Error ? error.message : "Failed to initialize payment. Please try again.",
                 variant: "destructive",
             });
-            setIsProcessing(false);
+            setIsProcessing(false); // Ensure processing is reset on payment init error
         }
     }
   };
@@ -204,7 +215,7 @@ export default function Pricing() {
           <div className="mt-4">
             <Badge variant="secondary" className="px-4 py-2 text-lg">
               <Crown className="w-5 h-5 mr-2 inline-block" />
-              Current Plan: {PLANS.find(p => p.id === activePlan)?.name || String(activePlan)}
+              Current Plan: {PLANS.find(p => p.id === activePlan)?.name || activePlan}
             </Badge>
           </div>
         )}
