@@ -1,313 +1,290 @@
 
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Input } from '@/components/ui/input';
 import { 
-  Search, 
-  Filter, 
-  Download, 
-  Trash2, 
-  Eye, 
-  Calendar,
-  DollarSign,
-  TrendingUp,
-  FileText
-} from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { SavedAnalysis } from '@/types';
-import { getSavedAnalyses, deleteAnalysis } from '@/services/storageService';
-import { formatCurrency } from '@/lib/utils';
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { FileText, Search, Trash2, Eye, Download, Calendar } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
+import type { SavedAnalysis } from '@/types';
 
 export default function SavedAnalyses() {
+  const { user } = useAuth();
   const { toast } = useToast();
-  const [analyses, setAnalyses] = useState<SavedAnalysis[]>([]);
-  const [filteredAnalyses, setFilteredAnalyses] = useState<SavedAnalysis[]>([]);
+  const [savedAnalyses, setSavedAnalyses] = useState<SavedAnalysis[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState('date');
-  const [filterBy, setFilterBy] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedAnalysis, setSelectedAnalysis] = useState<SavedAnalysis | null>(null);
 
   useEffect(() => {
-    loadAnalyses();
-  }, []);
+    if (user) {
+      loadSavedAnalyses();
+    }
+  }, [user]);
 
-  useEffect(() => {
-    filterAndSortAnalyses();
-  }, [analyses, searchTerm, sortBy, filterBy]);
-
-  const loadAnalyses = async () => {
+  const loadSavedAnalyses = async () => {
     try {
-      setLoading(true);
-      const savedAnalyses = await getSavedAnalyses();
-      setAnalyses(savedAnalyses);
+      const { data, error } = await supabase
+        .from('saved_analyses')
+        .select('*')
+        .eq('user_id', user?.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const analyses = (data || []).map(item => ({
+        id: item.id,
+        name: item.name,
+        date: item.date,
+        transactions: item.transactions,
+        totalIncome: item.total_income,
+        totalExpenses: item.total_expense,
+        categories: item.categories,
+        insights: item.insights
+      }));
+
+      setSavedAnalyses(analyses);
     } catch (error) {
-      console.error('Error loading analyses:', error);
+      console.error('Error loading saved analyses:', error);
       toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to load saved analyses."
+        title: 'Error',
+        description: 'Failed to load saved analyses.',
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
     }
   };
 
-  const filterAndSortAnalyses = () => {
-    let filtered = [...analyses];
-
-    // Search filter
-    if (searchTerm) {
-      filtered = filtered.filter(analysis => 
-        analysis.name.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    // Category filter
-    if (filterBy !== 'all') {
-      filtered = filtered.filter(analysis => {
-        const balance = analysis.totalIncome - analysis.totalExpense;
-        if (filterBy === 'profit' && balance > 0) return true;
-        if (filterBy === 'loss' && balance < 0) return true;
-        return filterBy === 'all';
-      });
-    }
-
-    // Sort
-    filtered.sort((a, b) => {
-      switch (sortBy) {
-        case 'name':
-          return a.name.localeCompare(b.name);
-        case 'income':
-          return b.totalIncome - a.totalIncome;
-        case 'expense':
-          return b.totalExpense - a.totalExpense;
-        case 'transactions':
-          return b.transactions.length - a.transactions.length;
-        default: // date
-          return new Date(b.date).getTime() - new Date(a.date).getTime();
-      }
-    });
-
-    setFilteredAnalyses(filtered);
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this analysis?')) return;
-
+  const deleteAnalysis = async (id: string) => {
     try {
-      await deleteAnalysis(id);
-      setAnalyses(prev => prev.filter(analysis => analysis.id !== id));
+      const { error } = await supabase
+        .from('saved_analyses')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user?.id);
+
+      if (error) throw error;
+
+      setSavedAnalyses(prev => prev.filter(analysis => analysis.id !== id));
       toast({
-        title: "Success",
-        description: "Analysis deleted successfully."
+        title: 'Analysis Deleted',
+        description: 'The analysis has been removed successfully.',
       });
     } catch (error) {
+      console.error('Error deleting analysis:', error);
       toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to delete the analysis."
+        title: 'Error',
+        description: 'Failed to delete the analysis.',
+        variant: 'destructive',
       });
     }
   };
 
-  const handleView = (analysis: SavedAnalysis) => {
-    // Navigate to analysis view
-    window.location.href = `/analyze?id=${analysis.id}`;
-  };
+  const exportAnalysis = (analysis: SavedAnalysis) => {
+    const dataToExport = {
+      ...analysis,
+      exportedAt: new Date().toISOString(),
+    };
 
-  const handleExport = (analysis: SavedAnalysis) => {
-    // Implementation for exporting analysis
+    const blob = new Blob([JSON.stringify(dataToExport, null, 2)], {
+      type: 'application/json',
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${analysis.name}-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+
     toast({
-      title: "Export Started",
-      description: `Exporting analysis: ${analysis.name}`
+      title: 'Export Complete',
+      description: 'Analysis has been downloaded.',
     });
   };
+
+  const filteredAnalyses = savedAnalyses.filter(analysis =>
+    analysis.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   if (loading) {
     return (
-      <div className="container mx-auto py-6">
-        <div className="flex justify-center py-12">
-          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
-        </div>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
   }
 
   return (
     <div className="container mx-auto py-6 space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Saved Analyses</h1>
           <p className="text-muted-foreground">
-            Manage and review your previously analyzed financial data
+            View and manage your saved financial analyses
           </p>
         </div>
         
-        <div className="flex gap-2">
-          <Button onClick={loadAnalyses} variant="outline">
-            <FileText className="h-4 w-4 mr-2" />
-            Refresh
-          </Button>
+        <div className="flex items-center space-x-4">
+          <div className="relative">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search analyses..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8 w-64"
+            />
+          </div>
         </div>
       </div>
 
-      {/* Filters and Search */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="h-5 w-5" />
-            Filters
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-              <Label htmlFor="search">Search</Label>
-              <div className="relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="search"
-                  placeholder="Search analyses..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="sort">Sort By</Label>
-              <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="date">Date</SelectItem>
-                  <SelectItem value="name">Name</SelectItem>
-                  <SelectItem value="income">Income</SelectItem>
-                  <SelectItem value="expense">Expense</SelectItem>
-                  <SelectItem value="transactions">Transactions</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="filter">Filter By</Label>
-              <Select value={filterBy} onValueChange={setFilterBy}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="profit">Profit</SelectItem>
-                  <SelectItem value="loss">Loss</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Analysis List */}
       {filteredAnalyses.length === 0 ? (
-        <Alert>
-          <AlertDescription>
-            {analyses.length === 0 
-              ? "No saved analyses found. Upload and analyze a bank statement to get started."
-              : "No analyses match your current filters."
+        <div className="text-center py-12">
+          <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
+          <h3 className="mt-2 text-sm font-semibold text-gray-900">
+            {searchQuery ? 'No analyses found' : 'No saved analyses'}
+          </h3>
+          <p className="mt-1 text-sm text-gray-500">
+            {searchQuery 
+              ? 'Try adjusting your search terms' 
+              : 'Upload and analyze some documents to see them here.'
             }
-          </AlertDescription>
-        </Alert>
+          </p>
+        </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredAnalyses.map((analysis) => {
-            const balance = analysis.totalIncome - analysis.totalExpense;
-            const isProfit = balance >= 0;
-            
-            return (
-              <Card key={analysis.id} className="hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle className="text-lg">{analysis.name}</CardTitle>
-                      <CardDescription className="flex items-center gap-2 mt-1">
-                        <Calendar className="h-4 w-4" />
-                        {new Date(analysis.date).toLocaleDateString()}
-                      </CardDescription>
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {filteredAnalyses.map((analysis) => (
+            <Card key={analysis.id} className="cursor-pointer hover:shadow-md transition-shadow">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg">{analysis.name}</CardTitle>
+                  <Badge variant="secondary" className="text-xs">
+                    {analysis.transactions.length} transactions
+                  </Badge>
+                </div>
+                <div className="flex items-center text-sm text-muted-foreground">
+                  <Calendar className="mr-1 h-4 w-4" />
+                  {new Date(analysis.date).toLocaleDateString()}
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <div className="font-medium text-green-600">Income</div>
+                    <div className="text-lg font-bold">
+                      ${analysis.totalIncome.toFixed(2)}
                     </div>
-                    <Badge variant={isProfit ? "default" : "destructive"}>
-                      {isProfit ? "Profit" : "Loss"}
-                    </Badge>
                   </div>
-                </CardHeader>
+                  <div>
+                    <div className="font-medium text-red-600">Expenses</div>
+                    <div className="text-lg font-bold">
+                      ${Math.abs(analysis.totalExpenses).toFixed(2)}
+                    </div>
+                  </div>
+                </div>
                 
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <div className="text-muted-foreground">Income</div>
-                      <div className="font-semibold text-green-600">
-                        {formatCurrency(analysis.totalIncome)}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-muted-foreground">Expenses</div>
-                      <div className="font-semibold text-red-600">
-                        {formatCurrency(analysis.totalExpense)}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <div className="text-muted-foreground">Transactions</div>
-                      <div className="font-semibold">{analysis.transactions.length}</div>
-                    </div>
-                    <div>
-                      <div className="text-muted-foreground">Categories</div>
-                      <div className="font-semibold">{analysis.categories?.length || 0}</div>
-                    </div>
-                  </div>
-                  
-                  <div className="pt-2 border-t">
-                    <div className="text-sm text-muted-foreground">Net Balance</div>
-                    <div className={`text-lg font-bold ${isProfit ? 'text-green-600' : 'text-red-600'}`}>
-                      {formatCurrency(balance)}
-                    </div>
-                  </div>
-                  
-                  <div className="flex gap-2 pt-2">
-                    <Button 
-                      size="sm" 
-                      onClick={() => handleView(analysis)}
-                      className="flex-1"
-                    >
-                      <Eye className="h-4 w-4 mr-2" />
-                      View
-                    </Button>
-                    <Button 
-                      size="sm" 
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Net Flow:</span>
+                  <span className={`text-sm font-bold ${
+                    (analysis.totalIncome + analysis.totalExpenses) >= 0 ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    ${(analysis.totalIncome + analysis.totalExpenses).toFixed(2)}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between pt-2 border-t">
+                  <div className="flex space-x-2">
+                    <Button
                       variant="outline"
-                      onClick={() => handleExport(analysis)}
+                      size="sm"
+                      onClick={() => setSelectedAnalysis(analysis)}
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => exportAnalysis(analysis)}
                     >
                       <Download className="h-4 w-4" />
                     </Button>
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      onClick={() => handleDelete(analysis.id)}
-                      className="text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
                   </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+                  
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Analysis</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to delete "{analysis.name}"? This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => deleteAnalysis(analysis.id)}
+                          className="bg-red-600 hover:bg-red-700"
+                        >
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
+      )}
+
+      {selectedAnalysis && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Analysis Details: {selectedAnalysis.name}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div>
+                <h4 className="font-medium mb-2">Categories</h4>
+                <div className="flex flex-wrap gap-2">
+                  {selectedAnalysis.categories.map((category, index) => (
+                    <Badge key={index} variant="outline">
+                      {category.category}: ${category.amount.toFixed(2)}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+              
+              <div>
+                <h4 className="font-medium mb-2">Insights</h4>
+                <ul className="space-y-1">
+                  {selectedAnalysis.insights.map((insight, index) => (
+                    <li key={index} className="text-sm text-muted-foreground">
+                      • {insight}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );
