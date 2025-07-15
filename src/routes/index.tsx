@@ -46,8 +46,8 @@ import CategoryTotalsChart from '@/pages/CategoryTotalsChart';
 import RecurringExpensesChart from '@/pages/RecurringExpensesChart';
 import PredictionsTab from '@/pages/PredictionsTab';
 
-// Admin routes - using named import for AdminRoot
-import { AdminRoot } from '@/components/admin/AdminRoot';
+// Admin routes
+import AdminRoot from '@/components/admin/AdminRoot';
 import { AdminProtectedRoute } from '@/components/admin/AdminProtectedRoute';
 import AdminLogin from '@/pages/admin/Login';
 import AdminDashboard from '@/pages/admin/Dashboard';
