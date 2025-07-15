@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -154,7 +155,7 @@ export default function Charts() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <CategoryBreakdownChart data={selectedAnalysis} />
+                  <CategoryBreakdownChart data={selectedAnalysis.categories || []} />
                 </CardContent>
               </Card>
               
@@ -191,7 +192,7 @@ export default function Charts() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <SpendingTrendsChart data={selectedAnalysis} />
+                <SpendingTrendsChart data={selectedAnalysis.transactions || []} />
               </CardContent>
             </Card>
           </TabsContent>
