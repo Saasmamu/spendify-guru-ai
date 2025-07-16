@@ -1,3 +1,5 @@
+
+import React from 'react';
 import { Suspense } from 'react';
 import { Outlet } from 'react-router-dom';
 
@@ -14,3 +16,5 @@ export function AdminRoot() {
     </div>
   );
 }
+
+export default AdminRoot;

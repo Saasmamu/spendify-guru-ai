@@ -1,47 +1,25 @@
 
-export interface User {
-  id: string;
-  email: string;
-  created_at: string;
-  activePlan?: string;
-}
-
-export interface BankTransaction {
-  id: string;
-  date: string;
-  description: string;
-  amount: number;
-  balance?: number;
-  type: 'debit' | 'credit';
-  category?: string;
-  reference?: string;
-  channel?: string;
-}
-
 export interface Transaction {
   id: string;
   date: string;
   description: string;
   amount: number;
-  balance?: number;
-  type: 'debit' | 'credit';
-  category?: string;
+  type: 'income' | 'expense';
+  category: string;
   reference?: string;
   channel?: string;
-  user_id?: string;
+  balance?: number;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
 }
 
-export interface SavedAnalysis {
-  id: string;
+export interface CategoryData {
   name: string;
-  date: string;
-  transactions: BankTransaction[];
-  totalIncome: number;
-  totalExpense: number;
-  categories: Record<string, number>;
-  insights: string[];
-  created_at: string;
-  user_id: string;
+  amount: number;
+  count: number;
+  percentage: number;
+  color: string;
 }
 
 export interface Anomaly {
@@ -49,21 +27,38 @@ export interface Anomaly {
   type: string;
   description: string;
   severity: 'low' | 'medium' | 'high';
-  transaction_id?: string;
+  transaction_id: string;
   detected_at: string;
-}
-
-export interface CategoryData {
-  data: Transaction[];
-  total: number;
-  categorized: number;
+  status: 'new' | 'reviewed' | 'resolved';
+  user_id: string;
 }
 
 export interface AnomalyData {
-  data: Anomaly[];
-  count: number;
-  highSeverity: number;
+  anomalies: Anomaly[];
+  summary: {
+    total: number;
+    byType: Record<string, number>;
+    bySeverity: Record<string, number>;
+  };
 }
 
-// Re-export admin types
-export * from './admin';
+export interface SavedAnalysis {
+  id: string;
+  name: string;
+  date: string;
+  transactions: Transaction[];
+  total_income: number;
+  total_expense: number;
+  categories: CategoryData[];
+  insights: any;
+  created_at: string;
+  user_id: string;
+}
+
+export interface FinancialData {
+  transactions: Transaction[];
+  categories: CategoryData[];
+  totalIncome: number;
+  totalExpenses: number;
+  netIncome: number;
+}

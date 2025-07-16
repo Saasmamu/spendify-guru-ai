@@ -1,11 +1,14 @@
 
 import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import BankStatementUpload from '@/components/BankStatementUpload';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 
-const Analyze: React.FC = () => {
+function Analyze() {
   const [analysisResult, setAnalysisResult] = useState<any>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const { toast } = useToast();
 
   const handleAnalysisComplete = (analysis: any) => {
     setAnalysisResult(analysis);
@@ -14,53 +17,68 @@ const Analyze: React.FC = () => {
 
   const handleAnalysisStart = () => {
     setIsAnalyzing(true);
+    setAnalysisResult(null);
   };
 
   return (
-    <div className="container mx-auto py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Financial Analysis</h1>
+    <div className="container mx-auto py-8 space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold">Analyze Bank Statement</h1>
         <p className="text-muted-foreground">
-          Upload your bank statement to get detailed financial insights
+          Upload your bank statement to get instant financial insights and analysis
         </p>
       </div>
 
-      <div className="grid gap-6">
-        <BankStatementUpload 
-          onAnalysisComplete={handleAnalysisComplete}
-          onAnalysisStart={handleAnalysisStart}
-        />
-        
-        {isAnalyzing && (
-          <Card>
-            <CardContent className="py-8">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-                <div className="text-lg font-medium">Analyzing your financial data...</div>
-                <div className="text-muted-foreground">This may take a few moments</div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+      <BankStatementUpload 
+        onAnalysisComplete={handleAnalysisComplete}
+        onAnalysisStart={handleAnalysisStart}
+      />
 
-        {analysisResult && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Analysis Complete</CardTitle>
-              <CardDescription>
-                Here are your financial insights
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8 text-muted-foreground">
-                Analysis results will be displayed here
+      {isAnalyzing && (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-center space-x-4">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              <p className="text-lg">Analyzing your bank statement...</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {analysisResult && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Analysis Results</CardTitle>
+            <CardDescription>
+              Here's what we found in your bank statement
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="text-center p-4 border rounded-lg">
+                <p className="text-2xl font-bold text-green-600">
+                  ${analysisResult.totalIncome?.toFixed(2) || '0.00'}
+                </p>
+                <p className="text-sm text-muted-foreground">Total Income</p>
               </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
+              <div className="text-center p-4 border rounded-lg">
+                <p className="text-2xl font-bold text-red-600">
+                  ${analysisResult.totalExpenses?.toFixed(2) || '0.00'}
+                </p>
+                <p className="text-sm text-muted-foreground">Total Expenses</p>
+              </div>
+              <div className="text-center p-4 border rounded-lg">
+                <p className="text-2xl font-bold">
+                  {analysisResult.transactions?.length || 0}
+                </p>
+                <p className="text-sm text-muted-foreground">Transactions</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
-};
+}
 
 export default Analyze;
