@@ -1,39 +1,61 @@
 
-import { RouterProvider } from 'react-router-dom';
-import { Toaster } from '@/components/ui/toaster';
-import PageTransition from './components/PageTransition';
-import Index from './pages/Index';
-import Auth from './pages/Auth';
-import Upload from './pages/Upload';
-import Analyze from './pages/Analyze';
-import SavedAnalyses from './pages/SavedAnalyses';
-import Charts from './pages/Charts';
-import Dashboard from './pages/Dashboard';
-import DashboardHome from './pages/DashboardHome';
-import NotFound from './pages/NotFound';
-import ProtectedRoute from './components/ProtectedRoute';
-import { StatementProvider } from './contexts/StatementContext';
-import { AuthProvider } from './contexts/AuthContext';
-import { AdminProvider } from './contexts/AdminContext';
-import Compare from './pages/Compare';
-import Pricing from './pages/Pricing';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Toaster } from "@/components/ui/sonner";
+import { AuthProvider } from '@/contexts/AuthContext';
+import { AdminProvider } from '@/contexts/AdminContext';
 import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
-import AdvancedAnalytics from '@/pages/AdvancedAnalytics';
-import FinancialGoals from '@/pages/FinancialGoals';
-import PaystackTest from '@/pages/PaystackTest';
-import AIFinancialAdvisor from '@/pages/AIFinancialAdvisor';
+import Layout from '@/components/Layout';
+import Index from '@/pages/Index';
+import Auth from '@/pages/Auth';
+import Charts from '@/pages/Charts';
+import Analyze from '@/pages/Analyze';
 import Transactions from '@/pages/Transactions';
-import BudgetDashboard from './pages/BudgetDashboard';
-import BudgetForm from './pages/BudgetForm';
-import './App.css';
-import Layout from './components/Layout';
-import BillingPage from './pages/BillingPage';
+import Compare from '@/pages/Compare';
+import SavedAnalyses from '@/pages/SavedAnalyses';
+import AdvancedAnalysis from '@/pages/AdvancedAnalysis';
+import Onboarding from '@/pages/Onboarding';
+import Pricing from '@/pages/Pricing';
+import AdminRoot from '@/components/admin/AdminRoot';
+import { ThemeProvider } from 'next-themes';
 
-import AppRoutes from './routes';
+const queryClient = new QueryClient();
 
 function App() {
   return (
-    <AppRoutes />
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <AuthProvider>
+          <AdminProvider>
+            <SubscriptionProvider>
+              <Router>
+                <Routes>
+                  <Route path="/auth" element={<Auth />} />
+                  <Route path="/onboarding" element={<Onboarding />} />
+                  <Route path="/pricing" element={<Pricing />} />
+                  <Route path="/admin/*" element={<AdminRoot />} />
+                  <Route path="/*" element={
+                    <Layout>
+                      <Routes>
+                        <Route path="/" element={<Index />} />
+                        <Route path="/charts" element={<Charts />} />
+                        <Route path="/analyze" element={<Analyze />} />
+                        <Route path="/transactions" element={<Transactions />} />
+                        <Route path="/compare" element={<Compare />} />
+                        <Route path="/saved" element={<SavedAnalyses />} />
+                        <Route path="/advanced" element={<AdvancedAnalysis />} />
+                      </Routes>
+                    </Layout>
+                  } />
+                </Routes>
+              </Router>
+              <Toaster />
+            </SubscriptionProvider>
+          </AdminProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
   );
 }
 

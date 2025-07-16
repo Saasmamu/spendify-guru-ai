@@ -1,6 +1,5 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-
 import { useAuth } from './AuthContext';
 import { supabase } from '@/lib/supabase';
 import type { AdminUser, AdminRole, AdminPermission } from '@/types/admin';
@@ -21,7 +20,6 @@ const AdminContext = createContext<AdminContextType | undefined>(undefined);
 
 export function AdminProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-
   const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
   const [permissions, setPermissions] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
@@ -35,7 +33,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
         action,
         resource,
         details,
-        ip_address: window.location.hostname, // In a real app, get from server
+        ip_address: window.location.hostname,
         user_agent: navigator.userAgent,
       });
 

@@ -64,3 +64,6 @@ export interface AnomalyData {
   count: number;
   highSeverity: number;
 }
+
+// Re-export admin types
+export * from './admin';
