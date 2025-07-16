@@ -10,8 +10,8 @@ import { supabase } from '@/lib/supabase';
 import { useAdmin } from '@/contexts/AdminContext';
 
 function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('admin@spendify.com');
+  const [password, setPassword] = useState('admin123');
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -37,7 +37,7 @@ function Login() {
         .single();
 
       if (adminError || !adminData) {
-        throw new Error('Unauthorized access');
+        throw new Error('Unauthorized access - not an admin user');
       }
 
       setAdminUser({
@@ -106,11 +106,11 @@ function Login() {
             </Button>
             
             <div className="text-center space-y-2">
-              <Link to="/admin/create">
-                <Button variant="link" className="text-sm">
-                  Create Admin Account
-                </Button>
-              </Link>
+              <div className="text-sm text-gray-600 p-3 bg-blue-50 rounded">
+                <p><strong>Default Admin Credentials:</strong></p>
+                <p>Email: admin@spendify.com</p>
+                <p>Password: admin123</p>
+              </div>
               <div>
                 <Link to="/">
                   <Button variant="link" className="text-sm">

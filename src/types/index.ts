@@ -1,15 +1,15 @@
 
 export interface Transaction {
   id: string;
+  user_id: string;
   date: string;
-  description: string;
   amount: number;
-  type: 'income' | 'expense';
+  description: string;
+  type: string;
   category: string;
   reference?: string;
   channel?: string;
   balance?: number;
-  user_id: string;
   created_at: string;
   updated_at: string;
 }
@@ -17,48 +17,39 @@ export interface Transaction {
 export interface CategoryData {
   name: string;
   amount: number;
-  count: number;
-  percentage: number;
-  color: string;
+  color?: string;
 }
 
 export interface Anomaly {
   id: string;
-  type: string;
-  description: string;
-  severity: 'low' | 'medium' | 'high';
-  transaction_id: string;
-  detected_at: string;
-  status: 'new' | 'reviewed' | 'resolved';
   user_id: string;
+  transaction_id: string;
+  type: string;
+  description?: string;
+  severity?: string;
+  status?: string;
+  detected_at: string;
 }
 
 export interface AnomalyData {
-  anomalies: Anomaly[];
-  summary: {
-    total: number;
-    byType: Record<string, number>;
-    bySeverity: Record<string, number>;
-  };
+  type: string;
+  count: number;
+  severity: 'low' | 'medium' | 'high';
 }
 
 export interface SavedAnalysis {
   id: string;
+  user_id: string;
   name: string;
   date: string;
-  transactions: Transaction[];
+  transactions: any;
   total_income: number;
   total_expense: number;
-  categories: CategoryData[];
+  categories: any;
   insights: any;
   created_at: string;
-  user_id: string;
 }
 
-export interface FinancialData {
-  transactions: Transaction[];
-  categories: CategoryData[];
-  totalIncome: number;
-  totalExpenses: number;
-  netIncome: number;
+export interface BankStatementUploadProps {
+  onUploadComplete?: (transactions: Transaction[]) => void;
 }

@@ -17,9 +17,7 @@ import SavedAnalyses from '@/pages/SavedAnalyses';
 import AdvancedAnalysis from '@/pages/AdvancedAnalysis';
 import Onboarding from '@/pages/Onboarding';
 import Pricing from '@/pages/Pricing';
-import AdminRoot from '@/components/admin/AdminRoot';
 import AdminLogin from '@/pages/admin/Login';
-import CreateAdmin from '@/pages/admin/CreateAdmin';
 import AdminDashboard from '@/pages/admin/Dashboard';
 import { ThemeProvider } from 'next-themes';
 
@@ -38,13 +36,8 @@ function App() {
                   <Route path="/onboarding" element={<Onboarding />} />
                   <Route path="/pricing" element={<Pricing />} />
                   <Route path="/admin/login" element={<AdminLogin />} />
-                  <Route path="/admin/create" element={<CreateAdmin />} />
-                  <Route path="/admin/*" element={
-                    <Routes>
-                      <Route path="/" element={<AdminDashboard />} />
-                      <Route path="/dashboard" element={<AdminDashboard />} />
-                    </Routes>
-                  } />
+                  <Route path="/admin" element={<AdminDashboard />} />
+                  <Route path="/admin/dashboard" element={<AdminDashboard />} />
                   <Route path="/*" element={
                     <Layout>
                       <Routes>
