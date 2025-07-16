@@ -6,52 +6,23 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
-import { supabase } from '@/lib/supabase';
 import { useAdmin } from '@/contexts/AdminContext';
 
-function Login() {
+function AdminLogin() {
   const [email, setEmail] = useState('admin@spendify.com');
   const [password, setPassword] = useState('admin123');
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { setAdminUser } = useAdmin();
+  const { signIn } = useAdmin();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      const { data: { user }, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) throw error;
-
-      // Check if the user has admin privileges
-      const { data: adminData, error: adminError } = await supabase
-        .from('admin_users')
-        .select('*, admin_roles(*)')
-        .eq('user_id', user?.id)
-        .single();
-
-      if (adminError || !adminData) {
-        throw new Error('Unauthorized access - not an admin user');
-      }
-
-      setAdminUser({
-        id: adminData.id,
-        user_id: user?.id || '',
-        email: user?.email || '',
-        role_id: adminData.role_id,
-        is_active: adminData.is_active,
-        last_login: new Date().toISOString(),
-        created_at: adminData.created_at,
-        updated_at: adminData.updated_at,
-        role: adminData.admin_roles
-      });
-
+      await signIn(email, password);
+      
       toast({
         title: 'Welcome back!',
         description: 'Successfully logged in to admin panel.',
@@ -126,4 +97,4 @@ function Login() {
   );
 }
 
-export default Login;
+export default AdminLogin;

@@ -1,75 +1,73 @@
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { useAuth } from './AuthContext';
-import { supabase } from '@/lib/supabase';
-
-interface Subscription {
-  id: string;
-  user_id: string;
-  plan_id?: string;
-  trial_ends_at?: string;
-  current_period_end?: string;
-  cancel_at_period_end?: boolean;
-  trial_type?: string;
-  plan?: string;
-  status: string;
-  card_added?: boolean;
-  created_at?: string;
-  updated_at?: string;
-}
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { Plan, Subscription } from '@/types';
 
 interface SubscriptionContextType {
+  activePlan: Plan | null;
   subscription: Subscription | null;
-  isLoading: boolean;
-  refreshSubscription: () => Promise<void>;
+  planEndDate: string | null;
+  trialEndsAt: string | null;
+  trialType: string | null;
+  cardAdded: boolean;
+  isTrialActive: boolean;
+  loading: boolean;
+  limits: {
+    maxFileSize: number;
+    maxFilesPerMonth: number;
+    filesUsedThisMonth: number;
+  };
+  updateSubscription: (planId: string) => Promise<void>;
 }
 
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
 
 export function SubscriptionProvider({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
+  const [activePlan, setActivePlan] = useState<Plan | null>(null);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  const loadSubscription = async () => {
-    if (!user) {
-      setSubscription(null);
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      const { data, error } = await supabase
-        .from('subscriptions')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        throw error;
-      }
-
-      setSubscription(data || null);
-    } catch (error) {
-      console.error('Error loading subscription:', error);
-      setSubscription(null);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadSubscription();
-  }, [user]);
+    // Mock data for now
+    const mockPlan: Plan = {
+      id: 'free',
+      name: 'Free',
+      price: 0,
+      interval: 'month',
+      features: {
+        maxFileSize: 5 * 1024 * 1024,
+        maxFilesPerMonth: 5,
+        advancedAnalytics: false,
+        aiInsights: false,
+        exportFormats: ['pdf'],
+        priority: 'low'
+      },
+      description: 'Basic plan for personal use'
+    };
 
-  const refreshSubscription = async () => {
-    await loadSubscription();
+    setActivePlan(mockPlan);
+    setLoading(false);
+  }, []);
+
+  const updateSubscription = async (planId: string) => {
+    // Mock implementation
+    console.log('Updating subscription to plan:', planId);
   };
 
-  const value = {
+  const value: SubscriptionContextType = {
+    activePlan,
     subscription,
-    isLoading,
-    refreshSubscription,
+    planEndDate: null,
+    trialEndsAt: null,
+    trialType: null,
+    cardAdded: false,
+    isTrialActive: false,
+    loading,
+    limits: {
+      maxFileSize: activePlan?.features.maxFileSize || 5 * 1024 * 1024,
+      maxFilesPerMonth: activePlan?.features.maxFilesPerMonth || 5,
+      filesUsedThisMonth: 0
+    },
+    updateSubscription
   };
 
   return (

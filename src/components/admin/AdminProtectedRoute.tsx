@@ -3,7 +3,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAdmin } from '@/contexts/AdminContext';
 
 export function AdminProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAdmin, adminUser, isLoading } = useAdmin();
+  const { isAdmin, isLoading } = useAdmin();
   const location = useLocation();
 
   if (isLoading) {
@@ -14,8 +14,7 @@ export function AdminProtectedRoute({ children }: { children: React.ReactNode })
     );
   }
 
-  if (!isAdmin || !adminUser) {
-    // Redirect to admin login, but save the attempted URL
+  if (!isAdmin) {
     return <Navigate to="/admin/login" state={{ from: location }} replace />;
   }
 

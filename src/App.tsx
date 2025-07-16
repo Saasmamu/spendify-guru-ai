@@ -19,6 +19,8 @@ import Onboarding from '@/pages/Onboarding';
 import Pricing from '@/pages/Pricing';
 import AdminLogin from '@/pages/admin/Login';
 import AdminDashboard from '@/pages/admin/Dashboard';
+import { AdminProtectedRoute } from '@/components/admin/AdminProtectedRoute';
+import { AdminLayout } from '@/components/admin/AdminLayout';
 import { ThemeProvider } from 'next-themes';
 
 const queryClient = new QueryClient();
@@ -36,8 +38,14 @@ function App() {
                   <Route path="/onboarding" element={<Onboarding />} />
                   <Route path="/pricing" element={<Pricing />} />
                   <Route path="/admin/login" element={<AdminLogin />} />
-                  <Route path="/admin" element={<AdminDashboard />} />
-                  <Route path="/admin/dashboard" element={<AdminDashboard />} />
+                  <Route path="/admin" element={
+                    <AdminProtectedRoute>
+                      <AdminLayout />
+                    </AdminProtectedRoute>
+                  }>
+                    <Route index element={<AdminDashboard />} />
+                    <Route path="dashboard" element={<AdminDashboard />} />
+                  </Route>
                   <Route path="/*" element={
                     <Layout>
                       <Routes>
