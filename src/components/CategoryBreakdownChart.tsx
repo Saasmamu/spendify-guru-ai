@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 interface CategoryBreakdownChartProps {
@@ -5,7 +6,6 @@ interface CategoryBreakdownChartProps {
 }
 
 const CategoryBreakdownChart: React.FC<CategoryBreakdownChartProps> = ({ data }) => {
-  // Placeholder: Replace with pie/donut chart later
   return (
     <div className="bg-white rounded shadow p-4 mb-6">
       <span className="text-gray-500">Category Breakdown</span>
