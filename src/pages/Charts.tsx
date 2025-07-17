@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,9 +17,9 @@ import { useToast } from '@/hooks/use-toast';
 import { SavedAnalysis } from '@/types';
 import { getSavedAnalyses } from '@/services/storageService';
 
-// Chart components - using default imports
-import CategoryBreakdownChart from '@/components/CategoryBreakdownChart';
-import SpendingTrendsChart from '@/components/SpendingTrendsChart';
+// Chart components
+import { CategoryBreakdownChart } from '@/components/CategoryBreakdownChart';
+import { SpendingTrendsChart } from '@/components/SpendingTrendsChart';
 
 export default function Charts() {
   const { toast } = useToast();
