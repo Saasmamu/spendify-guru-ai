@@ -17,7 +17,7 @@ export interface SubscriptionPlanDetails {
 export interface SubscriptionContextType {
   activePlan: SubscriptionPlan | null;
   planEndDate: string | null;
-  trialEndsAt: Date | null;
+  trialEndsAt: string | null;
   isTrialActive: boolean;
   loading: boolean;
   trialType: string | null;
@@ -54,7 +54,7 @@ export const SubscriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
   const { toast } = useToast();
   const [activePlan, setActivePlan] = useState<SubscriptionPlan | null>(null);
   const [planEndDate, setPlanEndDate] = useState<string | null>(null);
-  const [trialEndsAt, setTrialEndsAt] = useState<Date | null>(null);
+  const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null);
   const [isTrialActive, setIsTrialActive] = useState(false);
   const [loading, setLoading] = useState(true);
   const [trialType, setTrialType] = useState<string | null>(null);
@@ -89,7 +89,7 @@ export const SubscriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
       if (data) {
         setActivePlan(data.plan as SubscriptionPlan);
         setPlanEndDate(data.current_period_end);
-        setTrialEndsAt(data.trial_ends_at ? new Date(data.trial_ends_at) : null);
+        setTrialEndsAt(data.trial_ends_at);
         setIsTrialActive(data.trial_ends_at ? new Date(data.trial_ends_at) > new Date() : false);
         setTrialType(data.trial_type);
         setCardAdded(data.card_added || false);
