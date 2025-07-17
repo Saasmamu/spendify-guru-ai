@@ -1,73 +1,44 @@
-interface Analysis {
-  id: string;
-  name: string;
-  // Add other properties as needed
-}
 
-class StorageServiceClass {
-  async saveAnalysis(analysis: any): Promise<void> {
-    try {
-      const analyses = await this.getAnalyses();
-      const newAnalysis = {
-        id: Date.now().toString(),
-        ...analysis,
-        savedAt: new Date().toISOString(),
-      };
-      analyses.push(newAnalysis);
-      localStorage.setItem('savedAnalyses', JSON.stringify(analyses));
-    } catch (error) {
-      console.error('Error saving analysis:', error);
-      throw error;
-    }
-  }
+import { SavedAnalysis } from '@/types';
 
-  async getAnalyses(): Promise<any[]> {
-    try {
-      const stored = localStorage.getItem('savedAnalyses');
-      return stored ? JSON.parse(stored) : [];
-    } catch (error) {
-      console.error('Error getting analyses:', error);
-      return [];
-    }
-  }
+export const saveAnalysis = async (analysis: Omit<SavedAnalysis, 'id' | 'created_at'>): Promise<SavedAnalysis> => {
+  const saved: SavedAnalysis = {
+    ...analysis,
+    id: Date.now().toString(),
+    created_at: new Date().toISOString()
+  };
+  
+  const existing = JSON.parse(localStorage.getItem('savedAnalyses') || '[]');
+  existing.push(saved);
+  localStorage.setItem('savedAnalyses', JSON.stringify(existing));
+  
+  return saved;
+};
 
-  async deleteAnalysis(id: string): Promise<void> {
-    try {
-      const analyses = await this.getAnalyses();
-      const filtered = analyses.filter(analysis => analysis.id !== id);
-      localStorage.setItem('savedAnalyses', JSON.stringify(filtered));
-    } catch (error) {
-      console.error('Error deleting analysis:', error);
-      throw error;
-    }
-  }
+export const getSavedAnalyses = async (): Promise<SavedAnalysis[]> => {
+  const saved = localStorage.getItem('savedAnalyses');
+  return saved ? JSON.parse(saved) : [];
+};
 
-  async saveTransaction(transaction: any): Promise<void> {
-    try {
-      const transactions = await this.getTransactions();
-      transactions.push({
-        id: Date.now().toString(),
-        ...transaction,
-        createdAt: new Date().toISOString(),
-      });
-      localStorage.setItem('transactions', JSON.stringify(transactions));
-    } catch (error) {
-      console.error('Error saving transaction:', error);
-      throw error;
-    }
-  }
+export const deleteAnalysis = async (id: string): Promise<void> => {
+  const existing = JSON.parse(localStorage.getItem('savedAnalyses') || '[]');
+  const filtered = existing.filter((analysis: SavedAnalysis) => analysis.id !== id);
+  localStorage.setItem('savedAnalyses', JSON.stringify(filtered));
+};
 
-  async getTransactions(): Promise<any[]> {
-    try {
-      const stored = localStorage.getItem('transactions');
-      return stored ? JSON.parse(stored) : [];
-    } catch (error) {
-      console.error('Error getting transactions:', error);
-      return [];
-    }
-  }
-}
+export const getAnalysisById = async (id: string): Promise<SavedAnalysis | null> => {
+  const existing = JSON.parse(localStorage.getItem('savedAnalyses') || '[]');
+  return existing.find((analysis: SavedAnalysis) => analysis.id === id) || null;
+};
 
-export const storageService = new StorageServiceClass();
-export const StorageService = storageService; // For backward compatibility
-export default storageService;
+export const getAnalyses = getSavedAnalyses;
+export const deleteSavedAnalysis = deleteAnalysis;
+
+export default {
+  saveAnalysis,
+  getSavedAnalyses,
+  deleteAnalysis,
+  getAnalysisById,
+  getAnalyses,
+  deleteSavedAnalysis
+};

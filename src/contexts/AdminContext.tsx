@@ -1,81 +1,88 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
-import { AdminUser } from '@/types';
+
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { AdminUser, AdminSession } from '@/types';
 
 interface AdminContextType {
-  adminUser: AdminUser | null;
-  loading: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
-  signOut: () => Promise<void>;
+  user: AdminUser | null;
+  session: AdminSession | null;
+  isAdmin: boolean;
+  isLoading: boolean;
   hasPermission: (permission: string) => boolean;
-  logActivity: (action: string, resource: string, details?: any) => Promise<void>;
+  logActivity: (activity: string) => void;
+  signIn: (email: string, password: string) => Promise<void>;
+  signOut: () => void;
 }
 
 const AdminContext = createContext<AdminContextType | undefined>(undefined);
 
 export function AdminProvider({ children }: { children: React.ReactNode }) {
-  const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  const signIn = async (email: string, password: string) => {
-    setLoading(true);
-    try {
-      // Mock admin authentication
-      if (email === 'admin@spendify.com' && password === 'admin123') {
-        const mockAdmin: AdminUser = {
-          id: '1',
-          email: 'admin@spendify.com',
-          role: 'super_admin',
-          created_at: new Date().toISOString(),
-        };
-        setAdminUser(mockAdmin);
-        localStorage.setItem('admin_session', JSON.stringify(mockAdmin));
-      } else {
-        throw new Error('Invalid credentials');
-      }
-    } catch (error) {
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const signOut = async () => {
-    setAdminUser(null);
-    localStorage.removeItem('admin_session');
-  };
-
-  const hasPermission = (permission: string): boolean => {
-    if (!adminUser) return false;
-    // Mock permission check - super_admin has all permissions
-    return adminUser.role === 'super_admin';
-  };
-
-  const logActivity = async (action: string, resource: string, details?: any) => {
-    // Mock activity logging
-    console.log('Admin activity:', { action, resource, details, user: adminUser?.email });
-  };
+  const [user, setUser] = useState<AdminUser | null>(null);
+  const [session, setSession] = useState<AdminSession | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const storedSession = localStorage.getItem('admin_session');
-    if (storedSession) {
-      try {
-        const session = JSON.parse(storedSession);
-        setAdminUser(session);
-      } catch (error) {
-        localStorage.removeItem('admin_session');
-      }
+    // Check for existing session
+    const savedSession = localStorage.getItem('adminSession');
+    if (savedSession) {
+      const parsedSession = JSON.parse(savedSession);
+      setSession(parsedSession);
+      setUser(parsedSession.user);
     }
+    setIsLoading(false);
   }, []);
 
+  const hasPermission = (permission: string): boolean => {
+    return user?.permissions.includes(permission) || false;
+  };
+
+  const logActivity = (activity: string) => {
+    console.log('Admin activity:', activity);
+  };
+
+  const signIn = async (email: string, password: string) => {
+    // Mock admin authentication
+    if (email === 'admin@spendify.com' && password === 'admin123') {
+      const adminUser: AdminUser = {
+        id: '1',
+        email,
+        role: 'admin',
+        permissions: ['read', 'write', 'delete', 'manage_users'],
+        created_at: new Date().toISOString()
+      };
+
+      const adminSession: AdminSession = {
+        user: adminUser,
+        token: 'mock-admin-token',
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+      };
+
+      setUser(adminUser);
+      setSession(adminSession);
+      localStorage.setItem('adminSession', JSON.stringify(adminSession));
+    } else {
+      throw new Error('Invalid credentials');
+    }
+  };
+
+  const signOut = () => {
+    setUser(null);
+    setSession(null);
+    localStorage.removeItem('adminSession');
+  };
+
+  const value: AdminContextType = {
+    user,
+    session,
+    isAdmin: !!user,
+    isLoading,
+    hasPermission,
+    logActivity,
+    signIn,
+    signOut
+  };
+
   return (
-    <AdminContext.Provider value={{
-      adminUser,
-      loading,
-      signIn,
-      signOut,
-      hasPermission,
-      logActivity,
-    }}>
+    <AdminContext.Provider value={value}>
       {children}
     </AdminContext.Provider>
   );
@@ -83,7 +90,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
 
 export function useAdmin() {
   const context = useContext(AdminContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error('useAdmin must be used within an AdminProvider');
   }
   return context;

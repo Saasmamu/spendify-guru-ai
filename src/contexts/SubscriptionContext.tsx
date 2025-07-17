@@ -1,6 +1,28 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Plan, Subscription } from '@/types';
+
+export interface Plan {
+  id: string;
+  name: string;
+  price: number;
+  interval: 'month' | 'year';
+  features: {
+    maxFileSize: number;
+    maxFilesPerMonth: number;
+    advancedAnalytics: boolean;
+    aiInsights: boolean;
+    exportFormats: string[];
+    priority: string;
+  };
+  description: string;
+}
+
+export interface Subscription {
+  id: string;
+  planId: string;
+  status: string;
+  currentPeriodEnd: string;
+}
 
 interface SubscriptionContextType {
   activePlan: Plan | null;
