@@ -1,134 +1,149 @@
+import React, { createContext, useContext, useState, useEffect } from 'react';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useAuth } from './AuthContext';
-import { supabase } from '@/lib/supabase';
-import { useToast } from '@/hooks/use-toast';
-
-export type SubscriptionPlan = 'starter' | 'pro' | 'enterprise';
-
-export interface SubscriptionContextType {
-  activePlan: SubscriptionPlan | null;
-  planEndDate: string | null;
-  trialEndsAt: string | null;
-  isTrialActive: boolean;
-  loading: boolean;
-  trialType: string | null;
-  cardAdded: boolean;
-  updateSubscription: (planId: string, isTrial?: boolean) => Promise<void>;
+interface SubscriptionPlan {
+  id: string;
+  name: string;
+  price: number;
+  interval: 'monthly' | 'yearly';
+  features: string[];
+  limits: SubscriptionLimits;
 }
 
-const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
+interface SubscriptionLimits {
+  maxStatements: number;
+  maxSavedAnalyses: number;
+  aiAnalysis: boolean;
+  financialGoals: boolean;
+  customCategories: boolean;
+  anomalyDetection: boolean;
+}
 
-export const SubscriptionProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const [activePlan, setActivePlan] = useState<SubscriptionPlan | null>(null);
-  const [planEndDate, setPlanEndDate] = useState<string | null>(null);
-  const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null);
-  const [isTrialActive, setIsTrialActive] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [trialType, setTrialType] = useState<string | null>(null);
-  const [cardAdded, setCardAdded] = useState(false);
+interface SubscriptionContextType {
+  plan: SubscriptionPlan | null;
+  activePlan: SubscriptionPlan | null;
+  limits: SubscriptionLimits;
+  subscription: any;
+  setSubscription: (subscription: any) => void;
+  isLoading: boolean;
+}
+
+const FREE_LIMITS: SubscriptionLimits = {
+  maxStatements: 3,
+  maxSavedAnalyses: 1,
+  aiAnalysis: false,
+  financialGoals: false,
+  customCategories: false,
+  anomalyDetection: false
+};
+
+const PREMIUM_LIMITS: SubscriptionLimits = {
+  maxStatements: 10,
+  maxSavedAnalyses: 5,
+  aiAnalysis: true,
+  financialGoals: true,
+  customCategories: true,
+  anomalyDetection: true
+};
+
+const ENTERPRISE_LIMITS: SubscriptionLimits = {
+  maxStatements: 100,
+  maxSavedAnalyses: 20,
+  aiAnalysis: true,
+  financialGoals: true,
+  customCategories: true,
+  anomalyDetection: true
+};
+
+const SubscriptionContext = createContext<SubscriptionContextType | null>(null);
+
+const getLimitsForPlan = (planId: string): SubscriptionLimits => {
+  switch (planId) {
+    case 'premium':
+      return PREMIUM_LIMITS;
+    case 'enterprise':
+      return ENTERPRISE_LIMITS;
+    default:
+      return FREE_LIMITS;
+  }
+};
+
+const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [subscription, setSubscription] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [plan, setPlan] = useState<SubscriptionPlan | null>(null);
+  const limits = plan ? plan.limits : FREE_LIMITS;
 
   useEffect(() => {
-    if (user) {
-      fetchSubscriptionData();
-    } else {
-      setLoading(false);
-    }
-  }, [user]);
+    const loadSubscription = async () => {
+      setIsLoading(true);
+      try {
+        // Mock subscription data
+        const mockSubscription = {
+          id: 'sub_123',
+          status: 'active',
+          plan: 'premium',
+          customerId: 'cus_123',
+          startDate: new Date(),
+          endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+        };
+        setSubscription(mockSubscription);
 
-  const fetchSubscriptionData = async () => {
-    if (!user) return;
+        const activePlan = await getActivePlan();
+        setPlan(activePlan);
+      } catch (error) {
+        console.error('Failed to load subscription:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadSubscription();
+  }, []);
+
+  const getActivePlan = (): Promise<SubscriptionPlan> => {
+    if (subscription?.plan) {
+      return Promise.resolve({
+        id: subscription.plan,
+        name: subscription.plan === 'free' ? 'Free' : subscription.plan === 'premium' ? 'Premium' : 'Enterprise',
+        price: subscription.plan === 'free' ? 0 : subscription.plan === 'premium' ? 29 : 99,
+        interval: subscription.plan === 'free' ? 'monthly' as const : 'monthly' as const,
+        features: [],
+        limits: getLimitsForPlan(subscription.plan)
+      });
+    }
     
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('subscriptions')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error fetching subscription:', error);
-        return;
-      }
-
-      if (data) {
-        setActivePlan(data.plan as SubscriptionPlan);
-        setPlanEndDate(data.current_period_end);
-        setTrialEndsAt(data.trial_ends_at);
-        setIsTrialActive(data.trial_ends_at ? new Date(data.trial_ends_at) > new Date() : false);
-        setTrialType(data.trial_type);
-        setCardAdded(data.card_added || false);
-      }
-    } catch (error) {
-      console.error('Error fetching subscription data:', error);
-    } finally {
-      setLoading(false);
-    }
+    return Promise.resolve({
+      id: 'free',
+      name: 'Free',
+      price: 0,
+      interval: 'monthly' as const,
+      features: [],
+      limits: FREE_LIMITS
+    });
   };
 
-  const updateSubscription = async (planId: string, isTrial: boolean = false) => {
-    if (!user) return;
-
-    try {
-      const subscriptionData = {
-        user_id: user.id,
-        plan: planId as SubscriptionPlan,
-        status: 'active',
-        ...(isTrial && {
-          trial_ends_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-          trial_type: 'free'
-        })
-      };
-
-      const { error } = await supabase
-        .from('subscriptions')
-        .upsert(subscriptionData);
-
-      if (error) throw error;
-
-      await fetchSubscriptionData();
-      
-      toast({
-        title: isTrial ? 'Trial Started!' : 'Subscription Updated',
-        description: isTrial 
-          ? `Your 7-day trial for the ${planId} plan has begun.`
-          : `Successfully updated to the ${planId} plan.`
-      });
-    } catch (error) {
-      console.error('Error updating subscription:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update subscription. Please try again.',
-        variant: 'destructive'
-      });
-    }
-  };
-
-  const value: SubscriptionContextType = {
-    activePlan,
-    planEndDate,
-    trialEndsAt,
-    isTrialActive,
-    loading,
-    trialType,
-    cardAdded,
-    updateSubscription
+  const contextValue: SubscriptionContextType = {
+    plan: plan,
+    activePlan: plan,
+    limits: limits,
+    subscription: subscription,
+    setSubscription: setSubscription,
+    isLoading: isLoading
   };
 
   return (
-    <SubscriptionContext.Provider value={value}>
-      {children}
+    <SubscriptionContext.Provider value={contextValue}>
+      {!isLoading && children}
     </SubscriptionContext.Provider>
   );
 };
 
-export const useSubscription = () => {
+const useSubscription = (): SubscriptionContextType => {
   const context = useContext(SubscriptionContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useSubscription must be used within a SubscriptionProvider');
   }
   return context;
 };
+
+export { SubscriptionProvider, useSubscription };

@@ -5,13 +5,17 @@ export interface SavedAnalysis {
   date: string;
   totalIncome: number;
   totalExpense: number;
-  balance?: number;
   categories: {
     category: string;
     amount: number;
     count: number;
   }[];
-  transactions: BankTransaction[];
+  transactions: {
+    date: string;
+    description: string;
+    amount: number;
+    category?: string;
+  }[];
   patterns?: {
     id: string;
     type: 'recurring' | 'seasonal' | 'trend';
@@ -43,38 +47,4 @@ export interface SavedAnalysis {
     confidence_score: number;
     factors: string[];
   }[];
-  insights?: string[];
-}
-
-export interface BankTransaction {
-  id: string;
-  date: string;
-  description: string;
-  amount: number;
-  balance?: number;
-  type: string;
-  category?: string;
-  reference?: string;
-  channel?: string;
-}
-
-export interface ProcessedStatement {
-  transactions: BankTransaction[];
-  totalIncome: number;
-  totalExpense: number;
-  balance: number;
-  categories: {
-    category: string;
-    amount: number;
-    count: number;
-  }[];
-  insights: string[];
-}
-
-export interface RawAnalysisData {
-  date: string;
-  totalIncome: number;
-  totalExpense: number;
-  name: string;
-  transactions: BankTransaction[];
 }
