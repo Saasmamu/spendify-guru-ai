@@ -1,42 +1,18 @@
-
 import React from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
-import { TransactionCategory } from '@/types';
 
 interface CategoryBreakdownChartProps {
-  categories: TransactionCategory[];
+  data: { category: string; amount: number; color: string }[];
 }
 
-const CategoryBreakdownChart: React.FC<CategoryBreakdownChartProps> = ({ categories }) => {
-  const data = categories.map(category => ({
-    name: category.name,
-    value: category.amount,
-    color: category.color
-  }));
-
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
-
+const CategoryBreakdownChart: React.FC<CategoryBreakdownChartProps> = ({ data }) => {
+  // Placeholder: Replace with pie/donut chart later
   return (
-    <ResponsiveContainer width="100%" height={300}>
-      <PieChart>
-        <Pie
-          data={data}
-          cx="50%"
-          cy="50%"
-          labelLine={false}
-          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-          outerRadius={80}
-          fill="#8884d8"
-          dataKey="value"
-        >
-          {data.map((entry, index) => (
-            <Cell key={`cell-${index}`} fill={entry.color || COLORS[index % COLORS.length]} />
-          ))}
-        </Pie>
-        <Tooltip formatter={(value) => [`$${Number(value).toFixed(2)}`, 'Amount']} />
-        <Legend />
-      </PieChart>
-    </ResponsiveContainer>
+    <div className="bg-white rounded shadow p-4 mb-6">
+      <span className="text-gray-500">Category Breakdown</span>
+      <div className="h-40 flex items-center justify-center text-gray-400">
+        [Category Breakdown Chart Placeholder]
+      </div>
+    </div>
   );
 };
 
