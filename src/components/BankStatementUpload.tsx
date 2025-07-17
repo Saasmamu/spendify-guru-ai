@@ -1,158 +1,234 @@
-
-import React, { useState, useCallback } from 'react';
-import { useDropzone } from 'react-dropzone';
+import React, { useState } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Upload, FileText, AlertCircle, CheckCircle } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { storageService } from '@/services/storageService';
-import type { Transaction } from '@/types';
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Loader2, Upload, Edit2, Check, X } from 'lucide-react';
+import { bankStatementService } from '@/services/bankStatementService';
+import type { ExtractedTransaction } from '@/services/bankStatementService';
 
-interface BankStatementUploadProps {
-  onUploadComplete?: (transactions: Transaction[]) => void;
-}
+export function BankStatementUpload() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [isUploading, setIsUploading] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [extractedData, setExtractedData] = useState<{
+    transactions: ExtractedTransaction[];
+    summary: {
+      totalIncome: number;
+      totalExpenses: number;
+      period: {
+        startDate: string;
+        endDate: string;
+      };
+    };
+  } | null>(null);
 
-const BankStatementUpload: React.FC<BankStatementUploadProps> = ({ onUploadComplete }) => {
-  const [uploading, setUploading] = useState(false);
-  const [uploadStatus, setUploadStatus] = useState<'idle' | 'success' | 'error'>('idle');
-  const [errorMessage, setErrorMessage] = useState('');
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
 
-  const onDrop = useCallback(async (acceptedFiles: File[]) => {
-    if (acceptedFiles.length === 0) return;
+    // Check file type and size
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: 'Invalid file type',
+        description: 'Please upload an image file (JPEG, PNG)',
+        variant: 'destructive',
+      });
+      return;
+    }
 
-    const file = acceptedFiles[0];
-    setUploading(true);
-    setUploadStatus('idle');
-    setErrorMessage('');
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: 'File too large',
+        description: 'Please upload an image smaller than 5MB',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      // Convert image to base64
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const base64 = e.target?.result as string;
+        setIsProcessing(true);
+        
+        try {
+          // Extract transactions using Gemini
+          const result = await bankStatementService.extractTransactions(base64);
+          setExtractedData(result);
+          setShowPreview(true);
+        } catch (error) {
+          console.error('Error processing statement:', error);
+          let errorMessage = 'Failed to extract transactions. Please try again.';
+          
+          if (error instanceof Error) {
+            if (error.message.includes('401') || error.message.includes('Unauthorized')) {
+              errorMessage = 'API key authorization failed. Please check your Gemini API key configuration.';
+            } else if (error.message.includes('API key')) {
+              errorMessage = 'Gemini API key is missing or invalid. Please check your configuration.';
+            }
+          }
+          
+          toast({
+            title: 'Processing failed',
+            description: errorMessage,
+            variant: 'destructive',
+          });
+        } finally {
+          setIsProcessing(false);
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      toast({
+        title: 'Upload failed',
+        description: 'Failed to upload the file. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleSaveTransactions = async () => {
+    if (!user || !extractedData) return;
 
     try {
-      // Simulate file processing
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Generate mock transaction data
-      const mockTransactions: Transaction[] = [
-        {
-          id: '1',
-          date: '2024-01-15',
-          description: 'Grocery Store Purchase',
-          amount: -85.50,
-          type: 'debit',
-          category: 'Food & Dining',
-          reference: 'TXN001',
-          channel: 'POS'
-        },
-        {
-          id: '2',
-          date: '2024-01-14',
-          description: 'Salary Deposit',
-          amount: 3500.00,
-          type: 'credit',
-          category: 'Income',
-          reference: 'SAL001',
-          channel: 'Direct Deposit'
-        },
-        {
-          id: '3',
-          date: '2024-01-13',
-          description: 'Gas Station',
-          amount: -45.20,
-          type: 'debit',
-          category: 'Transportation',
-          reference: 'TXN002',
-          channel: 'POS'
-        }
-      ];
-
-      // Save to storage
-      storageService.saveTransactions(mockTransactions);
-      
-      setUploadStatus('success');
-      onUploadComplete?.(mockTransactions);
+      await bankStatementService.saveTransactions(user.id, extractedData.transactions);
+      toast({
+        title: 'Success',
+        description: 'Transactions saved successfully',
+      });
+      setShowPreview(false);
+      setExtractedData(null);
     } catch (error) {
-      console.error('Upload error:', error);
-      setUploadStatus('error');
-      setErrorMessage('Failed to process bank statement. Please try again.');
-    } finally {
-      setUploading(false);
+      console.error('Error saving transactions:', error);
+      toast({
+        title: 'Save failed',
+        description: 'Failed to save transactions. Please try again.',
+        variant: 'destructive',
+      });
     }
-  }, [onUploadComplete]);
-
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: {
-      'application/pdf': ['.pdf'],
-      'text/csv': ['.csv'],
-      'application/vnd.ms-excel': ['.xls'],
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx']
-    },
-    multiple: false
-  });
+  };
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <FileText className="h-5 w-5" />
-          Upload Bank Statement
-        </CardTitle>
-        <CardDescription>
-          Upload your bank statement in PDF, CSV, or Excel format for analysis
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div
-          {...getRootProps()}
-          className={`
-            border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors
-            ${isDragActive ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}
-            ${uploading ? 'pointer-events-none opacity-50' : ''}
-          `}
-        >
-          <input {...getInputProps()} />
-          
-          <div className="flex flex-col items-center gap-4">
-            <Upload className={`h-12 w-12 ${isDragActive ? 'text-primary' : 'text-muted-foreground'}`} />
-            
-            {uploading ? (
-              <div className="space-y-2">
-                <div className="text-lg font-medium">Processing your statement...</div>
-                <div className="text-sm text-muted-foreground">This may take a few moments</div>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <div className="text-lg font-medium">
-                  {isDragActive ? 'Drop your file here' : 'Drag & drop your bank statement'}
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  or <Button variant="link" className="p-0 h-auto">click to browse</Button>
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Supports PDF, CSV, XLS, XLSX files
-                </div>
-              </div>
-            )}
+    <div className="space-y-4">
+      <Card className="p-4">
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="statement-upload">Upload Bank Statement</Label>
+            <Input
+              id="statement-upload"
+              type="file"
+              accept="image/*"
+              onChange={handleFileUpload}
+              disabled={isUploading || isProcessing}
+              className="mt-2"
+            />
           </div>
+          
+          {(isUploading || isProcessing) && (
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>{isUploading ? 'Uploading...' : 'Processing...'}</span>
+            </div>
+          )}
         </div>
+      </Card>
 
-        {uploadStatus === 'success' && (
-          <Alert className="mt-4">
-            <CheckCircle className="h-4 w-4" />
-            <AlertDescription>
-              Bank statement uploaded and processed successfully!
-            </AlertDescription>
-          </Alert>
-        )}
+      <Dialog open={showPreview} onOpenChange={setShowPreview}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Preview Extracted Transactions</DialogTitle>
+            <DialogDescription>
+              Review the extracted transactions before saving.
+            </DialogDescription>
+          </DialogHeader>
 
-        {uploadStatus === 'error' && (
-          <Alert variant="destructive" className="mt-4">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{errorMessage}</AlertDescription>
-          </Alert>
-        )}
-      </CardContent>
-    </Card>
+          {extractedData && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium">Period</p>
+                  <p className="text-sm text-muted-foreground">
+                    {extractedData.summary.period.startDate} to {extractedData.summary.period.endDate}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Summary</p>
+                  <p className="text-sm text-muted-foreground">
+                    Income: ${extractedData.summary.totalIncome.toFixed(2)} |
+                    Expenses: ${extractedData.summary.totalExpenses.toFixed(2)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="max-h-[400px] overflow-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Category</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {extractedData.transactions.map((transaction, index) => (
+                      <TableRow key={index}>
+                        <TableCell>{transaction.date}</TableCell>
+                        <TableCell>{transaction.description}</TableCell>
+                        <TableCell>${transaction.amount.toFixed(2)}</TableCell>
+                        <TableCell>{transaction.type}</TableCell>
+                        <TableCell>{transaction.category}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowPreview(false)}
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSaveTransactions}
+                >
+                  <Check className="h-4 w-4 mr-2" />
+                  Save Transactions
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
   );
-};
-
-export default BankStatementUpload;
-export { BankStatementUpload };
+} 

@@ -1,23 +1,4 @@
 
-export interface User {
-  id: string;
-  email: string;
-  created_at: string;
-  activePlan?: string;
-}
-
-export interface BankTransaction {
-  id: string;
-  date: string;
-  description: string;
-  amount: number;
-  balance?: number;
-  type: 'debit' | 'credit';
-  category?: string;
-  reference?: string;
-  channel?: string;
-}
-
 export interface Transaction {
   id: string;
   date: string;
@@ -25,45 +6,81 @@ export interface Transaction {
   amount: number;
   balance?: number;
   type: 'debit' | 'credit';
-  category?: string;
+  category: string;
   reference?: string;
   channel?: string;
-  user_id?: string;
+}
+
+export interface TransactionCategory {
+  name: string;
+  amount: number;
+  count: number;
+  percentage: number;
+  color: string;
+  transactions: Transaction[];
+}
+
+export interface MonthlyData {
+  month: string;
+  income: number;
+  expenses: number;
+  net: number;
 }
 
 export interface SavedAnalysis {
   id: string;
   name: string;
   date: string;
-  transactions: BankTransaction[];
+  transactions: Transaction[];
   totalIncome: number;
   totalExpense: number;
-  categories: Record<string, number>;
+  categories: TransactionCategory[];
   insights: string[];
-  created_at: string;
-  user_id: string;
 }
 
-export interface Anomaly {
+export interface FinancialInsight {
+  type: 'positive' | 'negative' | 'neutral';
+  category: string;
+  message: string;
+  amount?: number;
+  percentage?: number;
+}
+
+export interface BudgetCategory {
   id: string;
-  type: string;
-  description: string;
-  severity: 'low' | 'medium' | 'high';
-  transaction_id?: string;
-  detected_at: string;
+  name: string;
+  allocated: number;
+  spent: number;
+  remaining: number;
+  percentage: number;
 }
 
-export interface CategoryData {
-  data: Transaction[];
-  total: number;
-  categorized: number;
+export interface Goal {
+  id: string;
+  name: string;
+  target: number;
+  current: number;
+  deadline: string;
+  category: string;
+  progress: number;
 }
 
-export interface AnomalyData {
-  data: Anomaly[];
-  count: number;
-  highSeverity: number;
+export interface SpendingPattern {
+  id: string;
+  name: string;
+  frequency: 'daily' | 'weekly' | 'monthly';
+  amount: number;
+  category: string;
+  lastOccurrence: string;
+  nextPredicted: string;
+  confidence: number;
 }
 
-// Re-export admin types
-export * from './admin';
+export interface User {
+  id: string;
+  email: string;
+  full_name?: string;
+  avatar_url?: string;
+  created_at: string;
+  subscription_status?: string;
+}
