@@ -21,6 +21,19 @@ export function AdminHeader() {
     await signOut();
   };
 
+  const getRoleDisplayName = (role: string) => {
+    switch (role) {
+      case 'super_admin':
+        return 'Super Admin';
+      case 'admin':
+        return 'Admin';
+      case 'moderator':
+        return 'Moderator';
+      default:
+        return role;
+    }
+  };
+
   return (
     <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="flex h-16 items-center px-4 gap-4">
@@ -64,7 +77,7 @@ export function AdminHeader() {
             <Button variant="ghost" className="relative h-8 w-8 rounded-full">
               <Avatar className="h-8 w-8">
                 <AvatarFallback>
-                  {adminUser?.role?.name.charAt(0).toUpperCase()}
+                  {getRoleDisplayName(adminUser?.role || '').charAt(0)}
                 </AvatarFallback>
               </Avatar>
             </Button>

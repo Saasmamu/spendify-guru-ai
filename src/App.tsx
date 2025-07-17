@@ -7,7 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext"
 import { StatementProvider } from "@/contexts/StatementContext"
 import { SubscriptionProvider } from "@/contexts/SubscriptionContext"
 import { AdminProvider } from "@/contexts/AdminContext"
-import { routes } from "@/routes"
+import { routes } from "@/routes/routes"
 
 const queryClient = new QueryClient()
 

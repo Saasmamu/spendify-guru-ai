@@ -1,101 +1,118 @@
-
-import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useCallback, useState } from 'react';
+import { useDropzone } from 'react-dropzone';
+import { FileText, Upload, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Upload, FileText, AlertCircle } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { pdfService } from '@/services/pdfService';
-import { Transaction, BankStatementUploadProps } from '@/types';
+import { Card, CardContent } from '@/components/ui/card';
+import { useToast } from '@/hooks/useToast';
+import { processPDFFile } from '@/services/pdfService';
+import { ProcessedStatement } from '@/types';
 
-export default function BankStatementUpload({ onUploadComplete }: BankStatementUploadProps) {
-  const [file, setFile] = useState<File | null>(null);
-  const [loading, setLoading] = useState(false);
+interface BankStatementUploadProps {
+  onUploadComplete?: (statement: ProcessedStatement) => void;
+  onAnalysisComplete?: (analysis: any) => void;
+  onAnalysisStart?: () => void;
+}
+
+const BankStatementUpload: React.FC<BankStatementUploadProps> = ({
+  onUploadComplete,
+  onAnalysisComplete,
+  onAnalysisStart
+}) => {
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = event.target.files?.[0];
-    if (selectedFile) {
-      setFile(selectedFile);
-    }
-  };
-
-  const handleUpload = async () => {
+  const onDrop = useCallback(async (acceptedFiles: File[]) => {
+    const file = acceptedFiles[0];
     if (!file) return;
 
-    setLoading(true);
+    setUploadedFile(file);
+    setIsProcessing(true);
+    onAnalysisStart?.();
+
     try {
-      const transactions = await pdfService.extractTransactions(file);
+      const processedStatement = await processPDFFile(file);
+      onUploadComplete?.(processedStatement);
+      onAnalysisComplete?.(processedStatement);
       
       toast({
         title: "Success",
-        description: `Extracted ${transactions.length} transactions from the statement.`,
+        description: `Processed ${processedStatement.transactions.length} transactions`,
       });
-
-      if (onUploadComplete) {
-        onUploadComplete(transactions);
-      }
     } catch (error) {
+      console.error('Error processing file:', error);
       toast({
         title: "Error",
-        description: "Failed to process the bank statement.",
+        description: "Failed to process the bank statement",
         variant: "destructive",
       });
     } finally {
-      setLoading(false);
+      setIsProcessing(false);
     }
+  }, [onUploadComplete, onAnalysisComplete, onAnalysisStart, toast]);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      'application/pdf': ['.pdf'],
+    },
+    multiple: false,
+  });
+
+  const removeFile = () => {
+    setUploadedFile(null);
   };
 
   return (
-    <Card className="w-full max-w-md mx-auto">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Upload className="h-5 w-5" />
-          Upload Bank Statement
-        </CardTitle>
-        <CardDescription>
-          Upload a PDF bank statement to extract transactions
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-          <Input
-            type="file"
-            accept=".pdf"
-            onChange={handleFileChange}
-            className="hidden"
-            id="file-upload"
-          />
-          <label htmlFor="file-upload" className="cursor-pointer">
-            <FileText className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-            <p className="text-sm text-gray-600">
-              Click to select a PDF file
+    <Card className="w-full">
+      <CardContent className="p-6">
+        {!uploadedFile ? (
+          <div
+            {...getRootProps()}
+            className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+              isDragActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/25'
+            }`}
+          >
+            <input {...getInputProps()} />
+            <Upload className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+            <h3 className="text-lg font-semibold mb-2">Upload Bank Statement</h3>
+            <p className="text-muted-foreground mb-4">
+              {isDragActive
+                ? 'Drop your PDF file here...'
+                : 'Drag & drop your bank statement PDF here, or click to select'}
             </p>
-          </label>
-        </div>
-
-        {file && (
-          <div className="flex items-center gap-2 p-2 bg-blue-50 rounded">
-            <FileText className="h-4 w-4 text-blue-600" />
-            <span className="text-sm text-blue-800">{file.name}</span>
+            <Button variant="outline">Select File</Button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-4 border rounded-lg">
+              <div className="flex items-center space-x-3">
+                <FileText className="w-8 h-8 text-blue-500" />
+                <div>
+                  <p className="font-medium">{uploadedFile.name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB
+                  </p>
+                </div>
+              </div>
+              {!isProcessing && (
+                <Button variant="ghost" size="sm" onClick={removeFile}>
+                  <X className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
+            
+            {isProcessing && (
+              <div className="text-center py-4">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                <p className="text-sm text-muted-foreground">Processing your bank statement...</p>
+              </div>
+            )}
           </div>
         )}
-
-        <Button 
-          onClick={handleUpload} 
-          disabled={!file || loading}
-          className="w-full"
-        >
-          {loading ? 'Processing...' : 'Upload and Process'}
-        </Button>
-
-        <div className="flex items-start gap-2 p-3 bg-amber-50 rounded">
-          <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5" />
-          <p className="text-sm text-amber-800">
-            Only PDF bank statements are supported. Ensure the file contains clear transaction data.
-          </p>
-        </div>
       </CardContent>
     </Card>
   );
-}
+};
+
+export default BankStatementUpload;

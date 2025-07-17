@@ -1,95 +1,90 @@
-
-import React, { createContext, useContext, useState } from 'react';
-import { AdminUser, AdminSession } from '@/types';
+import React, { createContext, useState, useContext, useEffect } from 'react';
+import { AdminUser } from '@/types';
 
 interface AdminContextType {
-  isAdmin: boolean;
-  isLoading: boolean;
   adminUser: AdminUser | null;
-  login: (email: string, password: string) => Promise<boolean>;
-  logout: () => void;
-  checkAdminStatus: () => Promise<boolean>;
+  loading: boolean;
+  signIn: (email: string, password: string) => Promise<void>;
+  signOut: () => Promise<void>;
+  hasPermission: (permission: string) => boolean;
+  logActivity: (action: string, resource: string, details?: any) => Promise<void>;
 }
 
 const AdminContext = createContext<AdminContextType | undefined>(undefined);
 
-export const useAdmin = () => {
-  const context = useContext(AdminContext);
-  if (context === undefined) {
-    throw new Error('useAdmin must be used within an AdminProvider');
-  }
-  return context;
-};
-
-export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+export function AdminProvider({ children }: { children: React.ReactNode }) {
   const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
-    setIsLoading(true);
+  const signIn = async (email: string, password: string) => {
+    setLoading(true);
     try {
-      // Mock authentication - replace with real implementation
+      // Mock admin authentication
       if (email === 'admin@spendify.com' && password === 'admin123') {
-        const mockAdminUser: AdminUser = {
+        const mockAdmin: AdminUser = {
           id: '1',
           email: 'admin@spendify.com',
           role: 'super_admin',
-          permissions: ['read', 'write', 'delete', 'admin'],
-          createdAt: new Date().toISOString(),
-          lastLogin: new Date().toISOString()
+          created_at: new Date().toISOString(),
         };
-        
-        setAdminUser(mockAdminUser);
-        setIsAdmin(true);
-        localStorage.setItem('adminSession', JSON.stringify(mockAdminUser));
-        return true;
+        setAdminUser(mockAdmin);
+        localStorage.setItem('admin_session', JSON.stringify(mockAdmin));
+      } else {
+        throw new Error('Invalid credentials');
       }
-      return false;
+    } catch (error) {
+      throw error;
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const logout = () => {
-    setIsAdmin(false);
+  const signOut = async () => {
     setAdminUser(null);
-    localStorage.removeItem('adminSession');
+    localStorage.removeItem('admin_session');
   };
 
-  const checkAdminStatus = async (): Promise<boolean> => {
-    setIsLoading(true);
-    try {
-      const savedSession = localStorage.getItem('adminSession');
-      if (savedSession) {
-        const adminUser = JSON.parse(savedSession);
-        setAdminUser(adminUser);
-        setIsAdmin(true);
-        return true;
+  const hasPermission = (permission: string): boolean => {
+    if (!adminUser) return false;
+    // Mock permission check - super_admin has all permissions
+    return adminUser.role === 'super_admin';
+  };
+
+  const logActivity = async (action: string, resource: string, details?: any) => {
+    // Mock activity logging
+    console.log('Admin activity:', { action, resource, details, user: adminUser?.email });
+  };
+
+  useEffect(() => {
+    const storedSession = localStorage.getItem('admin_session');
+    if (storedSession) {
+      try {
+        const session = JSON.parse(storedSession);
+        setAdminUser(session);
+      } catch (error) {
+        localStorage.removeItem('admin_session');
       }
-      return false;
-    } finally {
-      setIsLoading(false);
     }
-  };
-
-  // Check admin status on mount
-  React.useEffect(() => {
-    checkAdminStatus();
   }, []);
 
-  const value: AdminContextType = {
-    isAdmin,
-    isLoading,
-    adminUser,
-    login,
-    logout,
-    checkAdminStatus
-  };
-
   return (
-    <AdminContext.Provider value={value}>
+    <AdminContext.Provider value={{
+      adminUser,
+      loading,
+      signIn,
+      signOut,
+      hasPermission,
+      logActivity,
+    }}>
       {children}
     </AdminContext.Provider>
   );
-};
+}
+
+export function useAdmin() {
+  const context = useContext(AdminContext);
+  if (!context) {
+    throw new Error('useAdmin must be used within an AdminProvider');
+  }
+  return context;
+}
