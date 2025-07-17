@@ -1,68 +1,73 @@
 
-import { Transaction } from '@/types';
+import { SavedAnalysis, BankTransaction } from '@/types';
 
 class StorageService {
-  private readonly STORAGE_KEY = 'financial_data';
+  async saveAnalysis(
+    name: string,
+    transactions: BankTransaction[],
+    totalIncome: number,
+    totalExpense: number,
+    categories: { category: string; amount: number }[],
+    insights: string[]
+  ): Promise<SavedAnalysis> {
+    const analysis: SavedAnalysis = {
+      id: Date.now().toString(),
+      name,
+      date: new Date().toISOString(),
+      totalIncome,
+      totalExpense,
+      categories: categories.map(c => ({ ...c, count: 1 })),
+      transactions,
+      insights
+    };
 
-  saveTransactions(transactions: Transaction[]): void {
-    try {
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(transactions));
-    } catch (error) {
-      console.error('Failed to save transactions:', error);
+    const saved = localStorage.getItem('savedAnalyses');
+    const analyses = saved ? JSON.parse(saved) : [];
+    analyses.push(analysis);
+    localStorage.setItem('savedAnalyses', JSON.stringify(analyses));
+
+    return analysis;
+  }
+
+  async getSavedAnalyses(): Promise<SavedAnalysis[]> {
+    const saved = localStorage.getItem('savedAnalyses');
+    return saved ? JSON.parse(saved) : [];
+  }
+
+  async deleteAnalysis(id: string): Promise<void> {
+    const saved = localStorage.getItem('savedAnalyses');
+    if (saved) {
+      const analyses = JSON.parse(saved);
+      const filtered = analyses.filter((a: SavedAnalysis) => a.id !== id);
+      localStorage.setItem('savedAnalyses', JSON.stringify(filtered));
     }
   }
 
-  loadTransactions(): Transaction[] {
-    try {
-      const data = localStorage.getItem(this.STORAGE_KEY);
-      return data ? JSON.parse(data) : [];
-    } catch (error) {
-      console.error('Failed to load transactions:', error);
-      return [];
+  async getAnalysisById(id: string): Promise<SavedAnalysis | null> {
+    const saved = localStorage.getItem('savedAnalyses');
+    if (saved) {
+      const analyses = JSON.parse(saved);
+      return analyses.find((a: SavedAnalysis) => a.id === id) || null;
     }
-  }
-
-  clearTransactions(): void {
-    try {
-      localStorage.removeItem(this.STORAGE_KEY);
-    } catch (error) {
-      console.error('Failed to clear transactions:', error);
-    }
-  }
-
-  saveAnalysis(name: string, data: any): void {
-    try {
-      const analyses = this.getSavedAnalyses();
-      analyses[name] = {
-        data,
-        savedAt: new Date().toISOString()
-      };
-      localStorage.setItem('saved_analyses', JSON.stringify(analyses));
-    } catch (error) {
-      console.error('Failed to save analysis:', error);
-    }
-  }
-
-  getSavedAnalyses(): Record<string, any> {
-    try {
-      const data = localStorage.getItem('saved_analyses');
-      return data ? JSON.parse(data) : {};
-    } catch (error) {
-      console.error('Failed to load saved analyses:', error);
-      return {};
-    }
-  }
-
-  deleteAnalysis(name: string): void {
-    try {
-      const analyses = this.getSavedAnalyses();
-      delete analyses[name];
-      localStorage.setItem('saved_analyses', JSON.stringify(analyses));
-    } catch (error) {
-      console.error('Failed to delete analysis:', error);
-    }
+    return null;
   }
 }
 
-export const StorageService = new StorageService();
-export const storageService = StorageService;
+export const storageService = new StorageService();
+
+// Export individual functions for backward compatibility
+export const saveAnalysis = (
+  name: string,
+  transactions: BankTransaction[],
+  totalIncome: number,
+  totalExpense: number,
+  categories: { category: string; amount: number }[],
+  insights: string[]
+) => storageService.saveAnalysis(name, transactions, totalIncome, totalExpense, categories, insights);
+
+export const getSavedAnalyses = () => storageService.getSavedAnalyses();
+export const deleteAnalysis = (id: string) => storageService.deleteAnalysis(id);
+export const getAnalysisById = (id: string) => storageService.getAnalysisById(id);
+
+// Export types
+export type { SavedAnalysis };
