@@ -15,8 +15,9 @@ import Transactions from '@/pages/Transactions';
 import Compare from '@/pages/Compare';
 import SavedAnalyses from '@/pages/SavedAnalyses';
 import AdvancedAnalysis from '@/pages/AdvancedAnalysis';
+import Onboarding from '@/pages/Onboarding';
 import Pricing from '@/pages/Pricing';
-import { AdminRoot } from '@/components/admin/AdminRoot';
+import AdminRoot from '@/components/admin/AdminRoot';
 import { ThemeProvider } from 'next-themes';
 
 const queryClient = new QueryClient();
@@ -31,6 +32,7 @@ function App() {
               <Router>
                 <Routes>
                   <Route path="/auth" element={<Auth />} />
+                  <Route path="/onboarding" element={<Onboarding />} />
                   <Route path="/pricing" element={<Pricing />} />
                   <Route path="/admin/*" element={<AdminRoot />} />
                   <Route path="/*" element={

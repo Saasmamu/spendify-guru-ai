@@ -1,24 +1,16 @@
+import { Suspense } from 'react';
+import { Outlet } from 'react-router-dom';
 
-import React from 'react';
-import { Routes, Route } from 'react-router-dom';
-import AdminLogin from '@/pages/admin/Login';
-import AdminDashboard from '@/pages/admin/Dashboard';
-import { AdminProtectedRoute } from './AdminProtectedRoute';
-
-export const AdminRoot = () => {
+export function AdminRoot() {
   return (
-    <Routes>
-      <Route path="/login" element={<AdminLogin />} />
-      <Route path="/*" element={
-        <AdminProtectedRoute>
-          <Routes>
-            <Route path="/" element={<AdminDashboard />} />
-            <Route path="/dashboard" element={<AdminDashboard />} />
-          </Routes>
-        </AdminProtectedRoute>
-      } />
-    </Routes>
+    <div className="min-h-screen bg-background">
+      <Suspense fallback={
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      }>
+        <Outlet />
+      </Suspense>
+    </div>
   );
-};
-
-export default AdminRoot;
+}

@@ -34,16 +34,6 @@ class StorageService {
     const filtered = existing.filter(analysis => analysis.id !== id);
     localStorage.setItem(this.SAVED_ANALYSES_KEY, JSON.stringify(filtered));
   }
-
-  getAnalysisById(id: string): SavedAnalysis | null {
-    const analyses = this.getSavedAnalyses();
-    return analyses.find(analysis => analysis.id === id) || null;
-  }
-
-  deleteSavedAnalysis(id: string): void {
-    this.deleteAnalysis(id);
-  }
 }
 
 export const storageService = new StorageService();
-export { SavedAnalysis };
