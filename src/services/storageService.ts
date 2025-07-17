@@ -1,44 +1,51 @@
 
 import { SavedAnalysis } from '@/types';
 
-export const saveAnalysis = async (analysis: Omit<SavedAnalysis, 'id' | 'created_at'>): Promise<SavedAnalysis> => {
-  const saved: SavedAnalysis = {
-    ...analysis,
-    id: Date.now().toString(),
-    created_at: new Date().toISOString()
+// Mock implementation of storage service
+const mockAnalyses: SavedAnalysis[] = [];
+
+export const saveAnalysis = async (
+  name: string,
+  description: string,
+  data: any,
+  userId: string,
+  analysisType: string,
+  metadata?: any
+): Promise<SavedAnalysis> => {
+  const analysis: SavedAnalysis = {
+    id: Math.random().toString(36).substr(2, 9),
+    name,
+    description,
+    data,
+    created_at: new Date().toISOString(),
+    user_id: userId
   };
   
-  const existing = JSON.parse(localStorage.getItem('savedAnalyses') || '[]');
-  existing.push(saved);
-  localStorage.setItem('savedAnalyses', JSON.stringify(existing));
-  
-  return saved;
+  mockAnalyses.push(analysis);
+  return analysis;
 };
 
-export const getSavedAnalyses = async (): Promise<SavedAnalysis[]> => {
-  const saved = localStorage.getItem('savedAnalyses');
-  return saved ? JSON.parse(saved) : [];
+export const getSavedAnalyses = async (userId: string): Promise<SavedAnalysis[]> => {
+  return mockAnalyses.filter(analysis => analysis.user_id === userId);
 };
 
 export const deleteAnalysis = async (id: string): Promise<void> => {
-  const existing = JSON.parse(localStorage.getItem('savedAnalyses') || '[]');
-  const filtered = existing.filter((analysis: SavedAnalysis) => analysis.id !== id);
-  localStorage.setItem('savedAnalyses', JSON.stringify(filtered));
+  const index = mockAnalyses.findIndex(analysis => analysis.id === id);
+  if (index > -1) {
+    mockAnalyses.splice(index, 1);
+  }
 };
 
 export const getAnalysisById = async (id: string): Promise<SavedAnalysis | null> => {
-  const existing = JSON.parse(localStorage.getItem('savedAnalyses') || '[]');
-  return existing.find((analysis: SavedAnalysis) => analysis.id === id) || null;
+  return mockAnalyses.find(analysis => analysis.id === id) || null;
 };
 
-export const getAnalyses = getSavedAnalyses;
-export const deleteSavedAnalysis = deleteAnalysis;
+// Named export for SavedAnalysis type
+export type { SavedAnalysis };
 
 export default {
   saveAnalysis,
   getSavedAnalyses,
   deleteAnalysis,
-  getAnalysisById,
-  getAnalyses,
-  deleteSavedAnalysis
+  getAnalysisById
 };
