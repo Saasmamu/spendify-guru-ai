@@ -1,3 +1,4 @@
+
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -35,8 +36,8 @@ const DashboardHome = () => {
   }, []);
   
   // Calculate financial summary
-  const totalIncome = savedAnalyses.reduce((sum, analysis) => sum + analysis.totalIncome, 0);
-  const totalExpense = savedAnalyses.reduce((sum, analysis) => sum + analysis.totalExpense, 0);
+  const totalIncome = savedAnalyses.reduce((sum, analysis) => sum + (analysis.totalIncome || 0), 0);
+  const totalExpense = savedAnalyses.reduce((sum, analysis) => sum + (analysis.totalExpense || 0), 0);
   const netIncome = totalIncome - totalExpense;
   
   // Prepare data for the trend chart
@@ -45,8 +46,8 @@ const DashboardHome = () => {
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
     .map(analysis => ({
       date: new Date(analysis.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
-      income: analysis.totalIncome,
-      expense: analysis.totalExpense
+      income: analysis.totalIncome || 0,
+      expense: analysis.totalExpense || 0
     }));
   
   // Get most recent analysis
@@ -96,7 +97,7 @@ const DashboardHome = () => {
     if (latestAnalysis && latestAnalysis.categories) {
       // Find top spending category
       const topCategory = latestAnalysis.categories.reduce((max, cat) => 
-        cat.amount > max.amount ? cat : max, { amount: 0 });
+        (cat.amount || 0) > (max.amount || 0) ? cat : max, { amount: 0 });
       
       if (topCategory.amount > 0) {
         const percentage = (topCategory.amount / latestAnalysis.totalExpense) * 100;
@@ -290,7 +291,7 @@ const DashboardHome = () => {
               <CardContent>
                 <p className="mb-4">
                   {statementData 
-                    ? `Your current statement has ${statementData.transactions.length} transactions`
+                    ? `Your current statement has ${statementData.transactions?.length || 0} transactions`
                     : "You haven't uploaded any statements yet"}
                 </p>
                 <Link to="/dashboard/upload">
@@ -348,7 +349,7 @@ const DashboardHome = () => {
                 <CardContent>
                   <div className="space-y-4">
                     {savedAnalyses.slice(0, 5).map((analysis, index) => (
-                      <div key={analysis.id} className="flex items-start justify-between pb-3 border-b border-border/50 last:border-0">
+                      <div key={analysis.id || index} className="flex items-start justify-between pb-3 border-b border-border/50 last:border-0">
                         <div>
                           <div className="font-medium">{analysis.name}</div>
                           <div className="text-sm text-muted-foreground">
@@ -361,7 +362,7 @@ const DashboardHome = () => {
                         </div>
                         <div className="text-right">
                           <div className="text-sm">
-                            <span className="text-green-600">{formatCurrency(analysis.totalIncome)}</span> / <span className="text-red-600">{formatCurrency(analysis.totalExpense)}</span>
+                            <span className="text-green-600">{formatCurrency(analysis.totalIncome || 0)}</span> / <span className="text-red-600">{formatCurrency(analysis.totalExpense || 0)}</span>
                           </div>
                           <div className="flex gap-2 mt-1">
                             <Link to={`/dashboard/analyze`}>

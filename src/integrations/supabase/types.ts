@@ -7,163 +7,13 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instanciate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "12.2.3 (519615d)"
+  }
   public: {
     Tables: {
-      admin_activity_logs: {
-        Row: {
-          action: string
-          admin_user_id: string | null
-          created_at: string | null
-          details: Json | null
-          id: string
-          ip_address: string | null
-          resource: string
-          resource_id: string | null
-          user_agent: string | null
-        }
-        Insert: {
-          action: string
-          admin_user_id?: string | null
-          created_at?: string | null
-          details?: Json | null
-          id?: string
-          ip_address?: string | null
-          resource: string
-          resource_id?: string | null
-          user_agent?: string | null
-        }
-        Update: {
-          action?: string
-          admin_user_id?: string | null
-          created_at?: string | null
-          details?: Json | null
-          id?: string
-          ip_address?: string | null
-          resource?: string
-          resource_id?: string | null
-          user_agent?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "admin_activity_logs_admin_user_id_fkey"
-            columns: ["admin_user_id"]
-            isOneToOne: false
-            referencedRelation: "admin_users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      admin_dashboard_settings: {
-        Row: {
-          admin_user_id: string | null
-          created_at: string | null
-          id: string
-          layout: Json | null
-          preferences: Json | null
-          updated_at: string | null
-          widgets: Json | null
-        }
-        Insert: {
-          admin_user_id?: string | null
-          created_at?: string | null
-          id?: string
-          layout?: Json | null
-          preferences?: Json | null
-          updated_at?: string | null
-          widgets?: Json | null
-        }
-        Update: {
-          admin_user_id?: string | null
-          created_at?: string | null
-          id?: string
-          layout?: Json | null
-          preferences?: Json | null
-          updated_at?: string | null
-          widgets?: Json | null
-        }
-        Relationships: []
-      }
-      admin_permissions: {
-        Row: {
-          created_at: string | null
-          description: string | null
-          id: string
-          name: string
-        }
-        Insert: {
-          created_at?: string | null
-          description?: string | null
-          id?: string
-          name: string
-        }
-        Update: {
-          created_at?: string | null
-          description?: string | null
-          id?: string
-          name?: string
-        }
-        Relationships: []
-      }
-      admin_roles: {
-        Row: {
-          created_at: string | null
-          description: string | null
-          id: string
-          name: string
-        }
-        Insert: {
-          created_at?: string | null
-          description?: string | null
-          id?: string
-          name: string
-        }
-        Update: {
-          created_at?: string | null
-          description?: string | null
-          id?: string
-          name?: string
-        }
-        Relationships: []
-      }
-      admin_users: {
-        Row: {
-          created_at: string | null
-          email: string
-          id: string
-          role_id: string | null
-          user_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          email: string
-          id?: string
-          role_id?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          email?: string
-          id?: string
-          role_id?: string | null
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "admin_users_role_id_fkey"
-            columns: ["role_id"]
-            isOneToOne: false
-            referencedRelation: "admin_roles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "admin_users_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "admin_user_view"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       analytics_cohorts: {
         Row: {
           average_revenue: number | null
@@ -335,44 +185,6 @@ export type Database = {
         }
         Relationships: []
       }
-      api_requests: {
-        Row: {
-          created_at: string | null
-          endpoint: string
-          id: string
-          method: string
-          response_time_ms: number | null
-          status: number | null
-          user_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          endpoint: string
-          id?: string
-          method: string
-          response_time_ms?: number | null
-          status?: number | null
-          user_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          endpoint?: string
-          id?: string
-          method?: string
-          response_time_ms?: number | null
-          status?: number | null
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "api_requests_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "admin_user_view"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       budget_alerts: {
         Row: {
           budget_category_id: string
@@ -474,15 +286,7 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "budgets_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "admin_user_view"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       categories: {
         Row: {
@@ -509,15 +313,7 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "categories_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "admin_user_view"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       document_analysis: {
         Row: {
@@ -588,15 +384,7 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "documents_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "admin_user_view"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       expenses: {
         Row: {
@@ -644,13 +432,6 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "categories"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "expenses_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "admin_user_view"
             referencedColumns: ["id"]
           },
         ]
@@ -721,20 +502,6 @@ export type Database = {
             referencedRelation: "goal_categories"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "financial_goals_last_updated_by_fkey"
-            columns: ["last_updated_by"]
-            isOneToOne: false
-            referencedRelation: "admin_user_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "financial_goals_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "admin_user_view"
-            referencedColumns: ["id"]
-          },
         ]
       }
       financial_predictions: {
@@ -777,13 +544,6 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "categories"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "financial_predictions_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "admin_user_view"
             referencedColumns: ["id"]
           },
         ]
@@ -886,13 +646,6 @@ export type Database = {
             referencedRelation: "financial_goals"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "goal_progress_history_recorded_by_fkey"
-            columns: ["recorded_by"]
-            isOneToOne: false
-            referencedRelation: "admin_user_view"
-            referencedColumns: ["id"]
-          },
         ]
       }
       goal_templates: {
@@ -981,13 +734,6 @@ export type Database = {
             referencedRelation: "categories"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "incomes_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "admin_user_view"
-            referencedColumns: ["id"]
-          },
         ]
       }
       integrations: {
@@ -1021,15 +767,7 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "integrations_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "admin_user_view"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       money_tips: {
         Row: {
@@ -1053,15 +791,7 @@ export type Database = {
           tip?: string
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "money_tips_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "admin_user_view"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       notifications: {
         Row: {
@@ -1088,15 +818,7 @@ export type Database = {
           type?: string
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "notifications_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "admin_user_view"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -1120,15 +842,7 @@ export type Database = {
           id?: string
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "profiles_id_fkey"
-            columns: ["id"]
-            isOneToOne: true
-            referencedRelation: "admin_user_view"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       recurring_transactions: {
         Row: {
@@ -1181,13 +895,6 @@ export type Database = {
             referencedRelation: "categories"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "recurring_transactions_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "admin_user_view"
-            referencedColumns: ["id"]
-          },
         ]
       }
       reports: {
@@ -1215,48 +922,7 @@ export type Database = {
           type?: string
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "reports_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "admin_user_view"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      role_permissions: {
-        Row: {
-          created_at: string | null
-          permission_id: string
-          role_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          permission_id: string
-          role_id: string
-        }
-        Update: {
-          created_at?: string | null
-          permission_id?: string
-          role_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "role_permissions_permission_id_fkey"
-            columns: ["permission_id"]
-            isOneToOne: false
-            referencedRelation: "admin_permissions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "role_permissions_role_id_fkey"
-            columns: ["role_id"]
-            isOneToOne: false
-            referencedRelation: "admin_roles"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       saved_analyses: {
         Row: {
@@ -1295,15 +961,7 @@ export type Database = {
           transactions?: Json
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "saved_analyses_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "admin_user_view"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       spending_patterns: {
         Row: {
@@ -1345,15 +1003,7 @@ export type Database = {
           type?: string | null
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "spending_patterns_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "admin_user_view"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       subscription_plans: {
         Row: {
@@ -1436,13 +1086,6 @@ export type Database = {
             referencedRelation: "subscription_plans"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "subscriptions_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "admin_user_view"
-            referencedColumns: ["id"]
-          },
         ]
       }
       transaction_anomalies: {
@@ -1482,13 +1125,6 @@ export type Database = {
             columns: ["transaction_id"]
             isOneToOne: false
             referencedRelation: "transactions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "transaction_anomalies_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "admin_user_view"
             referencedColumns: ["id"]
           },
         ]
@@ -1536,15 +1172,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "transactions_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "admin_user_view"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       user_preferences: {
         Row: {
@@ -1571,15 +1199,7 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "user_preferences_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: true
-            referencedRelation: "admin_user_view"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       user_settings: {
         Row: {
@@ -1606,102 +1226,13 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "user_settings_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: true
-            referencedRelation: "admin_user_view"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-    }
-    Views: {
-      admin_activity_log_view: {
-        Row: {
-          action: string | null
-          admin_email: string | null
-          admin_user_id: string | null
-          created_at: string | null
-          details: Json | null
-          id: string | null
-          ip_address: string | null
-          resource: string | null
-          resource_id: string | null
-          role_id: string | null
-          role_name: string | null
-          user_agent: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "admin_activity_logs_admin_user_id_fkey"
-            columns: ["admin_user_id"]
-            isOneToOne: false
-            referencedRelation: "admin_users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "admin_users_role_id_fkey"
-            columns: ["role_id"]
-            isOneToOne: false
-            referencedRelation: "admin_roles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      admin_subscription_view: {
-        Row: {
-          amount: number | null
-          billing_interval: string | null
-          cancel_at_period_end: boolean | null
-          card_added: boolean | null
-          created_at: string | null
-          current_period_end: string | null
-          id: string | null
-          plan_name: string | null
-          plan_price: number | null
-          status: string | null
-          trial_ends_at: string | null
-          trial_type: string | null
-          updated_at: string | null
-          user_email: string | null
-          user_id: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "subscriptions_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "admin_user_view"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      admin_user_view: {
-        Row: {
-          cancel_at_period_end: boolean | null
-          card_added: boolean | null
-          created_at: string | null
-          current_period_end: string | null
-          document_count: number | null
-          email: string | null
-          id: string | null
-          is_active: boolean | null
-          is_suspended: boolean | null
-          last_sign_in_at: string | null
-          plan_name: string | null
-          subscription_status: string | null
-          trial_ends_at: string | null
-        }
         Relationships: []
       }
     }
+    Views: {
+      [_ in never]: never
+    }
     Functions: {
-      activate_user: {
-        Args: { target_user_id: string }
-        Returns: undefined
-      }
       add_financial_goal: {
         Args: {
           p_name: string
@@ -1733,28 +1264,6 @@ export type Database = {
           user_id: string
         }
       }
-      calculate_api_load: {
-        Args: { time_period?: string }
-        Returns: {
-          total_requests: number
-          avg_response_time: number
-          success_rate: number
-          top_endpoints: Json
-        }[]
-      }
-      check_admin_permission: {
-        Args: { user_id: string; required_permission: string }
-        Returns: boolean
-      }
-      get_api_load_history: {
-        Args: { p_interval?: unknown; p_points?: number }
-        Returns: {
-          load_percentage: number
-          request_count: number
-          error_count: number
-          avg_response_time: number
-        }[]
-      }
       get_goal_suggestions: {
         Args: { p_user_id: string; p_income?: number; p_expenses?: number }
         Returns: {
@@ -1767,38 +1276,6 @@ export type Database = {
           type: string
           tips: string[]
         }[]
-      }
-      get_recent_activity_logs: {
-        Args: { p_limit?: number; p_offset?: number }
-        Returns: {
-          id: string
-          admin_user_id: string
-          admin_email: string
-          role_name: string
-          action: string
-          resource: string
-          resource_id: string
-          details: Json
-          created_at: string
-        }[]
-      }
-      is_admin: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
-      log_admin_activity: {
-        Args: {
-          admin_user_id: string
-          action: string
-          resource: string
-          resource_id: string
-          details: Json
-        }
-        Returns: string
-      }
-      suspend_user: {
-        Args: { target_user_id: string }
-        Returns: undefined
       }
       update_goal_progress: {
         Args: { p_goal_id: string; p_amount: number; p_notes?: string }
@@ -1822,27 +1299,6 @@ export type Database = {
           user_id: string
         }
       }
-      update_subscription_status: {
-        Args: {
-          subscription_id: string
-          new_status: string
-          admin_user_id: string
-        }
-        Returns: {
-          cancel_at_period_end: boolean | null
-          card_added: boolean | null
-          created_at: string | null
-          current_period_end: string | null
-          id: string
-          plan: string | null
-          plan_id: string | null
-          status: string
-          trial_ends_at: string | null
-          trial_type: string | null
-          updated_at: string | null
-          user_id: string | null
-        }
-      }
     }
     Enums: {
       goal_status: "in_progress" | "completed" | "off_track" | "failed"
@@ -1854,21 +1310,25 @@ export type Database = {
   }
 }
 
-type DefaultSchema = Database[Extract<keyof Database, "public">]
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
     ? R
@@ -1886,14 +1346,16 @@ export type Tables<
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I
     }
     ? I
@@ -1909,14 +1371,16 @@ export type TablesInsert<
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U
     }
     ? U
@@ -1932,14 +1396,16 @@ export type TablesUpdate<
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
-> = DefaultSchemaEnumNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
@@ -1947,14 +1413,16 @@ export type Enums<
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
-> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
