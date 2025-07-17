@@ -1,334 +1,287 @@
-
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState, useEffect } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { BarChart3, TrendingUp, TrendingDown, ArrowUpDown } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
-import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/contexts/AuthContext';
-import type { SavedAnalysis } from '@/types';
+import { getSavedAnalyses } from '@/services/storageService';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { Loader2, Download } from 'lucide-react';
+import { SavedAnalysis } from '@/types';
+import Dashboard from '@/pages/Dashboard';
+import { generateComparisonPDF } from '@/utils/pdfUtils';
 
-export default function Compare() {
-  const { user } = useAuth();
-  const { toast } = useToast();
+export interface ComparisonData {
+  category: string;
+  [key: string]: string | number; // Allow dynamic keys for analysis titles
+}
+
+interface Transaction {
+  date: string;
+  description: string;
+  amount: number;
+  type: 'debit' | 'credit';
+  category?: string;
+}
+
+function ComparePage() {
   const [savedAnalyses, setSavedAnalyses] = useState<SavedAnalysis[]>([]);
-  const [firstAnalysis, setFirstAnalysis] = useState<SavedAnalysis | null>(null);
-  const [secondAnalysis, setSecondAnalysis] = useState<SavedAnalysis | null>(null);
+  const [selectedAnalysis1, setSelectedAnalysis1] = useState<string>('');
+  const [selectedAnalysis2, setSelectedAnalysis2] = useState<string>('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (user) {
-      loadSavedAnalyses();
-    }
-  }, [user]);
+    const loadSavedAnalyses = async () => {
+      try {
+        const analyses = await getSavedAnalyses();
+        setSavedAnalyses(analyses);
+        setLoading(false);
+      } catch (err) {
+        setError('Failed to load saved analyses');
+        setLoading(false);
+      }
+    };
 
-  const loadSavedAnalyses = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('saved_analyses')
-        .select('*')
-        .eq('user_id', user?.id)
-        .order('created_at', { ascending: false });
+    loadSavedAnalyses();
+  }, []);
 
-      if (error) throw error;
+  const analysis1 = savedAnalyses.find(a => a.id === selectedAnalysis1);
+  const analysis2 = savedAnalyses.find(a => a.id === selectedAnalysis2);
 
-      const analyses = (data || []).map(item => ({
-        id: item.id,
-        name: item.name,
-        date: item.date,
-        transactions: item.transactions,
-        totalIncome: item.total_income,
-        totalExpenses: item.total_expense,
-        categories: item.categories,
-        insights: item.insights
-      }));
+  const prepareComparisonData = (): ComparisonData[] => {
+    if (!analysis1?.transactions || !analysis2?.transactions) return [];
 
-      setSavedAnalyses(analyses);
-    } catch (error) {
-      console.error('Error loading saved analyses:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load saved analyses.',
-        variant: 'destructive',
+    const result: ComparisonData[] = [];
+    const categories = new Set<string>();
+
+    // Collect all categories
+    analysis1.transactions.forEach(tx => categories.add(tx.category || 'Miscellaneous'));
+    analysis2.transactions.forEach(tx => categories.add(tx.category || 'Miscellaneous'));
+
+    // Calculate totals for each category
+    categories.forEach(category => {
+      const amount1 = analysis1.transactions
+        .filter(tx => (tx as Transaction).type === 'debit' && (tx.category || 'Miscellaneous') === category)
+        .reduce((sum, tx) => sum + tx.amount, 0);
+
+      const amount2 = analysis2.transactions
+        .filter(tx => (tx as Transaction).type === 'debit' && (tx.category || 'Miscellaneous') === category)
+        .reduce((sum, tx) => sum + tx.amount, 0);
+
+      result.push({
+        category,
+        [analysis1.name]: amount1,
+        [analysis2.name]: amount2,
+        difference: Math.abs(amount1 - amount2)
       });
-    } finally {
-      setLoading(false);
+    });
+
+    return result.sort((a, b) => a.category.localeCompare(b.category));
+  };
+
+  const downloadPDF = async () => {
+    if (!analysis1 || !analysis2) return;
+
+    try {
+      const comparisonData = prepareComparisonData();
+      const doc = generateComparisonPDF(analysis1, analysis2, comparisonData);
+      doc.save(`expense-comparison-${analysis1.name}-vs-${analysis2.name}.pdf`);
+    } catch (err) {
+      console.error('Error generating PDF:', err);
+      setError('Failed to generate PDF. Please try again.');
     }
-  };
-
-  const calculateDifference = (first: number, second: number) => {
-    const diff = first - second;
-    const percentage = second !== 0 ? ((diff / Math.abs(second)) * 100) : 0;
-    return { diff, percentage };
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
-  };
-
-  const formatPercentage = (percentage: number) => {
-    return Math.abs(percentage).toFixed(1) + '%';
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
+      <Dashboard>
+        <div className="flex items-center justify-center min-h-screen">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      </Dashboard>
     );
   }
 
-  if (savedAnalyses.length < 2) {
+  if (error) {
     return (
-      <div className="container mx-auto py-6">
-        <div className="text-center">
-          <ArrowUpDown className="mx-auto h-12 w-12 text-muted-foreground" />
-          <h3 className="mt-2 text-sm font-semibold text-gray-900">Not enough analyses</h3>
-          <p className="mt-1 text-sm text-gray-500">
-            You need at least 2 saved analyses to compare them.
-          </p>
+      <Dashboard>
+        <div className="flex items-center justify-center min-h-screen">
+          <p className="text-red-500">{error}</p>
         </div>
-      </div>
+      </Dashboard>
     );
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Compare Analyses</h1>
-          <p className="text-muted-foreground">
-            Compare different financial analyses side by side
-          </p>
-        </div>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>First Analysis</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Select
-              value={firstAnalysis?.id || ''}
-              onValueChange={(value) => {
-                const analysis = savedAnalyses.find(a => a.id === value);
-                setFirstAnalysis(analysis || null);
-              }}
+    <Dashboard>
+      <div className="container mx-auto p-6">
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold">Compare Analyses</h1>
+          {selectedAnalysis1 && selectedAnalysis2 && analysis1 && analysis2 && (
+            <Button
+              onClick={downloadPDF}
+              className="flex items-center gap-2"
             >
+              <Download className="h-4 w-4" />
+              Download PDF
+            </Button>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div>
+            <h2 className="text-xl font-semibold mb-4">First Analysis</h2>
+            <Select value={selectedAnalysis1} onValueChange={setSelectedAnalysis1}>
               <SelectTrigger>
                 <SelectValue placeholder="Select first analysis" />
               </SelectTrigger>
               <SelectContent>
                 {savedAnalyses.map((analysis) => (
                   <SelectItem key={analysis.id} value={analysis.id}>
-                    {analysis.name}
+                    {analysis.name} - {new Date(analysis.date).toLocaleDateString()}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-          </CardContent>
-        </Card>
+          </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Second Analysis</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Select
-              value={secondAnalysis?.id || ''}
-              onValueChange={(value) => {
-                const analysis = savedAnalyses.find(a => a.id === value);
-                setSecondAnalysis(analysis || null);
-              }}
-            >
+          <div>
+            <h2 className="text-xl font-semibold mb-4">Second Analysis</h2>
+            <Select value={selectedAnalysis2} onValueChange={setSelectedAnalysis2}>
               <SelectTrigger>
                 <SelectValue placeholder="Select second analysis" />
               </SelectTrigger>
               <SelectContent>
                 {savedAnalyses.map((analysis) => (
                   <SelectItem key={analysis.id} value={analysis.id}>
-                    {analysis.name}
+                    {analysis.name} - {new Date(analysis.date).toLocaleDateString()}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
+
+        {selectedAnalysis1 && selectedAnalysis2 && analysis1 && analysis2 && (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+              <Card>
+                <CardContent className="p-6">
+                  <h3 className="text-lg font-semibold mb-4">Summary Comparison</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Total Income</p>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="font-medium">{analysis1.name}</p>
+                          <p className="text-2xl font-bold">
+                            ${analysis1.totalIncome.toLocaleString()}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="font-medium">{analysis2.name}</p>
+                          <p className="text-2xl font-bold">
+                            ${analysis2.totalIncome.toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Total Expenses</p>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="font-medium">{analysis1.name}</p>
+                          <p className="text-2xl font-bold">
+                            ${analysis1.totalExpense.toLocaleString()}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="font-medium">{analysis2.name}</p>
+                          <p className="text-2xl font-bold">
+                            ${analysis2.totalExpense.toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-6">
+                  <h3 className="text-lg font-semibold mb-4">Key Differences</h3>
+                  <div className="space-y-2">
+                    <p>
+                      Income Difference: $
+                      {Math.abs(analysis1.totalIncome - analysis2.totalIncome).toLocaleString()}
+                      {analysis1.totalIncome > analysis2.totalIncome ? ' higher' : ' lower'} in {analysis1.name}
+                    </p>
+                    <p>
+                      Expense Difference: $
+                      {Math.abs(analysis1.totalExpense - analysis2.totalExpense).toLocaleString()}
+                      {analysis1.totalExpense > analysis2.totalExpense ? ' higher' : ' lower'} in {analysis1.name}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card className="mb-8">
+              <CardContent className="p-6">
+                <h3 className="text-lg font-semibold mb-4">Category Comparison</h3>
+                <div className="w-full h-[400px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={prepareComparisonData()}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="category" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey={analysis1.name} fill="#4F46E5" />
+                      <Bar dataKey={analysis2.name} fill="#10B981" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <h3 className="text-lg font-semibold mb-4">Detailed Category Breakdown</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr>
+                        <th className="text-left p-2">Category</th>
+                        <th className="text-right p-2">{analysis1.name}</th>
+                        <th className="text-right p-2">{analysis2.name}</th>
+                        <th className="text-right p-2">Difference</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {prepareComparisonData().map((item) => (
+                        <tr key={item.category} className="border-t">
+                          <td className="p-2">{item.category}</td>
+                          <td className="text-right p-2">
+                            ${(item[analysis1.name] as number).toLocaleString()}
+                          </td>
+                          <td className="text-right p-2">
+                            ${(item[analysis2.name] as number).toLocaleString()}
+                          </td>
+                          <td className="text-right p-2">
+                            ${Math.abs((item[analysis1.name] as number) - (item[analysis2.name] as number)).toLocaleString()}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        )}
       </div>
-
-      {firstAnalysis && secondAnalysis && (
-        <>
-          <div className="grid gap-4 md:grid-cols-3">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Income</CardTitle>
-                <TrendingUp className="h-4 w-4 text-green-600" />
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="space-y-1">
-                  <div className="text-sm text-muted-foreground">{firstAnalysis.name}</div>
-                  <div className="text-lg font-bold text-green-600">
-                    {formatCurrency(firstAnalysis.totalIncome)}
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <div className="text-sm text-muted-foreground">{secondAnalysis.name}</div>
-                  <div className="text-lg font-bold text-green-600">
-                    {formatCurrency(secondAnalysis.totalIncome)}
-                  </div>
-                </div>
-                <div className="pt-2 border-t">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Difference:</span>
-                    <Badge variant={
-                      firstAnalysis.totalIncome > secondAnalysis.totalIncome ? 'default' : 'secondary'
-                    }>
-                      {formatPercentage(calculateDifference(firstAnalysis.totalIncome, secondAnalysis.totalIncome).percentage)}
-                    </Badge>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
-                <TrendingDown className="h-4 w-4 text-red-600" />
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="space-y-1">
-                  <div className="text-sm text-muted-foreground">{firstAnalysis.name}</div>
-                  <div className="text-lg font-bold text-red-600">
-                    {formatCurrency(Math.abs(firstAnalysis.totalExpenses))}
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <div className="text-sm text-muted-foreground">{secondAnalysis.name}</div>
-                  <div className="text-lg font-bold text-red-600">
-                    {formatCurrency(Math.abs(secondAnalysis.totalExpenses))}
-                  </div>
-                </div>
-                <div className="pt-2 border-t">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Difference:</span>
-                    <Badge variant={
-                      Math.abs(firstAnalysis.totalExpenses) < Math.abs(secondAnalysis.totalExpenses) ? 'default' : 'secondary'
-                    }>
-                      {formatPercentage(calculateDifference(Math.abs(firstAnalysis.totalExpenses), Math.abs(secondAnalysis.totalExpenses)).percentage)}
-                    </Badge>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Net Flow</CardTitle>
-                <BarChart3 className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="space-y-1">
-                  <div className="text-sm text-muted-foreground">{firstAnalysis.name}</div>
-                  <div className={`text-lg font-bold ${
-                    (firstAnalysis.totalIncome + firstAnalysis.totalExpenses) >= 0 ? 'text-green-600' : 'text-red-600'
-                  }`}>
-                    {formatCurrency(firstAnalysis.totalIncome + firstAnalysis.totalExpenses)}
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <div className="text-sm text-muted-foreground">{secondAnalysis.name}</div>
-                  <div className={`text-lg font-bold ${
-                    (secondAnalysis.totalIncome + secondAnalysis.totalExpenses) >= 0 ? 'text-green-600' : 'text-red-600'
-                  }`}>
-                    {formatCurrency(secondAnalysis.totalIncome + secondAnalysis.totalExpenses)}
-                  </div>
-                </div>
-                <div className="pt-2 border-t">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Difference:</span>
-                    <Badge variant="outline">
-                      {formatCurrency(calculateDifference(
-                        firstAnalysis.totalIncome + firstAnalysis.totalExpenses,
-                        secondAnalysis.totalIncome + secondAnalysis.totalExpenses
-                      ).diff)}
-                    </Badge>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Analysis Details</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  <div className="space-y-2">
-                    <h4 className="font-medium">{firstAnalysis.name}</h4>
-                    <div className="text-sm text-muted-foreground space-y-1">
-                      <div>Date: {new Date(firstAnalysis.date).toLocaleDateString()}</div>
-                      <div>Transactions: {firstAnalysis.transactions.length}</div>
-                      <div>Categories: {firstAnalysis.categories.length}</div>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <h4 className="font-medium">{secondAnalysis.name}</h4>
-                    <div className="text-sm text-muted-foreground space-y-1">
-                      <div>Date: {new Date(secondAnalysis.date).toLocaleDateString()}</div>
-                      <div>Transactions: {secondAnalysis.transactions.length}</div>
-                      <div>Categories: {secondAnalysis.categories.length}</div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Key Insights</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <div className="font-medium text-sm">Income Comparison</div>
-                    <div className="text-sm text-muted-foreground">
-                      {firstAnalysis.totalIncome > secondAnalysis.totalIncome 
-                        ? `${firstAnalysis.name} has ${formatPercentage(calculateDifference(firstAnalysis.totalIncome, secondAnalysis.totalIncome).percentage)} higher income`
-                        : `${secondAnalysis.name} has ${formatPercentage(calculateDifference(secondAnalysis.totalIncome, firstAnalysis.totalIncome).percentage)} higher income`
-                      }
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="font-medium text-sm">Expense Comparison</div>
-                    <div className="text-sm text-muted-foreground">
-                      {Math.abs(firstAnalysis.totalExpenses) > Math.abs(secondAnalysis.totalExpenses)
-                        ? `${firstAnalysis.name} has ${formatPercentage(calculateDifference(Math.abs(firstAnalysis.totalExpenses), Math.abs(secondAnalysis.totalExpenses)).percentage)} higher expenses`
-                        : `${secondAnalysis.name} has ${formatPercentage(calculateDifference(Math.abs(secondAnalysis.totalExpenses), Math.abs(firstAnalysis.totalExpenses)).percentage)} higher expenses`
-                      }
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="font-medium text-sm">Transaction Volume</div>
-                    <div className="text-sm text-muted-foreground">
-                      {firstAnalysis.transactions.length > secondAnalysis.transactions.length
-                        ? `${firstAnalysis.name} has ${firstAnalysis.transactions.length - secondAnalysis.transactions.length} more transactions`
-                        : `${secondAnalysis.name} has ${secondAnalysis.transactions.length - firstAnalysis.transactions.length} more transactions`
-                      }
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </>
-      )}
-    </div>
+    </Dashboard>
   );
 }
+
+export default ComparePage; 
