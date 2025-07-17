@@ -1,55 +1,47 @@
 
-import React, { createContext, useContext, useState, useCallback } from 'react';
-import { BankTransaction, ProcessedStatement } from '@/types';
-import { processBankStatement } from '@/services/pdfService';
+import React, { createContext, useContext, useState, ReactNode } from 'react';
+import { ProcessedStatement } from '@/types';
 
-interface StatementContextType {
+export interface StatementContextType {
   uploadedFile: File | null;
   statementData: ProcessedStatement | null;
   isProcessing: boolean;
   error: string | null;
-  uploadStatement: (file: File) => Promise<void>;
-  clearStatement: () => void;
+  setUploadedFile: (file: File | null) => void;
+  setStatementData: (data: ProcessedStatement | null) => void;
+  setIsProcessing: (processing: boolean) => void;
+  setError: (error: string | null) => void;
 }
 
-const StatementContext = createContext<StatementContextType | undefined>(undefined);
+const StatementContext = createContext<StatementContextType | null>(null);
 
-export const StatementProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const useStatement = () => {
+  const context = useContext(StatementContext);
+  if (!context) {
+    throw new Error('useStatement must be used within a StatementProvider');
+  }
+  return context;
+};
+
+interface StatementProviderProps {
+  children: ReactNode;
+}
+
+export const StatementProvider: React.FC<StatementProviderProps> = ({ children }) => {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [statementData, setStatementData] = useState<ProcessedStatement | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const uploadStatement = useCallback(async (file: File) => {
-    setIsProcessing(true);
-    setError(null);
-    
-    try {
-      const result = await processBankStatement(file);
-      setUploadedFile(file);
-      setStatementData(result);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to process statement';
-      setError(errorMessage);
-      console.error('Statement processing error:', err);
-    } finally {
-      setIsProcessing(false);
-    }
-  }, []);
-
-  const clearStatement = useCallback(() => {
-    setUploadedFile(null);
-    setStatementData(null);
-    setError(null);
-  }, []);
 
   const value: StatementContextType = {
     uploadedFile,
     statementData,
     isProcessing,
     error,
-    uploadStatement,
-    clearStatement
+    setUploadedFile,
+    setStatementData,
+    setIsProcessing,
+    setError,
   };
 
   return (
@@ -57,12 +49,4 @@ export const StatementProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       {children}
     </StatementContext.Provider>
   );
-};
-
-export const useStatement = () => {
-  const context = useContext(StatementContext);
-  if (context === undefined) {
-    throw new Error('useStatement must be used within a StatementProvider');
-  }
-  return context;
 };

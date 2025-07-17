@@ -49,9 +49,6 @@ const storageService = {
   getAnalysisById
 };
 
-// Named export for SavedAnalysis type
-export type { SavedAnalysis };
-
 // Both named and default exports
 export { storageService };
 export default storageService;

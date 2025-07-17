@@ -11,14 +11,7 @@ const Compare: React.FC = () => {
     const loadSavedAnalyses = async () => {
       try {
         const analyses = await storageService.getSavedAnalyses();
-        const transformedAnalyses: SavedAnalysis[] = analyses.map(analysis => ({
-          ...analysis,
-          transactions: analysis.transactions.map(tx => ({
-            ...tx,
-            id: tx.id || Math.random().toString(36)
-          }))
-        }));
-        setSavedAnalyses(transformedAnalyses);
+        setSavedAnalyses(analyses);
       } catch (error) {
         console.error('Error loading saved analyses:', error);
       }
