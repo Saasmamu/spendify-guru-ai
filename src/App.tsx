@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from '@/contexts/AuthContext';
 import { AdminProvider } from '@/contexts/AdminContext';
-import { SubscriptionProvider } from '@/contexts/SubscriptionProvider';
+import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
 import Layout from '@/components/Layout';
 import Index from '@/pages/Index';
 import Auth from '@/pages/Auth';
@@ -18,9 +18,6 @@ import AdvancedAnalysis from '@/pages/AdvancedAnalysis';
 import Onboarding from '@/pages/Onboarding';
 import Pricing from '@/pages/Pricing';
 import AdminRoot from '@/components/admin/AdminRoot';
-import AdminLogin from '@/pages/admin/Login';
-import CreateAdmin from '@/pages/admin/CreateAdmin';
-import AdminDashboard from '@/pages/admin/Dashboard';
 import { ThemeProvider } from 'next-themes';
 
 const queryClient = new QueryClient();
@@ -37,14 +34,7 @@ function App() {
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/onboarding" element={<Onboarding />} />
                   <Route path="/pricing" element={<Pricing />} />
-                  <Route path="/admin/login" element={<AdminLogin />} />
-                  <Route path="/admin/create" element={<CreateAdmin />} />
-                  <Route path="/admin/*" element={
-                    <Routes>
-                      <Route path="/" element={<AdminDashboard />} />
-                      <Route path="/dashboard" element={<AdminDashboard />} />
-                    </Routes>
-                  } />
+                  <Route path="/admin/*" element={<AdminRoot />} />
                   <Route path="/*" element={
                     <Layout>
                       <Routes>

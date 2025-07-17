@@ -1,6 +1,5 @@
-
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -70,8 +69,8 @@ function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <Card className="w-[400px]">
+    <div className="container mx-auto py-8">
+      <Card className="w-[400px] mx-auto mt-8">
         <CardHeader>
           <CardTitle>Admin Login</CardTitle>
           <CardDescription>
@@ -104,21 +103,6 @@ function Login() {
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? 'Signing in...' : 'Sign in'}
             </Button>
-            
-            <div className="text-center space-y-2">
-              <Link to="/admin/create">
-                <Button variant="link" className="text-sm">
-                  Create Admin Account
-                </Button>
-              </Link>
-              <div>
-                <Link to="/">
-                  <Button variant="link" className="text-sm">
-                    Back to Home
-                  </Button>
-                </Link>
-              </div>
-            </div>
           </form>
         </CardContent>
       </Card>
