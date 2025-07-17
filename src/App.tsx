@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from '@/contexts/AuthContext';
 import { AdminProvider } from '@/contexts/AdminContext';
-import { SubscriptionProvider } from '@/contexts/SubscriptionProvider';
+import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
 import Layout from '@/components/Layout';
 import Index from '@/pages/Index';
 import Auth from '@/pages/Auth';

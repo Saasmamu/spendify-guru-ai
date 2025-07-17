@@ -7,80 +7,77 @@ import { Card } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubscription } from '@/contexts/SubscriptionContext';
-import { PLANS, DURATIONS, Plan, PlanDuration, calculatePrice, formatPrice } from '@/config/pricing';
-import { initializePayment } from '@/services/paystackService';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import Dashboard from '@/pages/Dashboard';
+
+// Mock pricing data
+const PLANS = [
+  {
+    id: 'free',
+    name: 'Free',
+    price: 0,
+    description: 'Basic plan for personal use',
+    features: [
+      { name: 'Up to 5 files per month', included: true },
+      { name: 'Basic analytics', included: true },
+      { name: 'PDF export', included: true },
+      { name: 'Advanced analytics', included: false },
+      { name: 'AI insights', included: false }
+    ]
+  },
+  {
+    id: 'pro',
+    name: 'Pro',
+    price: 9.99,
+    description: 'Perfect for professionals',
+    badge: 'Popular',
+    features: [
+      { name: 'Unlimited files', included: true },
+      { name: 'Advanced analytics', included: true },
+      { name: 'AI insights', included: true },
+      { name: 'Multiple export formats', included: true },
+      { name: 'Priority support', included: true }
+    ]
+  },
+  {
+    id: 'enterprise',
+    name: 'Enterprise',
+    price: 29.99,
+    description: 'For teams and organizations',
+    features: [
+      { name: 'Everything in Pro', included: true },
+      { name: 'Team collaboration', included: true },
+      { name: 'Custom integrations', included: true },
+      { name: 'Dedicated support', included: true },
+      { name: 'SLA guarantee', included: true }
+    ]
+  }
+];
+
+const DURATIONS = [
+  { months: 1, discount: 0 },
+  { months: 6, discount: 0.1 },
+  { months: 12, discount: 0.2 }
+];
 
 export default function Pricing() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
-  const { activePlan, trialEndsAt, trialType, cardAdded, updateSubscription, loading: subscriptionLoading } = useSubscription();
-  const [selectedDuration, setSelectedDuration] = useState<PlanDuration>(DURATIONS[0]);
+  const { activePlan, loading: subscriptionLoading, updateSubscription } = useSubscription();
+  const [selectedDuration, setSelectedDuration] = useState(DURATIONS[0]);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const handleTrialWithCard = async (plan: Plan) => {
-    if (!user) {
-      toast({
-        title: "Login Required",
-        description: "Please login or sign up to start a trial.",
-        variant: "destructive",
-      });
-      navigate('/login');
-      return;
-    }
-
-    if (isProcessing || subscriptionLoading) return;
-
-    setIsProcessing(true);
-    try {
-      // Initialize payment to verify card (amount = 0)
-      await initializePayment(
-        plan,
-        DURATIONS[0], // Monthly duration for card verification
-        user.email!,
-        { user_id: user.id, user_email: user.email!, is_card_verification: 'true' },
-        async (reference) => {
-          try {
-            // Card verification successful, start 30-day trial
-            await updateSubscription(plan.id, { isTrialStart: true, withCard: true });
-            toast({
-              title: "30-day Trial Started!",
-              description: `Your card has been verified (₦100 hold will be refunded) and your 30-day trial for the ${plan.name} plan has begun.`,
-              duration: 5000,
-            });
-            setTimeout(() => navigate('/dashboard'), 1500);
-          } catch (error) {
-            console.error('Trial start failed:', error);
-            toast({
-              title: "Trial Start Failed",
-              description: error instanceof Error ? error.message : "Could not start your trial. Please try again or contact support.",
-              variant: "destructive",
-            });
-          }
-        },
-        () => {
-          toast({
-            title: "Card Verification Cancelled",
-            description: "You can still start a 7-day trial without card verification, or try again to get 30 days. Note that a ₦100 hold will be placed on your card for verification.",
-          });
-          setIsProcessing(false);
-        }
-      );
-    } catch (error) {
-      console.error('Card verification failed:', error);
-      toast({
-        title: "Card Verification Failed",
-        description: error instanceof Error ? error.message : "Could not verify your card. Please try again.",
-        variant: "destructive",
-      });
-      setIsProcessing(false);
-    }
+  const calculatePrice = (plan: any, duration: any) => {
+    return plan.price * duration.months * (1 - duration.discount);
   };
 
-  const handleSubscribe = async (plan: Plan) => {
+  const formatPrice = (price: number) => {
+    return `₦${price.toFixed(2)}`;
+  };
+
+  const handleSubscribe = async (plan: any) => {
     if (!user) {
       toast({
         title: "Login Required",
@@ -93,114 +90,23 @@ export default function Pricing() {
 
     if (isProcessing || subscriptionLoading) return;
 
-    const isUserOnActiveTrial = trialEndsAt && trialEndsAt > new Date();
-    const isSelectedPlanTheCurrentActivePlan = activePlan === plan.id;
-
-    // Scenario 1: User is already on the selected plan as a paid subscriber (not a trial).
-    if (isSelectedPlanTheCurrentActivePlan && activePlan && !isUserOnActiveTrial) {
-        toast({ title: "Current Plan", description: "You are already subscribed to this plan." });
-        return;
-    }
-
-    // Scenario 2: Determine if we should attempt to start a new trial for the selected plan.
-    // A new trial is only offered if the user has no existing active plan (paid or trial).
-    let attemptNewTrial = false;
-    if (!activePlan) { // No plan at all, user is completely free.
-        attemptNewTrial = true;
-    } else if (isUserOnActiveTrial) {
-        // User is on an active trial. Clicking any plan means they intend to pay, not start another trial.
-        attemptNewTrial = false; 
-    } else { // User has an active *paid* plan.
-        attemptNewTrial = false; // Cannot start a new trial if already on a paid plan.
-    }
-
-    if (attemptNewTrial) {
-        setIsProcessing(true);
-        try {
-            await updateSubscription(plan.id, { isTrialStart: true, withCard: false }); // 7-day trial without card
-            toast({
-                title: "Trial Started!",
-                description: `Your 7-day free trial for the ${plan.name} plan has begun. Add your card anytime to extend to 30 days!`,
-                duration: 6000,
-            });
-            setTimeout(() => navigate('/dashboard'), 1500);
-        } catch (error) {
-            console.error('Trial start failed:', error);
-            toast({
-                title: "Trial Start Failed",
-                description: error instanceof Error ? error.message : "Could not start your trial. Please try again or contact support.",
-                variant: "destructive",
-            });
-        } finally {
-            setIsProcessing(false);
-        }
-    } else {
-        // Scenario 3: Proceed to payment for the selected plan.
-        // This covers: Converting an active trial (for this plan or another) to this paid plan,
-        // switching from one paid plan to another, or subscribing after a trial has expired.
-        setIsProcessing(true);
-        try {
-            if (isUserOnActiveTrial) {
-                const currentTrialPlanName = PLANS.find(p => p.id === activePlan)?.name || activePlan || "your current plan";
-                if (isSelectedPlanTheCurrentActivePlan) {
-                    toast({
-                        title: "Activating Full Subscription",
-                        description: `Your trial for ${currentTrialPlanName} will end, and you'll start a paid subscription.`,                        
-                        duration: 7000
-                    });
-                } else {
-                    toast({
-                        title: "Switching Subscription",
-                        description: `Your trial for ${currentTrialPlanName} will end. You're starting a paid subscription for ${plan.name}.`,
-                        duration: 7000
-                    });
-                }
-            }
-            
-            initializePayment(
-                plan,
-                selectedDuration,
-                user.email!, 
-                { user_id: user.id, user_email: user.email! },
-                async (reference) => { // onSuccess callback
-                    try {
-                        console.log('Payment successful, reference:', reference, 'Updating subscription...');
-                        await updateSubscription(plan.id, { isTrialStart: false }); // Start paid subscription
-                        toast({
-                            title: "Payment Successful",
-                            description: "Your subscription has been activated.",
-                        });
-                        setTimeout(() => navigate('/dashboard'), 1000);
-                    } catch (error) {
-                        console.error('Subscription update failed post-payment:', error);
-                        toast({
-                            title: "Subscription Update Failed",
-                            description: "Payment was successful but subscription update failed. Please contact support.",
-                            variant: "destructive",
-                        });
-                    } finally {
-                         // setIsProcessing(false); // Will be set by the outer finally or onClosed
-                    }
-                },
-                () => { // onClosed callback (payment window closed by user)
-                    console.log('Payment window closed by user');
-                    toast({
-                        title: "Payment Cancelled",
-                        description: "You chose to cancel the payment. You can subscribe anytime!",
-                        variant: "default",
-                    });
-                    setIsProcessing(false); // Ensure processing is reset here
-                }
-            );
-        } catch (error) {
-            console.error('Payment initialization failed:', error);
-            toast({
-                title: "Payment Error",
-                description: error instanceof Error ? error.message : "Failed to initialize payment. Please try again.",
-                variant: "destructive",
-            });
-            setIsProcessing(false); // Ensure processing is reset on payment init error
-        }
+    setIsProcessing(true);
+    try {
+      await updateSubscription(plan.id);
+      toast({
+        title: "Subscription Updated",
+        description: `You are now subscribed to the ${plan.name} plan.`,
+      });
+      setTimeout(() => navigate('/dashboard'), 1000);
+    } catch (error) {
+      console.error('Subscription failed:', error);
+      toast({
+        title: "Subscription Failed",
+        description: error instanceof Error ? error.message : "Could not update subscription. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -209,7 +115,7 @@ export default function Pricing() {
       <div className="text-center mb-12">
         <h1 className="text-4xl font-bold mb-4">Choose Your Plan</h1>
         <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-          Start with a 7-day free trial. Cancel anytime. No credit card required for trial.
+          Start with a free plan. Upgrade anytime. Cancel anytime.
         </p>
         {activePlan && (
           <div className="mt-4">
@@ -293,180 +199,38 @@ export default function Pricing() {
                 ))}
               </div>
 
-              <div className="mt-6 space-y-3">
+              <div className="mt-6">
                 <Button
-                  onClick={() => {
-                    if (!user) {
-                      toast({
-                        title: "Login Required",
-                        description: "Please login or sign up to buy a plan.",
-                        variant: "destructive",
-                      });
-                      navigate('/login');
-                      return;
-                    }
-                    setIsProcessing(true);
-                    initializePayment(
-                      plan,
-                      selectedDuration,
-                      user.email!,
-                      { user_id: user.id, user_email: user.email! },
-                      async (reference) => {
-                        try {
-                          await updateSubscription(plan.id, { isTrialStart: false });
-                          toast({
-                            title: "Payment Successful",
-                            description: "Your subscription has been activated.",
-                          });
-                          setTimeout(() => navigate('/dashboard'), 1000);
-                        } catch (error) {
-                          toast({
-                            title: "Subscription Update Failed",
-                            description: "Payment was successful but subscription update failed. Please contact support.",
-                            variant: "destructive",
-                          });
-                        } finally {
-                          setIsProcessing(false);
-                        }
-                      },
-                      () => {
-                        toast({
-                          title: "Payment Cancelled",
-                          description: "You chose to cancel the payment. You can subscribe anytime!",
-                          variant: "default",
-                        });
-                        setIsProcessing(false);
-                      }
-                    );
-                  }}
+                  onClick={() => handleSubscribe(plan)}
                   className="w-full"
-                  disabled={isProcessing || subscriptionLoading}
-                  variant="default"
+                  disabled={isProcessing || subscriptionLoading || isCurrentPlan}
                 >
                   {isProcessing ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Processing
                     </>
+                  ) : isCurrentPlan ? (
+                    'Current Plan'
                   ) : (
-                    `Buy Now (${formatPrice(monthlyPrice)}/mo)`
+                    `Subscribe ${formatPrice(monthlyPrice)}/mo`
                   )}
                 </Button>
-                {!user ? (
-                  <Button
-                    onClick={() => navigate('/login')}
-                    className="w-full"
-                    disabled={isProcessing || subscriptionLoading}
-                  >
-                    Login to Start Trial
-                  </Button>
-                ) : !activePlan ? (
-                  <>
-                    <Button
-                      onClick={() => handleSubscribe(plan)}
-                      className="w-full"
-                      disabled={isProcessing || subscriptionLoading}
-                      variant="outline"
-                    >
-                      {isProcessing ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Processing
-                        </>
-                      ) : (
-                        'Start 7-day Trial'
-                      )}
-                    </Button>
-                    <div>
-                      <Button
-                        onClick={() => handleTrialWithCard(plan)}
-                        className="w-full"
-                        disabled={isProcessing || subscriptionLoading}
-                      >
-                        {isProcessing ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Processing
-                          </>
-                        ) : (
-                          'Get 30-day Trial (Verify Card - ₦100 hold)'
-                        )}
-                      </Button>
-                      <p className="text-xs text-muted-foreground text-center mt-1">
-                        We'll place a ₦100 hold on your card for verification. This amount will be refunded.
-                      </p>
-                    </div>
-                  </>
-                ) : trialEndsAt && trialType === 'seven_day' && !cardAdded ? (
-                  <>
-                    <div>
-                      <Button
-                        onClick={() => handleTrialWithCard(plan)}
-                        className="w-full"
-                        disabled={isProcessing || subscriptionLoading}
-                        variant="outline"
-                      >
-                        {isProcessing ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Processing
-                          </>
-                        ) : (
-                          'Extend to 30 Days (Verify Card - ₦100 hold)'
-                        )}
-                      </Button>
-                      <p className="text-xs text-muted-foreground text-center mt-1">
-                        We'll place a ₦100 hold on your card for verification. This amount will be refunded.
-                      </p>
-                    </div>
-                    <Button
-                      onClick={() => handleSubscribe(plan)}
-                      className="w-full"
-                      disabled={isProcessing || subscriptionLoading}
-                    >
-                      {isProcessing ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Processing
-                        </>
-                      ) : (
-                        `Subscribe Now ${formatPrice(monthlyPrice)}/mo`
-                      )}
-                    </Button>
-                  </>
-                ) : (
-                  <Button
-                    onClick={() => handleSubscribe(plan)}
-                    className="w-full"
-                    disabled={isProcessing || subscriptionLoading || isCurrentPlan}
-                  >
-                    {isProcessing ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Processing
-                      </>
-                    ) : isCurrentPlan ? (
-                      'Current Plan'
-                    ) : (
-                      `Subscribe ${formatPrice(monthlyPrice)}/mo`
-                    )}
-                  </Button>
-                )}
               </div>
             </Card>
           );
         })}
       </div>
 
-        <div className="mt-12 text-center">
-            <p className="text-muted-foreground">
-                All plans include a 7-day free trial. Cancel anytime during the trial period.
-                <br />
-                Need help choosing? <a href="/contact" className="text-primary hover:underline">Contact our team</a>
-            </p>
-        </div>
+      <div className="mt-12 text-center">
+        <p className="text-muted-foreground">
+          All plans include customer support. Cancel anytime.
+          <br />
+          Need help choosing? <a href="/contact" className="text-primary hover:underline">Contact our team</a>
+        </p>
+      </div>
     </div>
-);
+  );
 
   return <Dashboard>{content}</Dashboard>;
 }

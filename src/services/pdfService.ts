@@ -1,34 +1,35 @@
 
-import { BankTransaction, ProcessedStatement } from '@/types';
+import { Transaction } from '@/types';
 
-export { BankTransaction, ProcessedStatement };
+class PDFService {
+  async extractTransactions(file: File): Promise<Transaction[]> {
+    // Mock implementation for now
+    console.log('Extracting transactions from PDF:', file.name);
+    
+    // Return mock data
+    return [
+      {
+        id: '1',
+        date: '2024-01-15',
+        description: 'Mock Transaction 1',
+        amount: -50.00,
+        category: 'Food',
+        type: 'debit'
+      },
+      {
+        id: '2',
+        date: '2024-01-16',
+        description: 'Mock Transaction 2',
+        amount: -25.50,
+        category: 'Transport',
+        type: 'debit'
+      }
+    ];
+  }
 
-export const processBankStatement = async (file: File): Promise<ProcessedStatement> => {
-  // Mock implementation for now
-  const transactions: BankTransaction[] = [
-    {
-      id: '1',
-      date: '2024-01-15',
-      description: 'Sample Transaction',
-      amount: -50.00,
-      type: 'debit',
-      category: 'Food & Dining',
-      balance: 1500.00
-    }
-  ];
+  async validatePDF(file: File): Promise<boolean> {
+    return file.type === 'application/pdf';
+  }
+}
 
-  return {
-    transactions,
-    summary: {
-      totalIncome: 0,
-      totalExpenses: 50,
-      netFlow: -50,
-      transactionCount: 1
-    },
-    metadata: {
-      fileName: file.name,
-      fileSize: file.size,
-      processedAt: new Date().toISOString()
-    }
-  };
-};
+export const pdfService = new PDFService();

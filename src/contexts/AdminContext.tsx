@@ -3,81 +3,94 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { AdminUser, AdminSession } from '@/types';
 
 interface AdminContextType {
-  adminUser: AdminUser | null;
-  isAdmin: boolean;
-  isLoading: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
-  signOut: () => void;
+  admin: AdminUser | null;
+  session: AdminSession | null;
+  loading: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => void;
+  hasPermission: (permission: string) => boolean;
+  logActivity: (activity: string, details?: any) => void;
 }
 
 const AdminContext = createContext<AdminContextType | undefined>(undefined);
 
-// Mock admin users
-const MOCK_ADMIN_USERS: AdminUser[] = [
-  {
-    id: '1',
-    email: 'admin@spendify.com',
-    role: 'super_admin',
-    is_active: true,
-    created_at: '2024-01-01T00:00:00Z',
-    last_login: new Date().toISOString()
-  }
-];
-
 export function AdminProvider({ children }: { children: React.ReactNode }) {
-  const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [admin, setAdmin] = useState<AdminUser | null>(null);
+  const [session, setSession] = useState<AdminSession | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check for existing admin session
-    const savedSession = localStorage.getItem('admin-session');
+    // Check for existing session
+    const savedSession = localStorage.getItem('admin_session');
     if (savedSession) {
       try {
-        const session: AdminSession = JSON.parse(savedSession);
-        if (new Date(session.expires_at) > new Date()) {
-          setAdminUser(session.user);
+        const sessionData = JSON.parse(savedSession);
+        if (new Date(sessionData.expiresAt) > new Date()) {
+          setAdmin(sessionData.user);
+          setSession(sessionData);
         } else {
-          localStorage.removeItem('admin-session');
+          localStorage.removeItem('admin_session');
         }
       } catch (error) {
-        localStorage.removeItem('admin-session');
+        console.error('Error loading admin session:', error);
+        localStorage.removeItem('admin_session');
       }
     }
-    setIsLoading(false);
+    setLoading(false);
   }, []);
 
-  const signIn = async (email: string, password: string) => {
-    // Mock authentication - in real app, this would call an API
+  const login = async (email: string, password: string) => {
+    // Mock login for now
     if (email === 'admin@spendify.com' && password === 'admin123') {
-      const user = MOCK_ADMIN_USERS[0];
-      const session: AdminSession = {
-        user,
-        token: 'mock-token',
-        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours
+      const mockAdmin: AdminUser = {
+        id: '1',
+        email: 'admin@spendify.com',
+        role: 'super_admin',
+        permissions: ['all'],
+        createdAt: new Date().toISOString(),
+        lastLogin: new Date().toISOString()
       };
-      
-      localStorage.setItem('admin-session', JSON.stringify(session));
-      setAdminUser(user);
+
+      const mockSession: AdminSession = {
+        user: mockAdmin,
+        token: 'mock-token',
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours
+      };
+
+      setAdmin(mockAdmin);
+      setSession(mockSession);
+      localStorage.setItem('admin_session', JSON.stringify(mockSession));
     } else {
       throw new Error('Invalid credentials');
     }
   };
 
-  const signOut = () => {
-    localStorage.removeItem('admin-session');
-    setAdminUser(null);
+  const logout = () => {
+    setAdmin(null);
+    setSession(null);
+    localStorage.removeItem('admin_session');
   };
 
-  const value: AdminContextType = {
-    adminUser,
-    isAdmin: !!adminUser,
-    isLoading,
-    signIn,
-    signOut
+  const hasPermission = (permission: string): boolean => {
+    if (!admin) return false;
+    return admin.permissions.includes('all') || admin.permissions.includes(permission);
+  };
+
+  const logActivity = (activity: string, details?: any) => {
+    console.log('Admin activity:', activity, details);
+    // In a real app, this would log to a database
   };
 
   return (
-    <AdminContext.Provider value={value}>
+    <AdminContext.Provider value={{
+      admin,
+      session,
+      loading,
+      login,
+      logout,
+      hasPermission,
+      logActivity
+    }}>
       {children}
     </AdminContext.Provider>
   );
