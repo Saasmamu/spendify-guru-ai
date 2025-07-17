@@ -1,122 +1,146 @@
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { AdminUser, AdminSession, Permission } from '@/types';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { useAuth } from './AuthContext';
+import { supabase } from '@/lib/supabase';
+import type { AdminUser, AdminRole, AdminPermission } from '@/types/admin';
 
 interface AdminContextType {
-  isAuthenticated: boolean;
+  adminUser: AdminUser | null;
   isAdmin: boolean;
   isLoading: boolean;
-  adminUser: AdminUser | null;
-  session: AdminSession | null;
-  permissions: Permission[];
-  loading: boolean;
-  error: string | null;
-  signIn: (email: string, password: string) => Promise<void>;
-  signOut: () => void;
+  permissions: Set<string>;
   hasPermission: (permission: string) => boolean;
-  logActivity: (action: string, resource: string, details?: any) => void;
+  checkPermission: (permission: string) => Promise<boolean>;
+  refreshAdminData: () => Promise<void>;
+  setAdminUser: (user: AdminUser | null) => void;
+  logActivity: (action: string, resource: string, details?: Record<string, any>) => Promise<void>;
 }
 
 const AdminContext = createContext<AdminContextType | undefined>(undefined);
 
-export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+export function AdminProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
   const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
-  const [session, setSession] = useState<AdminSession | null>(null);
-  const [permissions, setPermissions] = useState<Permission[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [permissions, setPermissions] = useState<Set<string>>(new Set());
+  const [isLoading, setIsLoading] = useState(true);
 
-  const signIn = async (email: string, password: string) => {
-    setLoading(true);
-    setError(null);
-    
+  const logActivity = async (action: string, resource: string, details?: Record<string, any>) => {
+    if (!adminUser) return;
+
     try {
-      // Mock authentication - replace with actual Supabase auth
-      if (email === 'admin@spendify.com' && password === 'admin123') {
-        const mockAdminUser: AdminUser = {
-          id: '1',
-          user_id: '1',
-          email: 'admin@spendify.com',
-          role_id: '1',
-          role_name: 'Super Admin',
-          role: 'Super Admin',
-          is_active: true,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
-        
-        const mockSession: AdminSession = {
-          user: mockAdminUser,
-          token: 'mock-token',
-          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-        };
-        
-        setAdminUser(mockAdminUser);
-        setSession(mockSession);
-        setIsAuthenticated(true);
-        setPermissions([
-          { id: '1', name: 'manage_users', description: 'Manage users', resource: 'users', action: 'manage' },
-          { id: '2', name: 'view_analytics', description: 'View analytics', resource: 'analytics', action: 'view' }
-        ]);
-      } else {
-        throw new Error('Invalid credentials');
-      }
+      const { error } = await supabase.from('admin_activity_logs').insert({
+        admin_user_id: adminUser.id,
+        action,
+        resource,
+        details,
+        ip_address: window.location.hostname,
+        user_agent: navigator.userAgent,
+      });
+
+      if (error) throw error;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Authentication failed');
-      throw err;
-    } finally {
-      setLoading(false);
+      console.error('Failed to log admin activity:', err);
     }
   };
 
-  const signOut = () => {
-    setIsAuthenticated(false);
-    setAdminUser(null);
-    setSession(null);
-    setPermissions([]);
-    setError(null);
+  useEffect(() => {
+    if (user) {
+      loadAdminData();
+    } else {
+      setAdminUser(null);
+      setPermissions(new Set());
+      setIsLoading(false);
+    }
+  }, [user]);
+
+  const loadAdminData = async () => {
+    if (!user) return;
+
+    try {
+      // Fetch admin user data
+      const { data: adminData, error: adminError } = await supabase
+        .from('admin_users')
+        .select(`
+          *,
+          role:admin_roles (
+            *,
+            permissions:role_permissions (
+              permission:admin_permissions (*)
+            )
+          )
+        `)
+        .eq('user_id', user.id)
+        .single();
+
+      if (adminError) throw adminError;
+
+      if (adminData) {
+        setAdminUser(adminData);
+        
+        // Extract permissions
+        const permissionSet = new Set<string>();
+        if (adminData.role?.permissions) {
+          adminData.role.permissions.forEach((rp: any) => {
+            if (rp.permission) {
+              permissionSet.add(rp.permission.name);
+            }
+          });
+        }
+        setPermissions(permissionSet);
+      }
+    } catch (error) {
+      console.error('Error loading admin data:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const hasPermission = (permission: string): boolean => {
-    return permissions.some(p => p.name === permission);
+    return permissions.has(permission);
   };
 
-  const logActivity = (action: string, resource: string, details?: any) => {
-    console.log('Admin activity:', { action, resource, details, user: adminUser?.email });
+  const checkPermission = async (permission: string): Promise<boolean> => {
+    if (!user || !adminUser) return false;
+
+    try {
+      const { data, error } = await supabase
+        .rpc('check_admin_permission', {
+          user_id: user.id,
+          required_permission: permission
+        });
+
+      if (error) throw error;
+      return !!data;
+    } catch (error) {
+      console.error('Error checking permission:', error);
+      return false;
+    }
   };
 
-  useEffect(() => {
-    // Check for existing session on mount
-    setLoading(false);
-  }, []);
+  const refreshAdminData = async () => {
+    await loadAdminData();
+    await logActivity('refreshed', 'admin_data');
+  };
 
-  const value: AdminContextType = {
-    isAuthenticated,
-    isAdmin: isAuthenticated,
-    isLoading: loading,
+  const value = {
     adminUser,
-    session,
+    isAdmin: !!adminUser,
+    isLoading,
     permissions,
-    loading,
-    error,
-    signIn,
-    signOut,
     hasPermission,
-    logActivity
+    checkPermission,
+    refreshAdminData,
+    setAdminUser,
+    logActivity,
   };
 
-  return (
-    <AdminContext.Provider value={value}>
-      {children}
-    </AdminContext.Provider>
-  );
-};
+  return <AdminContext.Provider value={value}>{children}</AdminContext.Provider>;
+}
 
-export const useAdmin = () => {
+export function useAdmin() {
   const context = useContext(AdminContext);
   if (context === undefined) {
     throw new Error('useAdmin must be used within an AdminProvider');
   }
   return context;
-};
+}

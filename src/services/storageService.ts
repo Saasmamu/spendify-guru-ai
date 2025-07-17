@@ -1,54 +1,85 @@
 
-import { SavedAnalysis } from '@/types';
+import { supabase } from '@/lib/supabase';
+import { Transaction, SavedAnalysis, CategoryData } from '@/types';
 
-// Mock implementation of storage service
-const mockAnalyses: SavedAnalysis[] = [];
+export interface SavedAnalysis {
+  id: string;
+  name: string;
+  date: string;
+  transactions: Transaction[];
+  total_income: number;
+  total_expense: number;
+  categories: CategoryData[];
+  insights: any;
+  created_at: string;
+  user_id: string;
+}
 
-export const saveAnalysis = async (
-  name: string,
-  description: string,
-  data: any,
-  userId: string,
-  analysisType?: string,
-  metadata?: any
-): Promise<SavedAnalysis> => {
-  const analysis: SavedAnalysis = {
-    id: Math.random().toString(36).substr(2, 9),
-    name,
-    description,
-    data,
-    created_at: new Date().toISOString(),
-    user_id: userId
-  };
-  
-  mockAnalyses.push(analysis);
-  return analysis;
+export const saveAnalysis = async (analysis: Omit<SavedAnalysis, 'id' | 'created_at' | 'user_id'>): Promise<SavedAnalysis> => {
+  const user = (await supabase.auth.getUser()).data.user;
+  if (!user) throw new Error('User not authenticated');
+
+  const { data, error } = await supabase
+    .from('saved_analyses')
+    .insert({
+      ...analysis,
+      user_id: user.id,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
 };
 
-export const getSavedAnalyses = async (userId?: string): Promise<SavedAnalysis[]> => {
-  if (!userId) return mockAnalyses;
-  return mockAnalyses.filter(analysis => analysis.user_id === userId);
+export const getSavedAnalyses = async (): Promise<SavedAnalysis[]> => {
+  const user = (await supabase.auth.getUser()).data.user;
+  if (!user) throw new Error('User not authenticated');
+
+  const { data, error } = await supabase
+    .from('saved_analyses')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
 };
 
 export const deleteAnalysis = async (id: string): Promise<void> => {
-  const index = mockAnalyses.findIndex(analysis => analysis.id === id);
-  if (index > -1) {
-    mockAnalyses.splice(index, 1);
-  }
+  const { error } = await supabase
+    .from('saved_analyses')
+    .delete()
+    .eq('id', id);
+
+  if (error) throw error;
 };
 
 export const getAnalysisById = async (id: string): Promise<SavedAnalysis | null> => {
-  return mockAnalyses.find(analysis => analysis.id === id) || null;
+  const { data, error } = await supabase
+    .from('saved_analyses')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error) return null;
+  return data;
 };
 
-// Create a storage service object for default export
-const storageService = {
-  saveAnalysis,
-  getSavedAnalyses,
-  deleteAnalysis,
-  getAnalysisById
-};
+export class StorageService {
+  static async deleteAnalysis(id: string): Promise<void> {
+    return deleteAnalysis(id);
+  }
 
-// Both named and default exports
-export { storageService };
-export default storageService;
+  static async getSavedAnalyses(): Promise<SavedAnalysis[]> {
+    return getSavedAnalyses();
+  }
+
+  static async saveAnalysis(analysis: Omit<SavedAnalysis, 'id' | 'created_at' | 'user_id'>): Promise<SavedAnalysis> {
+    return saveAnalysis(analysis);
+  }
+
+  static async getAnalysisById(id: string): Promise<SavedAnalysis | null> {
+    return getAnalysisById(id);
+  }
+}

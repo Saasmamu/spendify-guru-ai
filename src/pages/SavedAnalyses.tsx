@@ -1,50 +1,46 @@
 
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Trash2, Eye, Download } from 'lucide-react';
+import { Trash2, Eye } from 'lucide-react';
 import { storageService } from '@/services/storageService';
 import type { SavedAnalysis } from '@/types';
-import { toast } from 'sonner';
 
 const SavedAnalyses: React.FC = () => {
-  const [analyses, setAnalyses] = useState<SavedAnalysis[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [savedAnalyses, setSavedAnalyses] = useState<SavedAnalysis[]>([]);
+  const [selectedAnalysis, setSelectedAnalysis] = useState<SavedAnalysis | null>(null);
 
   useEffect(() => {
-    loadAnalyses();
+    const loadSavedAnalyses = async () => {
+      try {
+        const analyses = await storageService.getSavedAnalyses();
+        const transformedAnalyses: SavedAnalysis[] = analyses.map(analysis => ({
+          ...analysis,
+          transactions: analysis.transactions.map(tx => ({
+            ...tx,
+            id: tx.id || Math.random().toString(36)
+          }))
+        }));
+        setSavedAnalyses(transformedAnalyses);
+      } catch (error) {
+        console.error('Error loading saved analyses:', error);
+      }
+    };
+
+    loadSavedAnalyses();
   }, []);
 
-  const loadAnalyses = async () => {
+  const handleDelete = async (analysisId: string) => {
     try {
-      const savedAnalyses = await storageService.getSavedAnalyses();
-      setAnalyses(savedAnalyses);
-    } catch (error) {
-      console.error('Error loading analyses:', error);
-      toast.error('Failed to load saved analyses');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    try {
-      await storageService.deleteAnalysis(id);
-      setAnalyses(prev => prev.filter(analysis => analysis.id !== id));
-      toast.success('Analysis deleted successfully');
+      await storageService.deleteSavedAnalysis(analysisId);
+      setSavedAnalyses(prev => prev.filter(analysis => analysis.id !== analysisId));
+      if (selectedAnalysis?.id === analysisId) {
+        setSelectedAnalysis(null);
+      }
     } catch (error) {
       console.error('Error deleting analysis:', error);
-      toast.error('Failed to delete analysis');
     }
   };
-
-  if (loading) {
-    return (
-      <div className="container mx-auto py-8">
-        <div className="text-center">Loading...</div>
-      </div>
-    );
-  }
 
   return (
     <div className="container mx-auto py-8">
@@ -55,51 +51,120 @@ const SavedAnalyses: React.FC = () => {
         </p>
       </div>
 
-      {analyses.length === 0 ? (
+      <div className="grid lg:grid-cols-2 gap-6">
         <Card>
-          <CardContent className="text-center py-8">
-            <p className="text-muted-foreground">No saved analyses found</p>
+          <CardHeader>
+            <CardTitle>Your Analyses</CardTitle>
+            <CardDescription>
+              {savedAnalyses.length} saved analysis{savedAnalyses.length !== 1 ? 'es' : ''}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {savedAnalyses.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                No saved analyses found
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {savedAnalyses.map((analysis) => (
+                  <div
+                    key={analysis.id}
+                    className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                      selectedAnalysis?.id === analysis.id
+                        ? 'border-primary bg-primary/5'
+                        : 'hover:bg-muted/50'
+                    }`}
+                    onClick={() => setSelectedAnalysis(analysis)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-medium">{analysis.name}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {new Date(analysis.date).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedAnalysis(analysis);
+                          }}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(analysis.id);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
-      ) : (
-        <div className="grid gap-4">
-          {analyses.map((analysis) => (
-            <Card key={analysis.id}>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span>{analysis.name}</span>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm">
-                      <Eye className="h-4 w-4 mr-2" />
-                      View
-                    </Button>
-                    <Button variant="outline" size="sm">
-                      <Download className="h-4 w-4 mr-2" />
-                      Export
-                    </Button>
-                    <Button 
-                      variant="destructive" 
-                      size="sm"
-                      onClick={() => handleDelete(analysis.id)}
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Delete
-                    </Button>
+
+        {selectedAnalysis && (
+          <Card>
+            <CardHeader>
+              <CardTitle>{selectedAnalysis.name}</CardTitle>
+              <CardDescription>
+                Analysis from {new Date(selectedAnalysis.date).toLocaleDateString()}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-3 bg-green-50 rounded-lg">
+                    <div className="text-sm text-green-600">Total Income</div>
+                    <div className="text-lg font-semibold text-green-700">
+                      ₦{selectedAnalysis.totalIncome.toLocaleString()}
+                    </div>
                   </div>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground mb-2">
-                  {analysis.description}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Created: {new Date(analysis.created_at).toLocaleDateString()}
-                </p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+                  <div className="p-3 bg-red-50 rounded-lg">
+                    <div className="text-sm text-red-600">Total Expenses</div>
+                    <div className="text-lg font-semibold text-red-700">
+                      ₦{selectedAnalysis.totalExpense.toLocaleString()}
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="font-medium mb-2">Categories</h4>
+                  <div className="space-y-2">
+                    {Object.entries(selectedAnalysis.categories).map(([category, amount]) => (
+                      <div key={category} className="flex justify-between text-sm">
+                        <span className="capitalize">{category}</span>
+                        <span>₦{amount.toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="font-medium mb-2">Insights</h4>
+                  <div className="space-y-2">
+                    {selectedAnalysis.insights.map((insight, index) => (
+                      <div key={index} className="text-sm text-muted-foreground">
+                        • {insight}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   );
 };

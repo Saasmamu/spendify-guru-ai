@@ -1,15 +1,23 @@
-
 import React from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, Navigate } from 'react-router-dom';
 import { useAdmin } from '@/contexts/AdminContext';
 import { AdminSidebar } from './AdminSidebar';
 import { AdminHeader } from './AdminHeader';
+import { Loader2 } from 'lucide-react';
 
 export function AdminLayout() {
-  const { isAdmin } = useAdmin();
+  const { isAdmin, isLoading } = useAdmin();
+
+  if (isLoading) {
+    return (
+      <div className="h-screen w-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   if (!isAdmin) {
-    return null;
+    return <Navigate to="/login" replace />;
   }
 
   return (

@@ -13,24 +13,22 @@ import {
   Clock,
   CheckCircle
 } from 'lucide-react';
-import { useAdmin } from '@/contexts/AdminContext';
+import { useAdminMetrics } from '@/hooks/useAdminMetrics';
+import { useAdminActivity } from '@/hooks/useAdminActivity';
 
 export default function AdminDashboard() {
-  const { adminUser, signOut } = useAdmin();
+  const { metrics, loading: metricsLoading, refresh: refreshMetrics } = useAdminMetrics();
+  const { logs, loading: activityLoading, refresh: refreshActivity } = useAdminActivity(5);
 
-  // Mock metrics data
-  const metrics = {
-    totalUsers: 1250,
-    newUsers: 45,
-    monthlyRevenue: 12500,
-    userGrowth: 8.5,
-    documentsProcessed: 3200,
-    processingQueue: 5,
-    activeSubscriptions: 450,
-    activeUsers: 890,
-    errorRate: 0.5,
-    apiLoad: 25.3
-  };
+  if (metricsLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center py-8">
+          <div className="text-lg">Loading dashboard...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -39,11 +37,11 @@ export default function AdminDashboard() {
         <div>
           <h1 className="text-3xl font-bold">Admin Dashboard</h1>
           <p className="text-muted-foreground">
-            Welcome back, {adminUser?.email}
+            Monitor your application's performance and user activity
           </p>
         </div>
-        <Button onClick={signOut} variant="outline">
-          Sign Out
+        <Button onClick={refreshMetrics} variant="outline">
+          Refresh Data
         </Button>
       </div>
 
@@ -138,18 +136,64 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
-        {/* System Status */}
+        {/* Recent Activity */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5" />
-              System Status
+              <Clock className="h-5 w-5" />
+              Recent Activity
             </CardTitle>
             <CardDescription>
-              Current system health and performance
+              Latest admin actions and system events
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent>
+            {activityLoading ? (
+              <div className="text-center py-4">Loading activity...</div>
+            ) : logs.length === 0 ? (
+              <div className="text-center py-4 text-muted-foreground">
+                No recent activity
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {logs.map((log) => (
+                  <div key={log.id} className="flex items-start gap-3 text-sm">
+                    <div className="flex-shrink-0 mt-0.5">
+                      {getActivityIcon(log.action)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm">
+                        <span className="font-medium">{log.admin_email}</span>
+                        {' '}{log.action} {log.resource}
+                        {log.resource_id && (
+                          <span className="text-muted-foreground"> ({log.resource_id})</span>
+                        )}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(log.created_at).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* System Status */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CheckCircle className="h-5 w-5" />
+            System Status
+          </CardTitle>
+          <CardDescription>
+            Current system health and performance metrics
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">API Response Time</span>
@@ -185,9 +229,43 @@ export default function AdminDashboard() {
                 />
               </div>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Processing Queue</span>
+                <Badge variant={metrics.processingQueue > 10 ? "destructive" : "outline"}>
+                  {metrics.processingQueue} items
+                </Badge>
+              </div>
+              <div className="w-full bg-secondary rounded-full h-2">
+                <div 
+                  className={`h-2 rounded-full ${
+                    metrics.processingQueue < 5 ? 'bg-green-500' : 
+                    metrics.processingQueue < 15 ? 'bg-yellow-500' : 'bg-red-500'
+                  }`}
+                  style={{ width: `${Math.min(metrics.processingQueue * 5, 100)}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
+}
+
+function getActivityIcon(action: string) {
+  switch (action.toLowerCase()) {
+    case 'created':
+    case 'added':
+      return <CheckCircle className="h-4 w-4 text-green-500" />;
+    case 'updated':
+    case 'modified':
+      return <Activity className="h-4 w-4 text-blue-500" />;
+    case 'deleted':
+    case 'removed':
+      return <AlertTriangle className="h-4 w-4 text-red-500" />;
+    default:
+      return <Clock className="h-4 w-4 text-muted-foreground" />;
+  }
 }

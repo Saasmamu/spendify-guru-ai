@@ -6,23 +6,52 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
+import { supabase } from '@/lib/supabase';
 import { useAdmin } from '@/contexts/AdminContext';
 
-function AdminLogin() {
-  const [email, setEmail] = useState('admin@spendify.com');
-  const [password, setPassword] = useState('admin123');
+function Login() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { signIn } = useAdmin();
+  const { setAdminUser } = useAdmin();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      await signIn(email, password);
-      
+      const { data: { user }, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+
+      // Check if the user has admin privileges
+      const { data: adminData, error: adminError } = await supabase
+        .from('admin_users')
+        .select('*, admin_roles(*)')
+        .eq('user_id', user?.id)
+        .single();
+
+      if (adminError || !adminData) {
+        throw new Error('Unauthorized access');
+      }
+
+      setAdminUser({
+        id: adminData.id,
+        user_id: user?.id || '',
+        email: user?.email || '',
+        role_id: adminData.role_id,
+        is_active: adminData.is_active,
+        last_login: new Date().toISOString(),
+        created_at: adminData.created_at,
+        updated_at: adminData.updated_at,
+        role: adminData.admin_roles
+      });
+
       toast({
         title: 'Welcome back!',
         description: 'Successfully logged in to admin panel.',
@@ -77,11 +106,11 @@ function AdminLogin() {
             </Button>
             
             <div className="text-center space-y-2">
-              <div className="text-sm text-gray-600 p-3 bg-blue-50 rounded">
-                <p><strong>Default Admin Credentials:</strong></p>
-                <p>Email: admin@spendify.com</p>
-                <p>Password: admin123</p>
-              </div>
+              <Link to="/admin/create">
+                <Button variant="link" className="text-sm">
+                  Create Admin Account
+                </Button>
+              </Link>
               <div>
                 <Link to="/">
                   <Button variant="link" className="text-sm">
@@ -97,4 +126,4 @@ function AdminLogin() {
   );
 }
 
-export default AdminLogin;
+export default Login;

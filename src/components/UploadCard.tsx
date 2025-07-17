@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Upload, File, Image, Check, X, AlertTriangle } from 'lucide-react';
@@ -91,14 +90,9 @@ const UploadCard = () => {
           totalIncome: transactions
             .filter(t => t.type === 'credit')
             .reduce((sum, t) => sum + t.amount, 0),
-          totalExpenses: transactions
+          totalExpense: transactions
             .filter(t => t.type === 'debit')
-            .reduce((sum, t) => sum + Math.abs(t.amount), 0),
-          categories: [...new Set(transactions.map(t => t.category))],
-          dateRange: {
-            start: new Date().toISOString().split('T')[0],
-            end: new Date().toISOString().split('T')[0]
-          }
+            .reduce((sum, t) => sum + t.amount, 0),
         };
       }
       

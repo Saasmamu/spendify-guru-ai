@@ -5,26 +5,7 @@ import { useSubscription } from '@/contexts/SubscriptionContext';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useState } from 'react';
-
-interface SubscriptionLimits {
-  maxStatements: number;
-  maxSavedAnalyses: number;
-  aiAnalysis: boolean;
-  advancedCharts: boolean;
-  exportReports: boolean;
-  prioritySupport: boolean;
-  customCategories: boolean;
-  budgetTracking: boolean;
-  advancedAnalytics: boolean;
-  advancedAnalysis: boolean;
-  financialGoals: boolean;
-  aiAdvisor: boolean;
-  budgetPlanner: boolean;
-  canCompare: boolean;
-  hasAdvancedAnalytics: boolean;
-  hasFinancialGoals: boolean;
-  hasAIFinancialAdvisor: boolean;
-}
+import { SubscriptionLimits } from '@/types/subscription';
 
 interface FeatureGateProps {
   children: ReactNode;
@@ -32,30 +13,9 @@ interface FeatureGateProps {
 }
 
 export function FeatureGate({ children, feature }: FeatureGateProps) {
-  const { activePlan } = useSubscription();
+  const { limits, activePlan } = useSubscription();
   const navigate = useNavigate();
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
-
-  // Mock limits based on plan
-  const limits: SubscriptionLimits = {
-    maxStatements: 10,
-    maxSavedAnalyses: 5,
-    aiAnalysis: activePlan?.features.aiInsights || false,
-    advancedCharts: activePlan?.features.advancedAnalytics || false,
-    exportReports: true,
-    prioritySupport: activePlan?.features.priority === 'high',
-    customCategories: true,
-    budgetTracking: true,
-    advancedAnalytics: activePlan?.features.advancedAnalytics || false,
-    advancedAnalysis: activePlan?.features.advancedAnalytics || false,
-    financialGoals: true,
-    aiAdvisor: activePlan?.features.aiInsights || false,
-    budgetPlanner: true,
-    canCompare: activePlan?.features.advancedAnalytics || false,
-    hasAdvancedAnalytics: activePlan?.features.advancedAnalytics || false,
-    hasFinancialGoals: true,
-    hasAIFinancialAdvisor: activePlan?.features.aiInsights || false,
-  };
 
   if (limits[feature]) {
     return <>{children}</>;
@@ -65,7 +25,9 @@ export function FeatureGate({ children, feature }: FeatureGateProps) {
   const featureDisplayName = String(feature).replace(/([A-Z])/g, ' $1').toLowerCase();
 
   // Get plan name
-  const planName = activePlan?.name || 'Free';
+  const planName = activePlan ? 
+    (activePlan === 'starter' ? 'Starter' : 
+     activePlan === 'pro' ? 'Pro' : 'Enterprise') : 'Free';
 
   // If the feature is not available, show upgrade dialog
   return (

@@ -1,24 +1,22 @@
+
 import React, { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { FileText, Upload, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { useToast } from '@/hooks/useToast';
-import { processPDFFile } from '@/services/pdfService';
-import { ProcessedStatement } from '@/types';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Upload, FileText, AlertCircle } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { pdfService } from '@/services/pdfService';
+import { Transaction } from '@/types';
 
-interface BankStatementUploadProps {
-  onUploadComplete?: (statement: ProcessedStatement) => void;
-  onAnalysisComplete?: (analysis: any) => void;
-  onAnalysisStart?: () => void;
+export interface BankStatementUploadProps {
+  onAnalysisComplete: (analysis: any) => void;
+  onAnalysisStart: () => void;
 }
 
-const BankStatementUpload: React.FC<BankStatementUploadProps> = ({
-  onUploadComplete,
-  onAnalysisComplete,
-  onAnalysisStart
+const BankStatementUpload: React.FC<BankStatementUploadProps> = ({ 
+  onAnalysisComplete, 
+  onAnalysisStart 
 }) => {
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
 
@@ -26,90 +24,110 @@ const BankStatementUpload: React.FC<BankStatementUploadProps> = ({
     const file = acceptedFiles[0];
     if (!file) return;
 
-    setUploadedFile(file);
+    if (file.type !== 'application/pdf') {
+      toast({
+        title: 'Invalid file type',
+        description: 'Please upload a PDF file.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsProcessing(true);
-    onAnalysisStart?.();
+    onAnalysisStart();
 
     try {
-      const processedStatement = await processPDFFile(file);
-      onUploadComplete?.(processedStatement);
-      onAnalysisComplete?.(processedStatement);
+      const transactions = await pdfService.extractTransactions(file);
       
+      // Mock analysis result
+      const analysis = {
+        transactions,
+        totalIncome: transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0),
+        totalExpenses: transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + Math.abs(t.amount), 0),
+        categories: [] // This would be calculated from transactions
+      };
+
+      onAnalysisComplete(analysis);
+
       toast({
-        title: "Success",
-        description: `Processed ${processedStatement.transactions.length} transactions`,
+        title: 'Success!',
+        description: `Processed ${transactions.length} transactions from your bank statement.`,
       });
     } catch (error) {
       console.error('Error processing file:', error);
       toast({
-        title: "Error",
-        description: "Failed to process the bank statement",
-        variant: "destructive",
+        title: 'Processing error',
+        description: 'Failed to process the bank statement. Please try again.',
+        variant: 'destructive',
       });
     } finally {
       setIsProcessing(false);
     }
-  }, [onUploadComplete, onAnalysisComplete, onAnalysisStart, toast]);
+  }, [onAnalysisComplete, onAnalysisStart, toast]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      'application/pdf': ['.pdf'],
+      'application/pdf': ['.pdf']
     },
-    multiple: false,
+    maxFiles: 1,
+    disabled: isProcessing
   });
 
-  const removeFile = () => {
-    setUploadedFile(null);
-  };
-
   return (
-    <Card className="w-full">
-      <CardContent className="p-6">
-        {!uploadedFile ? (
-          <div
-            {...getRootProps()}
-            className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
-              isDragActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/25'
-            }`}
-          >
-            <input {...getInputProps()} />
-            <Upload className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-            <h3 className="text-lg font-semibold mb-2">Upload Bank Statement</h3>
-            <p className="text-muted-foreground mb-4">
-              {isDragActive
-                ? 'Drop your PDF file here...'
-                : 'Drag & drop your bank statement PDF here, or click to select'}
-            </p>
-            <Button variant="outline">Select File</Button>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 border rounded-lg">
-              <div className="flex items-center space-x-3">
-                <FileText className="w-8 h-8 text-blue-500" />
-                <div>
-                  <p className="font-medium">{uploadedFile.name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB
-                  </p>
-                </div>
-              </div>
-              {!isProcessing && (
-                <Button variant="ghost" size="sm" onClick={removeFile}>
-                  <X className="w-4 h-4" />
-                </Button>
-              )}
-            </div>
-            
-            {isProcessing && (
-              <div className="text-center py-4">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
-                <p className="text-sm text-muted-foreground">Processing your bank statement...</p>
-              </div>
+    <Card className="w-full max-w-2xl mx-auto">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Upload className="h-5 w-5" />
+          Upload Bank Statement
+        </CardTitle>
+        <CardDescription>
+          Upload your PDF bank statement to analyze your spending patterns and financial health.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div
+          {...getRootProps()}
+          className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+            isDragActive
+              ? 'border-primary bg-primary/5'
+              : 'border-gray-300 hover:border-primary hover:bg-gray-50'
+          } ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
+        >
+          <input {...getInputProps()} />
+          <div className="flex flex-col items-center gap-4">
+            {isProcessing ? (
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            ) : (
+              <FileText className="h-12 w-12 text-gray-400" />
             )}
+            <div>
+              <p className="text-lg font-medium">
+                {isProcessing
+                  ? 'Processing your bank statement...'
+                  : isDragActive
+                  ? 'Drop your PDF file here'
+                  : 'Drag & drop your PDF bank statement here'}
+              </p>
+              <p className="text-sm text-gray-500 mt-1">
+                {!isProcessing && 'or click to browse files'}
+              </p>
+            </div>
           </div>
-        )}
+        </div>
+
+        <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
+            <div className="text-sm">
+              <p className="font-medium text-blue-900 mb-1">Security & Privacy</p>
+              <p className="text-blue-700">
+                Your bank statement is processed locally and securely. We extract transaction data 
+                without storing sensitive account information.
+              </p>
+            </div>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );
