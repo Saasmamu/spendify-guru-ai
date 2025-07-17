@@ -4,6 +4,8 @@ import { AdminUser, AdminSession, Permission } from '@/types';
 
 interface AdminContextType {
   isAuthenticated: boolean;
+  isAdmin: boolean;
+  isLoading: boolean;
   adminUser: AdminUser | null;
   session: AdminSession | null;
   permissions: Permission[];
@@ -38,6 +40,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           email: 'admin@spendify.com',
           role_id: '1',
           role_name: 'Super Admin',
+          role: 'Super Admin',
           is_active: true,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
@@ -90,6 +93,8 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const value: AdminContextType = {
     isAuthenticated,
+    isAdmin: isAuthenticated,
+    isLoading: loading,
     adminUser,
     session,
     permissions,

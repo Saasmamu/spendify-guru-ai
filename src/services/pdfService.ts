@@ -58,6 +58,9 @@ export const processBankStatement = async (file: File): Promise<ProcessedStateme
   };
 };
 
+// Export types for convenience
+export type { BankTransaction, ProcessedStatement };
+
 export default {
   processPDFFile,
   extractTextFromPDF,

@@ -84,6 +84,7 @@ export interface AdminUser {
   email: string;
   role_id: string;
   role_name: string;
+  role?: string;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -139,6 +140,12 @@ export interface SavedAnalysis {
   data: any;
   created_at: string;
   user_id: string;
+  date?: string;
+  totalIncome?: number;
+  totalExpense?: number;
+  transactions?: Transaction[];
+  categories?: string[];
+  insights?: string[];
 }
 
 // Export all types as a single object as well for backwards compatibility

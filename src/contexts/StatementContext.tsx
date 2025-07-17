@@ -1,68 +1,65 @@
 
-import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { BankTransaction, ProcessedStatement } from '../services/pdfService';
+import React, { createContext, useContext, useState, useCallback } from 'react';
+import { BankTransaction, ProcessedStatement } from '@/types';
+import { processBankStatement } from '@/services/pdfService';
 
 interface StatementContextType {
-  statementData: ProcessedStatement | null;
   uploadedFile: File | null;
+  statementData: ProcessedStatement | null;
   isProcessing: boolean;
   error: string | null;
-  setUploadedFile: (file: File | null) => void;
-  setStatementData: (data: ProcessedStatement | null) => void;
-  setIsProcessing: (isProcessing: boolean) => void;
-  setError: (error: string | null) => void;
-  clearData: () => void;
+  uploadStatement: (file: File) => Promise<void>;
+  clearStatement: () => void;
 }
 
 const StatementContext = createContext<StatementContextType | undefined>(undefined);
 
-export const StatementProvider = ({ children }: { children: ReactNode }) => {
-  const [statementData, setStatementData] = useState<ProcessedStatement | null>(null);
+export const StatementProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [statementData, setStatementData] = useState<ProcessedStatement | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Debug logging for context changes
-  useEffect(() => {
-    console.log("StatementContext - uploadedFile changed:", uploadedFile?.name);
-  }, [uploadedFile]);
-
-  useEffect(() => {
-    console.log("StatementContext - statementData changed:", 
-      statementData ? `${statementData.transactions.length} transactions` : "null");
-  }, [statementData]);
-
-  useEffect(() => {
-    console.log("StatementContext - isProcessing changed:", isProcessing);
-  }, [isProcessing]);
-
-  const clearData = () => {
-    console.log("StatementContext - clearing all data");
-    setStatementData(null);
-    setUploadedFile(null);
+  const uploadStatement = useCallback(async (file: File) => {
+    setIsProcessing(true);
     setError(null);
+    
+    try {
+      const result = await processBankStatement(file);
+      setUploadedFile(file);
+      setStatementData(result);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to process statement';
+      setError(errorMessage);
+      console.error('Statement processing error:', err);
+    } finally {
+      setIsProcessing(false);
+    }
+  }, []);
+
+  const clearStatement = useCallback(() => {
+    setUploadedFile(null);
+    setStatementData(null);
+    setError(null);
+  }, []);
+
+  const value: StatementContextType = {
+    uploadedFile,
+    statementData,
+    isProcessing,
+    error,
+    uploadStatement,
+    clearStatement
   };
 
   return (
-    <StatementContext.Provider
-      value={{
-        statementData,
-        uploadedFile,
-        isProcessing,
-        error,
-        setUploadedFile,
-        setStatementData,
-        setIsProcessing,
-        setError,
-        clearData
-      }}
-    >
+    <StatementContext.Provider value={value}>
       {children}
     </StatementContext.Provider>
   );
 };
 
-export const useStatement = (): StatementContextType => {
+export const useStatement = () => {
   const context = useContext(StatementContext);
   if (context === undefined) {
     throw new Error('useStatement must be used within a StatementProvider');

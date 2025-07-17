@@ -9,7 +9,7 @@ export const saveAnalysis = async (
   description: string,
   data: any,
   userId: string,
-  analysisType: string,
+  analysisType?: string,
   metadata?: any
 ): Promise<SavedAnalysis> => {
   const analysis: SavedAnalysis = {
@@ -25,7 +25,8 @@ export const saveAnalysis = async (
   return analysis;
 };
 
-export const getSavedAnalyses = async (userId: string): Promise<SavedAnalysis[]> => {
+export const getSavedAnalyses = async (userId?: string): Promise<SavedAnalysis[]> => {
+  if (!userId) return mockAnalyses;
   return mockAnalyses.filter(analysis => analysis.user_id === userId);
 };
 
@@ -40,12 +41,17 @@ export const getAnalysisById = async (id: string): Promise<SavedAnalysis | null>
   return mockAnalyses.find(analysis => analysis.id === id) || null;
 };
 
-// Named export for SavedAnalysis type
-export type { SavedAnalysis };
-
-export default {
+// Create a storage service object for default export
+const storageService = {
   saveAnalysis,
   getSavedAnalyses,
   deleteAnalysis,
   getAnalysisById
 };
+
+// Named export for SavedAnalysis type
+export type { SavedAnalysis };
+
+// Both named and default exports
+export { storageService };
+export default storageService;
