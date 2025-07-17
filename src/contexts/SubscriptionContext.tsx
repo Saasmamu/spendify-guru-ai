@@ -3,16 +3,8 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { useAuth } from './AuthContext';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
-import { SubscriptionLimits } from '@/types/subscription';
 
 export type SubscriptionPlan = 'starter' | 'pro' | 'enterprise';
-
-export interface SubscriptionPlanDetails {
-  id: string;
-  name: string;
-  price: number;
-  features: string[];
-}
 
 export interface SubscriptionContextType {
   activePlan: SubscriptionPlan | null;
@@ -22,30 +14,8 @@ export interface SubscriptionContextType {
   loading: boolean;
   trialType: string | null;
   cardAdded: boolean;
-  limits: SubscriptionLimits;
-  subscription: any;
-  updateSubscription: (planId: string, options?: { isTrialStart?: boolean; withCard?: boolean }) => Promise<void>;
+  updateSubscription: (planId: string, isTrial?: boolean) => Promise<void>;
 }
-
-const defaultLimits: SubscriptionLimits = {
-  maxStatements: 5,
-  maxSavedAnalyses: 3,
-  aiAnalysis: false,
-  advancedCharts: false,
-  exportReports: false,
-  prioritySupport: false,
-  customCategories: false,
-  budgetTracking: false,
-  advancedAnalytics: false,
-  advancedAnalysis: false,
-  financialGoals: false,
-  aiAdvisor: false,
-  budgetPlanner: false,
-  canCompare: false,
-  hasAdvancedAnalytics: false,
-  hasFinancialGoals: false,
-  hasAIFinancialAdvisor: false
-};
 
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
 
@@ -59,8 +29,6 @@ export const SubscriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
   const [loading, setLoading] = useState(true);
   const [trialType, setTrialType] = useState<string | null>(null);
   const [cardAdded, setCardAdded] = useState(false);
-  const [subscription, setSubscription] = useState<any>(null);
-  const [limits, setLimits] = useState<SubscriptionLimits>(defaultLimits);
 
   useEffect(() => {
     if (user) {
@@ -93,11 +61,6 @@ export const SubscriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
         setIsTrialActive(data.trial_ends_at ? new Date(data.trial_ends_at) > new Date() : false);
         setTrialType(data.trial_type);
         setCardAdded(data.card_added || false);
-        setSubscription(data);
-        
-        // Set limits based on plan
-        const planLimits = getPlanLimits(data.plan as SubscriptionPlan);
-        setLimits(planLimits);
       }
     } catch (error) {
       console.error('Error fetching subscription data:', error);
@@ -106,54 +69,7 @@ export const SubscriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
     }
   };
 
-  const getPlanLimits = (plan: SubscriptionPlan): SubscriptionLimits => {
-    switch (plan) {
-      case 'pro':
-        return {
-          maxStatements: 50,
-          maxSavedAnalyses: 25,
-          aiAnalysis: true,
-          advancedCharts: true,
-          exportReports: true,
-          prioritySupport: true,
-          customCategories: true,
-          budgetTracking: true,
-          advancedAnalytics: true,
-          advancedAnalysis: true,
-          financialGoals: true,
-          aiAdvisor: true,
-          budgetPlanner: true,
-          canCompare: true,
-          hasAdvancedAnalytics: true,
-          hasFinancialGoals: true,
-          hasAIFinancialAdvisor: true
-        };
-      case 'enterprise':
-        return {
-          maxStatements: -1, // unlimited
-          maxSavedAnalyses: -1,
-          aiAnalysis: true,
-          advancedCharts: true,
-          exportReports: true,
-          prioritySupport: true,
-          customCategories: true,
-          budgetTracking: true,
-          advancedAnalytics: true,
-          advancedAnalysis: true,
-          financialGoals: true,
-          aiAdvisor: true,
-          budgetPlanner: true,
-          canCompare: true,
-          hasAdvancedAnalytics: true,
-          hasFinancialGoals: true,
-          hasAIFinancialAdvisor: true
-        };
-      default: // starter
-        return defaultLimits;
-    }
-  };
-
-  const updateSubscription = async (planId: string, options?: { isTrialStart?: boolean; withCard?: boolean }) => {
+  const updateSubscription = async (planId: string, isTrial: boolean = false) => {
     if (!user) return;
 
     try {
@@ -161,7 +77,7 @@ export const SubscriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
         user_id: user.id,
         plan: planId as SubscriptionPlan,
         status: 'active',
-        ...(options?.isTrialStart && {
+        ...(isTrial && {
           trial_ends_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
           trial_type: 'free'
         })
@@ -176,8 +92,8 @@ export const SubscriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
       await fetchSubscriptionData();
       
       toast({
-        title: options?.isTrialStart ? 'Trial Started!' : 'Subscription Updated',
-        description: options?.isTrialStart 
+        title: isTrial ? 'Trial Started!' : 'Subscription Updated',
+        description: isTrial 
           ? `Your 7-day trial for the ${planId} plan has begun.`
           : `Successfully updated to the ${planId} plan.`
       });
@@ -199,8 +115,6 @@ export const SubscriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
     loading,
     trialType,
     cardAdded,
-    limits,
-    subscription,
     updateSubscription
   };
 
