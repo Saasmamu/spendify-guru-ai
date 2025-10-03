@@ -87,62 +87,25 @@ export const processImageAndExtractTransactions = async (file: File): Promise<Ba
       Extract all visible transactions from the image and return them as JSON.
     `;
 
-    // Use the approach from usegemini.txt
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-    if (!apiKey) {
-      throw new Error('Gemini API key is not configured');
-    }
-
-    // Make sure image data is properly formatted
-    const imageData = imageBase64.startsWith('data:') 
-      ? imageBase64.split(',')[1] 
-      : imageBase64;
-
-    // Call Gemini API directly
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    // Call the edge function
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
     
-    const response = await fetch(url, {
+    const response = await fetch(`${supabaseUrl}/functions/v1/analyze-statement`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseKey}`,
       },
-      body: JSON.stringify({
-        contents: [{
-          parts: [
-            { text: prompt },
-            {
-              inlineData: {
-                mimeType: 'image/jpeg',
-                data: imageData
-              }
-            }
-          ]
-        }],
-        generationConfig: {
-          temperature: 0.1,
-          topK: 1,
-          topP: 0.1,
-          maxOutputTokens: 4096,
-        }
-      })
+      body: JSON.stringify({ imageBase64, prompt })
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Gemini API Error:', {
-        status: response.status,
-        statusText: response.statusText,
-        errorText
-      });
-      throw new Error(`Gemini API error: ${response.status} - ${response.statusText}`);
+      const errorData = await response.json();
+      throw new Error(errorData.error || `API error: ${response.status}`);
     }
 
-    const data = await response.json();
-    if (!data.candidates?.[0]?.content?.parts?.[0]?.text) {
-      throw new Error('Invalid response format from Gemini API');
-    }
-
-    const extractedText = data.candidates[0].content.parts[0].text;
+    const { extractedText } = await response.json();
     console.log('Gemini extracted text:', extractedText);
 
     // Parse the response and convert to BankTransaction format
