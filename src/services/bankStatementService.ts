@@ -65,11 +65,14 @@ export const bankStatementService = {
       `;
 
       console.log("Image data length:", imageBase64.length);
+      console.log("Calling analyze-statement edge function...");
 
       // Call the edge function to analyze the statement using Lovable AI
       const { data: functionData, error: functionError } = await supabase.functions.invoke('analyze-statement', {
         body: { imageBase64, prompt }
       });
+
+      console.log("Edge function response:", { functionData, functionError });
 
       if (functionError) {
         console.error('Edge function error:', functionError);
@@ -77,10 +80,12 @@ export const bankStatementService = {
       }
 
       if (!functionData?.extractedText) {
+        console.error('No extractedText in response:', functionData);
         throw new Error('No data returned from analysis');
       }
 
       const extractedText = functionData.extractedText;
+      console.log("Successfully extracted text, length:", extractedText.length);
 
       // Parse the JSON response
       try {
