@@ -1,5 +1,4 @@
 import { supabase } from '@/lib/supabase';
-import { generateFromImage } from './geminiProxyService';
 
 export interface ExtractedTransaction {
   date: string;
@@ -67,8 +66,21 @@ export const bankStatementService = {
 
       console.log("Image data length:", imageBase64.length);
 
-      // Use the proxy service to call Gemini API with the image
-      const extractedText = await generateFromImage(prompt, imageBase64, 0.1);
+      // Call the edge function to analyze the statement using Lovable AI
+      const { data: functionData, error: functionError } = await supabase.functions.invoke('analyze-statement', {
+        body: { imageBase64, prompt }
+      });
+
+      if (functionError) {
+        console.error('Edge function error:', functionError);
+        throw new Error(`Failed to analyze statement: ${functionError.message}`);
+      }
+
+      if (!functionData?.extractedText) {
+        throw new Error('No data returned from analysis');
+      }
+
+      const extractedText = functionData.extractedText;
 
       // Parse the JSON response
       try {
