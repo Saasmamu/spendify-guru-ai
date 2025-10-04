@@ -1,4 +1,5 @@
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase';
+import { generateFromImage } from './geminiProxyService';
 
 export interface ExtractedTransaction {
   date: string;
@@ -64,36 +65,10 @@ export const bankStatementService = {
         Extract all visible transactions from the image and return them as JSON.
       `;
 
-      console.log("Starting extraction - Image data length:", imageBase64.length);
-      console.log("Calling analyze-statement edge function...");
+      console.log("Image data length:", imageBase64.length);
 
-      // Call the edge function to analyze the statement
-      const { data, error: functionError } = await supabase.functions.invoke('analyze-statement', {
-        body: {
-          imageBase64,
-          prompt
-        }
-      });
-
-      console.log('Edge function response:', { data, functionError });
-
-      if (functionError) {
-        console.error('Edge function error:', functionError);
-        throw new Error(`Edge function failed: ${functionError.message}`);
-      }
-
-      if (!data) {
-        console.error('No data returned from edge function');
-        throw new Error('No data returned from edge function');
-      }
-
-      if (!data.extractedText) {
-        console.error('No extractedText in response:', data);
-        throw new Error('No extracted text returned from edge function');
-      }
-
-      console.log('Successfully received extracted text');
-      const extractedText = data.extractedText;
+      // Use the proxy service to call Gemini API with the image
+      const extractedText = await generateFromImage(prompt, imageBase64, 0.1);
 
       // Parse the JSON response
       try {
